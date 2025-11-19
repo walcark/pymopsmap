@@ -1,0 +1,34 @@
+[project]
+authors = [{name = "walcark", email = "kevin.walcarius@cnes.fr"}]
+dependencies = []
+name = "pymopsmap"
+requires-python = ">= 3.11"
+version = "0.1.0"
+
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling"]
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[tool.pixi.pypi-dependencies]
+pymopsmap = { path = ".", editable = true }
+
+[tool.pixi.tasks]
+
+[tool.pixi.dependencies]
+python = "3.12.*"
+xarray = ">=2025.11.0,<2026"
+numpy = ">=2.3.5,<3"
+black = ">=25.1.0,<26"
+pydantic = ">=2.12.4,<3"
+netcdf4 = ">=1.7.3,<2"
+
+[tool.pixi.environments]
+default = { solve-group = "default" }
+test = { features = ["test"], solve-group = "default" }
+
+[dependency-groups]
+test = ["pytest"]
