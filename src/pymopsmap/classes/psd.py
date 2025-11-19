@@ -6,9 +6,10 @@ Date    : 2025-11-19
 Version : 1.0
 License : MIT 
 Summary : Defines the different input Particle Size Distribution (PSD)
-          available in MOPSMAP.
+          available in MOPSMAP. Also defined a type Size to simplify 
+          future loading with hydra.
 """
-from typing import Literal
+from typing import Literal, Annotated, Union
 from pydantic import BaseModel, Field, model_validator
 
 
@@ -72,3 +73,16 @@ class FileDefinedPSD(BaseModel):
 
     def to_section(self, num: int | None = None) -> str:
         return f"mode {num} size distr file {self.distr_filename}"
+    
+
+# =================================================================================================
+# Annotated union
+# =================================================================================================
+Size = Annotated[
+    Union[
+        FixedPSD, 
+        LognormalPSD, 
+        FileDefinedPSD
+    ],
+    Field(discriminator="type"),
+]

@@ -1,5 +1,14 @@
-# pymopsmap/classes/shape.py
-from typing import Literal
+"""
+shape.py
+
+Author  : Kévin Walcarius
+Date    : 2025-11-19
+Version : 1.0
+License : MIT 
+Summary : Defines the different shapes available in MOPSMAP. Also defined a type 
+          Shape to simplify future loading with hydra.
+"""
+from typing import Literal, Annotated, Union
 from pydantic import BaseModel, Field
 
 # =================================================================================================
@@ -85,3 +94,20 @@ class IrregularOverlay(BaseModel):
 
     def to_section(self, num: int | None = None) -> str:
         return f"mode {num} shape irregular_overlay {self.distr_filename} {self.xmin} {self.xmax}"
+    
+
+# =================================================================================================
+# Annotated union
+# =================================================================================================
+Shape = Annotated[
+    Union[
+        Sphere, 
+        Spheroid, 
+        SpheroidLognormal,
+        SpheroidDistrFile, 
+        Irregular,
+        IrregularDistrFile, 
+        IrregularOverlay,
+    ],
+    Field(discriminator="type"),
+]
