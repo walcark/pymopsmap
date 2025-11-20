@@ -1,4 +1,5 @@
-# pixi environments
+*
+!config.toml
 .pixi/*
 !.pixi/config.toml
 *.nc

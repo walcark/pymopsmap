@@ -4,15 +4,17 @@ refractive_index.py
 Author  : Kévin Walcarius
 Date    : 2025-11-19
 Version : 1.0
-License : MIT 
+License : MIT
 Summary : Defines the Refractive Index to be used in Mopsmap. Two
-          types of refractive index are accepted: constant and 
+          types of refractive index are accepted: constant and
           wavelength-dependant.
 """
+
 from typing import List, Any
 from pydantic import BaseModel, field_validator, model_validator
 from pathlib import Path
-import tempfile, uuid
+import tempfile
+import uuid
 
 
 class RefractiveIndex(BaseModel):
@@ -40,6 +42,7 @@ class RefractiveIndex(BaseModel):
         - all wavelengths must be sorted and > 0
         - all imaginary parts must be >= 0
     """
+
     wl: List[float] | None = None
     n_real: List[float] | float | None = None
     n_imag: List[float] | float | None = None
@@ -64,16 +67,16 @@ class RefractiveIndex(BaseModel):
 
         # Case 1 & 2: lists or scalars → now always lists
         if self.wl is None:
-            if (isinstance(self.n_real, list) or isinstance(self.n_imag, list)):
+            if isinstance(self.n_real, list) or isinstance(self.n_imag, list):
                 raise ValueError("If wl is None, n_real/n_imag must be scalar.")
             return self
 
         # Case 2: wavelength-dependent
-        Lw, Lr, Li = len(self.wl), len(self.n_real),  len(self.n_imag)
+        Lw, Lr, Li = len(self.wl), len(self.n_real), len(self.n_imag)
         if not (Lw == Lr == Li):
             raise ValueError(f"Sizes must match: wl({Lw}) n_real({Lr}) n_imag({Li})")
         if any(w <= 0 for w in self.wl):
-            raise ValueError("Wavelengths must be > 0")    
+            raise ValueError("Wavelengths must be > 0")
         if self.wl != sorted(self.wl):
             raise ValueError("Wavelengths must be sorted ascending.")
         if any(ni < 0 for ni in self.n_imag):

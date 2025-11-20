@@ -4,10 +4,11 @@ wavelength.py
 Author  : Kévin Walcarius
 Date    : 2025-11-19
 Version : 1.0
-License : MIT 
+License : MIT
 Summary : Base Wavelength class with pydentic, ensures ordering and
           positivity of the user input wavelength.
 """
+
 from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import List, Any
 
@@ -19,13 +20,13 @@ class Wavelength(BaseModel):
     """
     Unified wavelength representation for MOPSMAP.
 
-    A `Wavelength` object always stores wavelengths as an ordered 
+    A `Wavelength` object always stores wavelengths as an ordered
     list of floats.
 
     Parameters
     ----------
     values : float | list[float]
-        Wavelength(s) in microns. 
+        Wavelength(s) in microns.
 
     Examples
     --------
@@ -43,6 +44,7 @@ class Wavelength(BaseModel):
     >>> wl.values
     [0.44, 0.55, 0.67]
     """
+
     values: List[float] = Field(..., min_length=1)
 
     @field_validator("values", mode="before")
@@ -54,7 +56,7 @@ class Wavelength(BaseModel):
         if isinstance(v, list):
             return v
         raise TypeError("wl must be a float or a list of floats.")
-    
+
     @model_validator(mode="after")
     def validate_values(self):
         # positivity
@@ -71,7 +73,7 @@ class Wavelength(BaseModel):
         if len(self.values) == 1:
             return f"wavelength {self.values[0]}"
         return "wavelength list " + " ".join(str(v) for v in self.values)
-    
+
 
 # =================================================================================================
 # Wrapper
