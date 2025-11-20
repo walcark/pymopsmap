@@ -19,8 +19,9 @@ from pydantic import BaseModel, Field
 class Sphere(BaseModel):
     type: Literal["sphere"] = "sphere"
 
-    def to_section(self, num: int | None = None) -> str:
-        return f"mode {num} shape sphere"
+    @property
+    def command(self) -> str:
+        return "shape sphere"
 
 
 # =================================================================================================
@@ -29,10 +30,11 @@ class Sphere(BaseModel):
 class Spheroid(BaseModel):
     type: Literal["spheroid"] = "spheroid"
     mode: Literal["oblate", "prolate"]
-    aspect_ratio: float = Field(gt=1)
+    aspect_ratio: float = Field(ge=1)
 
-    def to_section(self, num: int | None = None) -> str:
-        return f"mode {num} shape spheroid {self.mode} {self.aspect_ratio}"
+    @property
+    def command(self) -> str:
+        return f"shape spheroid {self.mode} {self.aspect_ratio}"
 
 
 # =================================================================================================
@@ -45,9 +47,10 @@ class SpheroidLognormal(BaseModel):
     aspect_ratio: float = Field(ge=1.2, le=5.0)
     sigma_ar: float = Field(gt=0)
 
-    def to_section(self, num: int | None = None) -> str:
+    @property
+    def command(self) -> str:
         return (
-            f"mode {num} shape spheroid log_normal "
+            f"shape spheroid log_normal "
             f"{self.zeta1} {self.zeta2} {self.aspect_ratio} {self.sigma_ar}"
         )
 
@@ -59,8 +62,9 @@ class SpheroidDistrFile(BaseModel):
     type: Literal["spheroid-distr-file"] = "spheroid-distr-file"
     distr_filename: str
 
-    def to_section(self, num: int | None = None) -> str:
-        return f"mode {num} shape spheroid distr_file {self.distr_filename}"
+    @property
+    def command(self) -> str:
+        return f"shape spheroid distr_file {self.distr_filename}"
 
 
 # =================================================================================================
@@ -70,8 +74,9 @@ class Irregular(BaseModel):
     type: Literal["irregular"] = "irregular"
     shape_id: Literal["A", "B", "C", "D", "E", "F"]
 
-    def to_section(self, num: int | None = None) -> str:
-        return f"mode {num} shape irregular {self.shape_id}"
+    @property
+    def command(self) -> str:
+        return f"shape irregular {self.shape_id}"
 
 
 # =================================================================================================
@@ -81,8 +86,9 @@ class IrregularDistrFile(BaseModel):
     type: Literal["irregular-distr-file"] = "irregular-distr-file"
     distr_filename: str
 
-    def to_section(self, num: int | None = None) -> str:
-        return f"mode {num} shape irregular distr_file {self.distr_filename}"
+    @property
+    def command(self) -> str:
+        return f"shape irregular distr_file {self.distr_filename}"
 
 
 # =================================================================================================
@@ -94,8 +100,9 @@ class IrregularOverlay(BaseModel):
     xmin: float
     xmax: float
 
-    def to_section(self, num: int | None = None) -> str:
-        return f"mode {num} shape irregular_overlay {self.distr_filename} {self.xmin} {self.xmax}"
+    @property
+    def command(self) -> str:
+        return f"shape irregular_overlay {self.distr_filename} {self.xmin} {self.xmax}"
 
 
 # =================================================================================================

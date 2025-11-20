@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from .refractive_index import RefractiveIndex
 from .shape import Shape
@@ -12,16 +12,29 @@ class Mode(BaseModel):
     kappa: float | None = None
     density: float | None = None
 
-    def to_section(self, num: int | None = None) -> str:
+    @field_validator("kappa", "density")
+    @classmethod
+    def check_positive(cls, v, info):
+        if v is None:
+            return v
+        if v <= 0:
+            raise ValueError(f"{info.field_name} must be > 0 (got {v})")
+        return v
+
+    def command(self, num: int | None = None) -> str:
         """
         Convert a Mode to MOPSMAP section text.
         """
+        mode: str = f"mode {num}"
         string = (
-            self.shape.to_section(num)
+            mode
+            + self.shape.command
             + "\n"
-            + self.size.to_section(num)
+            + mode
+            + self.size.command
             + "\n"
-            + self.refr_index.to_section(num)
+            + mode
+            + self.refr_index.command
         )
         if self.kappa is not None:
             string += f"mode {num} kappa {self.kappa}"
