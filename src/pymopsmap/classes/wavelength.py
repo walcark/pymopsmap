@@ -31,11 +31,11 @@ class Wavelength(BaseModel):
     Examples
     --------
     Single wavelength
-    >>> Wavelength(values=0.55).to_section()
+    >>> Wavelength(values=0.55).command
     'wavelength 0.55'
 
     Multiple wavelengths
-    >>> Wavelength([0.44, 0.55, 0.67]).to_section()
+    >>> Wavelength([0.44, 0.55, 0.67]).command
     'wavelength list 0.44 0.55 0.67'
 
     Usage inside the public API
@@ -69,7 +69,8 @@ class Wavelength(BaseModel):
             )
         return self
 
-    def to_section(self) -> str:
+    @property
+    def command(self) -> str:
         if len(self.values) == 1:
             return f"wavelength {self.values[0]}"
         return "wavelength list " + " ".join(str(v) for v in self.values)

@@ -2,12 +2,12 @@ from pydantic import BaseModel, field_validator
 
 from .refractive_index import RefractiveIndex
 from .shape import Shape
-from .psd import Size
+from .psd import PSD
 
 
 class Mode(BaseModel):
     shape: Shape
-    size: Size
+    psd: PSD
     refr_index: RefractiveIndex
     kappa: float | None = None
     density: float | None = None
@@ -25,21 +25,21 @@ class Mode(BaseModel):
         """
         Convert a Mode to MOPSMAP section text.
         """
-        mode: str = f"mode {num}"
+        mode: str = f"mode {num} "
         string = (
             mode
             + self.shape.command
             + "\n"
             + mode
-            + self.size.command
+            + self.psd.command
             + "\n"
             + mode
             + self.refr_index.command
         )
         if self.kappa is not None:
-            string += f"mode {num} kappa {self.kappa}"
+            string += "\n" + mode + f"kappa {self.kappa}"
 
         if self.density is not None:
-            string += f"mode {num} kappa {self.density}"
+            string += "\n" + mode + f"density {self.density}"
 
         return string

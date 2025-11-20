@@ -120,7 +120,7 @@ class FileDefinedPSD(BaseModel):
 # =================================================================================================
 # Annotated union
 # =================================================================================================
-Size = Annotated[
+PSD = Annotated[
     Union[FixedPSD, LognormalPSD, FileDefinedPSD],
     Field(discriminator="type"),
 ]
