@@ -13,7 +13,7 @@ def test_scalar_coercion_to_list():
     assert ri.n_imag == [0.01]
 
 
-def test_list_is_accepted_as_is():
+def test_list_is_accepted():
     ri = RefractiveIndex(wl=[0.44, 0.55], n_real=[1.5, 1.48], n_imag=[0.01, 0.02])
     assert ri.wl == [0.44, 0.55]
     assert ri.n_real == [1.5, 1.48]
@@ -31,7 +31,7 @@ def test_invalid_type_raises_typeerror():
 def test_constant_valid():
     ri = RefractiveIndex(n_real=1.5, n_imag=0.01)
     assert ri.wl is None
-    assert ri.n_real == [1.5]  # coerced
+    assert ri.n_real == [1.5]
     assert ri.n_imag == [0.01]
 
 
