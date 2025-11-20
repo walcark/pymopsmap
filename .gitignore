@@ -1,4 +1,3 @@
-*
 !config.toml
 .pixi/*
 !.pixi/config.toml

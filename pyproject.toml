@@ -33,6 +33,7 @@ dev = { features = ["dev"], solve-group = "default" }
 
 [tool.pixi.feature.dev.dependencies]
 ruff = "*"
+pre-commit = ">=4.4.0,<5"
 
 [dependency-groups]
 test = ["pytest"]
