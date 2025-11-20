@@ -67,8 +67,10 @@ class RefractiveIndex(BaseModel):
 
         # Case 1 & 2: lists or scalars → now always lists
         if self.wl is None:
-            if isinstance(self.n_real, list) or isinstance(self.n_imag, list):
-                raise ValueError("If wl is None, n_real/n_imag must be scalar.")
+            if len(self.n_real) != 1 or len(self.n_imag) != 1:
+                raise ValueError(
+                    "Constant refractive index must have scalar n_real and n_imag."
+                )
             return self
 
         # Case 2: wavelength-dependent
@@ -93,15 +95,14 @@ class RefractiveIndex(BaseModel):
 
         return str(path)
 
-    def to_section(self, num: int | None = None) -> str:
+    @property
+    def command(self) -> str:
         # Case 3: file-based
         if self.filename:
-            return f"mode {num} refrac file '{self.filename}'"
-
+            return f"refrac file '{self.filename}'"
         # Case 1: constant
         if self.wl is None:
-            return f"mode {num} refrac constant {self.n_real} {self.n_imag}"
-
+            return f"refrac {self.n_real[0]} {self.n_imag[0]}"
         # Case 2: wavelength-dependent
         tmpfile = self._write_temp_file()
-        return f"mode {num} refrac file '{tmpfile}'"
+        return f"refrac file '{tmpfile}'"
