@@ -44,16 +44,16 @@ def test_wavelength_single_element_ok():
 
 
 # =====================================================================================
-# 3) to_section() tests
+# 3) command tests
 # =====================================================================================
 def test_to_section_single():
     wl = Wavelength(values=0.55)
-    assert wl.to_section() == "wavelength 0.55"
+    assert wl.command == "wavelength 0.55"
 
 
 def test_to_section_list():
     wl = Wavelength(values=[0.44, 0.55, 0.67])
-    assert wl.to_section() == "wavelength list 0.44 0.55 0.67"
+    assert wl.command == "wavelength list 0.44 0.55 0.67"
 
 
 # =====================================================================================

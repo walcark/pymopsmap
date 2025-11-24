@@ -1287,7 +1287,7 @@ packages:
 - pypi: ./
   name: pymopsmap
   version: 0.1.0
-  sha256: c76437c28c2fb4a270b4c2737bc50a070098c7ca825e2893d3e6cec760fb7d35
+  sha256: 39fc4dc4172c45008653b2273822cf7cc9520a71311f2b1b4e5872ca40b49b09
   requires_python: '>=3.11'
   editable: true
 - conda: https://conda.anaconda.org/conda-forge/noarch/pytest-9.0.1-pyhcf101f3_0.conda

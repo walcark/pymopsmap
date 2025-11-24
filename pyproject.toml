@@ -17,6 +17,8 @@ platforms = ["linux-64"]
 pymopsmap = { path = ".", editable = true }
 
 [tool.pixi.tasks]
+run = "python -m pymopsmap.core.formatting"
+run-debug = "PYMOPSMAP_KEEP_TEMP=1 pixi run python -m pymopsmap.core.formatting"
 
 [tool.pixi.dependencies]
 python = "3.12.*"

@@ -12,9 +12,9 @@ Summary : Defines the Refractive Index to be used in Mopsmap. Two
 
 from typing import List, Any
 from pydantic import BaseModel, field_validator, model_validator
-from pathlib import Path
-import tempfile
 import uuid
+
+from pymopsmap.core import get_tempdir
 
 
 class RefractiveIndex(BaseModel):
@@ -86,13 +86,10 @@ class RefractiveIndex(BaseModel):
         return self
 
     def _write_temp_file(self) -> str:
-        fname = f"ri_{uuid.uuid4().hex}.txt"
-        path = Path(tempfile.gettempdir()) / fname
-
+        path = get_tempdir() / f"ri_{uuid.uuid4().hex}.txt"
         with open(path, "w") as f:
             for wl, nr, ni in zip(self.wl, self.n_real, self.n_imag):
                 f.write(f"{wl:.6f} {nr:.6f} {ni:.6f}\n")
-
         return str(path)
 
     @property
