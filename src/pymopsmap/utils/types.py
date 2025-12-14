@@ -5,8 +5,11 @@ from pydantic import AfterValidator, BeforeValidator
 
 
 # Methods
-def coerce_as_list(value: float | list | np.ndarray):
+def coerce_as_list_with_8_decimals(
+    value: float | list[float] | np.ndarray,
+) -> list[float]:
     value_arr = np.atleast_1d(np.asarray(value))
+    value_arr = np.round(value_arr, decimals=8)
     return value_arr.tolist()
 
 
@@ -24,7 +27,9 @@ def assert_sorted(value: list[float]) -> list[float]:
 
 
 # Types
-type Float64List = Annotated[list[float], BeforeValidator(coerce_as_list)]
+type Float64List = Annotated[
+    list[float], BeforeValidator(coerce_as_list_with_8_decimals)
+]
 
 type PosFloat64List = Annotated[
     Float64List, AfterValidator(assert_strictly_positive)
