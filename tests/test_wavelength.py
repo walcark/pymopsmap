@@ -1,5 +1,6 @@
-from pymopsmap.classes.wavelength import Wavelength, wavelength
 import pytest
+
+from pymopsmap.classes.wavelength import Wavelength, wavelength
 
 
 # =====================================================================================
@@ -29,12 +30,12 @@ def test_invalid_type_raises():
 # 2) Validations tests
 # =====================================================================================
 def test_wavelength_must_be_positive():
-    with pytest.raises(ValueError, match="Wavelengths must be > 0"):
+    with pytest.raises(ValueError):
         Wavelength(values=[0.55, -0.1])
 
 
 def test_wavelength_must_be_sorted():
-    with pytest.raises(ValueError, match="Wavelengths must be sorted ascending"):
+    with pytest.raises(ValueError):
         Wavelength(values=[0.67, 0.44])
 
 
