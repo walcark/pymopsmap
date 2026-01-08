@@ -2,10 +2,15 @@
 temp.py
 
 Author  : Kévin Walcarius
-Date    : 2025-11-19
+Date    : 2026-01-08
 Version : 1.0
 License : MIT
-Summary : Tools to manage a temporary workspace.
+Summary : Tools to manage a temporary workspace. A user
+          may wish to keep the temporary files for debug
+          sake.
+
+Usage:
+DISABLE_TEMP_CLEANUP=1 python -m src.pymopsmap.module
 """
 
 from __future__ import annotations
@@ -20,17 +25,15 @@ from pathlib import Path
 # --------------------------------------------------------------------------
 # Global temporary directory
 # --------------------------------------------------------------------------
-
 TEMP_DIR = Path(tempfile.gettempdir()) / f"pymopsmap-{uuid.uuid4().hex}"
 TEMP_DIR.mkdir(parents=True, exist_ok=True)
 
 TEMP_REGISTRY: dict[str, Path] = {}
 
+
 # --------------------------------------------------------------------------
 # Helpers
 # --------------------------------------------------------------------------
-
-
 def get_tempdir() -> Path:
     """Return the global temporary directory (ensure it exists)."""
     TEMP_DIR.mkdir(exist_ok=True)
@@ -47,7 +50,6 @@ def get_tempfile(filename: str) -> Path:
 # --------------------------------------------------------------------------
 # Cleanup
 # --------------------------------------------------------------------------
-
 DISABLE_TEMP_CLEANUP = os.environ.get("PYMOPSMAP_KEEP_TEMP", "").lower() in (
     "1",
     "true",

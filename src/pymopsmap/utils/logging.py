@@ -1,14 +1,30 @@
+"""
+logging.py
+
+Author  : Kévin Walcarius
+Date    : 2026-01-08
+Version : 1.0
+License : MIT
+Summary : Module used to define loggers. The configuration
+          by default in defined in a YAML file. The configuration
+          is ensured to by applied once and for all for each
+          logger instanciated thoughrough the project.
+
+"""
+
 from __future__ import annotations
 
 import logging
 import logging.config
 from pathlib import Path
 import yaml
-from typing import Optional
 
 
-# Emplacement par défaut du fichier YAML
-DEFAULT_LOGGING_CONFIG = Path(__file__).resolve().parent.parent.parent.parent / "config" / "logging.yaml"
+DEFAULT_LOGGING_CONFIG = (
+    Path(__file__).resolve().parent.parent.parent.parent
+    / "config"
+    / "logging.yaml"
+)
 
 _LOGGING_INITIALIZED = False
 
@@ -25,7 +41,9 @@ def init_logging(config_file: str | Path = DEFAULT_LOGGING_CONFIG) -> None:
 
     config_file = Path(config_file)
     if not config_file.exists():
-        raise FileNotFoundError(f"Logging config file not found: {config_file}")
+        raise FileNotFoundError(
+            f"Logging config file not found: {config_file}"
+        )
 
     with open(config_file, "r") as f:
         config = yaml.safe_load(f)
@@ -34,17 +52,12 @@ def init_logging(config_file: str | Path = DEFAULT_LOGGING_CONFIG) -> None:
     _LOGGING_INITIALIZED = True
 
 
-def get_logger(
-    name: str = "pymopsmap",
-    config_file: Optional[str | Path] = None,
-) -> logging.Logger:
+def get_logger(name: str = "pymopsmap") -> logging.Logger:
     """
     Returns a logger configured according to the YAML file.
     If logging is not initialized yet, initializes it automatically.
     """
-
-    # Initialize logging only once
     if not _LOGGING_INITIALIZED:
-        init_logging(config_file or DEFAULT_LOGGING_CONFIG)
+        init_logging(DEFAULT_LOGGING_CONFIG)
 
     return logging.getLogger(name)

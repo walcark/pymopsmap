@@ -1,15 +1,28 @@
-from typing import Annotated
+"""
+types.py
+
+Author  : Kévin Walcarius
+Date    : 2026-01-08
+Version : 1.0
+License : MIT
+Summary : Type definitions with pydantic for automatic
+          type checking and corcition.
+"""
+
+from typing import Annotated, TypeAlias
 
 import numpy as np
 from pydantic import AfterValidator, BeforeValidator
 
 
-# Methods
-def coerce_as_list_with_8_decimals(
+# --------------------------------------------------------------------------
+# Type validators
+# --------------------------------------------------------------------------
+def coerce_as_list_with_10_decimals(
     value: float | list[float] | np.ndarray,
 ) -> list[float]:
     value_arr = np.atleast_1d(np.asarray(value))
-    value_arr = np.round(value_arr, decimals=8)
+    value_arr = np.round(value_arr, decimals=10)
     return value_arr.tolist()
 
 
@@ -26,17 +39,21 @@ def assert_sorted(value: list[float]) -> list[float]:
     return value
 
 
-# Types
-type Float64List = Annotated[
-    list[float], BeforeValidator(coerce_as_list_with_8_decimals)
+# --------------------------------------------------------------------------
+# Types definition
+# --------------------------------------------------------------------------
+Float64List: TypeAlias = Annotated[
+    list[float], BeforeValidator(coerce_as_list_with_10_decimals)
 ]
 
-type PosFloat64List = Annotated[
+PosFloat64List: TypeAlias = Annotated[
     Float64List, AfterValidator(assert_strictly_positive)
 ]
 
-type SortedFloat64List = Annotated[Float64List, AfterValidator(assert_sorted)]
+SortedFloat64List: TypeAlias = Annotated[
+    Float64List, AfterValidator(assert_sorted)
+]
 
-type SortedPosFloat64List = Annotated[
+SortedPosFloat64List: TypeAlias = Annotated[
     SortedFloat64List, AfterValidator(assert_strictly_positive)
 ]
