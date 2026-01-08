@@ -17,8 +17,8 @@ platforms = ["linux-64"]
 pymopsmap = { path = ".", editable = true }
 
 [tool.pixi.tasks]
-run = "python -m pymopsmap.core.formatting"
-run-debug = "PYMOPSMAP_KEEP_TEMP=1 pixi run python -m pymopsmap.core.formatting"
+run = "python -m pymopsmap.core.opticalprops"
+run-debug = "PYMOPSMAP_KEEP_TEMP=1 pixi run python -m pymopsmap.core.opticalprops"
 
 [tool.pixi.dependencies]
 python = "3.12.*"
@@ -27,6 +27,11 @@ numpy = ">=2.3.5,<3"
 black = ">=25.1.0,<26"
 pydantic = ">=2.12.4,<3"
 netcdf4 = ">=1.7.3,<2"
+matplotlib = ">=3.10.8,<4"
+pyyaml = ">=6.0.3,<7"
+colorlog = "*"
+yaml = ">=0.2.5,<0.3"
+scipy = ">=1.16.3,<2"
 
 [tool.pixi.environments]
 default = { solve-group = "default" }
@@ -37,6 +42,9 @@ dev = { features = ["dev"], solve-group = "default" }
 ruff = "*"
 pre-commit = ">=4.4.0,<5"
 pytest = ">=9.0.1,<10"
+
+[tool.ruff]
+line-length = 79
 
 [dependency-groups]
 test = ["pytest"]

@@ -1,0 +1,37 @@
+version: 1
+
+disable_existing_loggers: false
+
+formatters:
+  simple:
+    format: "[%(asctime)s][%(name)s][%(levelname)s] - %(message)s"
+
+  colorlog:
+    "()": "colorlog.ColoredFormatter"
+    format: "[%(asctime)s][%(log_color)s%(levelname)s%(reset)s] - %(message)s (%(name)s:%(filename)s:%(lineno)d)"
+    datefmt: "%Y-%m-%d %H:%M:%S"
+    log_colors:
+      DEBUG: purple
+      INFO: cyan
+      WARNING: yellow
+      ERROR: red
+      CRITICAL: red
+
+handlers:
+  console:
+    class: logging.StreamHandler
+    formatter: colorlog
+    stream: ext://sys.stdout
+
+  file:
+    class: logging.FileHandler
+    formatter: simple
+    filename: "pymopsmap.log"
+
+root:
+  level: DEBUG
+  handlers: [console, file]
+
+loggers:
+  matplotlib:
+    level: WARNING
