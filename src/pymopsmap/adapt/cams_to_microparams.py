@@ -32,6 +32,7 @@ import numpy as np
 import json
 import xarray as xr
 from enum import Enum
+from numpy.typing import ArrayLike
 from pymopsmap.classes.microparams import LognormalPSD, MicroParameters, Sphere
 from pymopsmap.utils import ROOT_PATH, PosFloat64List, SortedPosFloat64List
 
@@ -74,7 +75,7 @@ def read_aerosol_microphysical_parameters(
     aerosol: CamsAerosol,
     version: CamsVersion,
     wl_microns: SortedPosFloat64List,
-    rh: PosFloat64List,
+    rh: ArrayLike,
 ) -> tuple[list[dict[str, float]], list[list[MicroParameters]]]:
     """
     Extracts the microphysical parameters of a given CAMS aerosol. The
@@ -111,7 +112,7 @@ def read_aerosol_microphysical_parameters(
             mp: MicroParameters = MicroParameters(
                 wavelength=wl_microns,
                 n_real=refr_index[mode][0],
-                n_imag=-refr_index[mode][1],
+                n_imag=refr_index[mode][1],
                 shape=Sphere(),
                 psd=LognormalPSD(
                     rm=np.round(granulo[mode][0], 6),
@@ -141,15 +142,23 @@ def _read_granulometry(
 
 
 def _read_refractive_index(
-    ds: xr.Dataset, rh: float, wl_microns: SortedPosFloat64List
-) -> dict[str, tuple[PosFloat64List, PosFloat64List]]:
+    ds: xr.Dataset, rh: float, wl_microns: ArrayLike
+) -> dict[str, tuple[list[float], list[float]]]:
+    """
+    Read the refractive index from the microphysical parameters dataset.
+    The relative humidity `rh` is a float because the aerosol have a
+    size distribution varying with humidity, and thus we need to perform
+    a unique Mopsmap run for each humidity level.
+    """
+    assert isinstance(rh, float)
+
     wl_nm = np.array(wl_microns) * 1e3
     values = ds.interp(relative_humidity=rh, wavelength=wl_nm)
 
-    nr_fine = values["mr_f"].data
-    nr_coarse = values["mr_c"].data
-    ni_fine = values["mi_f"].data
-    ni_coarse = values["mi_c"].data
+    nr_fine = list(values["mr_f"].data)
+    nr_coarse = list(values["mr_c"].data)
+    ni_fine = list(-values["mi_f"].data)
+    ni_coarse = list(-values["mi_c"].data)
 
     return {"fine": (nr_fine, ni_fine), "coarse": (nr_coarse, ni_coarse)}
 
@@ -199,7 +208,7 @@ def read_aerosol_modes_concentrations(
 
 if __name__ == "__main__":
     from pymopsmap.mopsmap import compute_optical_properties
-    from pymopsmap.classes import extend_optiprops, OptiProps
+    from pymopsmap.classes import extend_optiprops
 
     index, mps = read_aerosol_microphysical_parameters(
         aerosol=CamsAerosol.CONTINENTAL,
