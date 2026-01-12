@@ -34,9 +34,7 @@ import xarray as xr
 from enum import Enum
 from numpy.typing import ArrayLike
 from pymopsmap.classes.microparams import LognormalPSD, MicroParameters, Sphere
-from pymopsmap.utils import ROOT_PATH, PosFloat64List, SortedPosFloat64List
-
-CAMS_DATA_PATH = ROOT_PATH / "data/cams"
+from pymopsmap.utils import DATA_PATH, SortedPosFloat64List
 
 
 # --------------------------------------------------------------------------
@@ -88,7 +86,7 @@ def read_aerosol_microphysical_parameters(
         - sigma (fine and coarse): the standard deviation of the log-normal
           size distribution
     """
-    path = CAMS_DATA_PATH / "cams_aer_microphysical_parameters.nc"
+    path = DATA_PATH / "cams/cams_aer_microphysical_parameters.nc"
 
     try:
         xrds = xr.load_dataset(path)
@@ -192,7 +190,7 @@ def read_aerosol_modes_concentrations(
     particles per m³ and CVcoarse the number of coarse particle per m³,
     for the CAMS aerosol `aerosol`.
     """
-    data_path = CAMS_DATA_PATH / "cams_aer_modes_concentrations.json"
+    data_path = DATA_PATH / "cams/cams_aer_modes_concentrations.json"
     try:
         with open(data_path, "r") as f:
             data = json.load(f)
@@ -211,7 +209,7 @@ if __name__ == "__main__":
     from pymopsmap.classes import extend_optiprops
 
     index, mps = read_aerosol_microphysical_parameters(
-        aerosol=CamsAerosol.CONTINENTAL,
+        aerosol=CamsAerosol.BLACK_CARBON_CAMS,
         version=CamsVersion.V49_R1,
         wl_microns=np.linspace(0.490, 1.5, 100),
         rh=[0.0, 50.0, 90.0],
@@ -222,3 +220,8 @@ if __name__ == "__main__":
     op_tot = extend_optiprops(index, ops)
 
     print(op_tot)
+
+    import matplotlib.pyplot as plt
+
+    op_tot.sel("kext", rh=0.0).plot()
+    plt.show()

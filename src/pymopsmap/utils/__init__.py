@@ -6,7 +6,7 @@ from pathlib import Path
 import os
 
 ROOT_PATH = Path(__file__).resolve().parent.parent.parent.parent
-CAMS_DATA_PATH = Path(os.getenv("CAMS_DATA_PATH", ROOT_PATH / "data/cams"))
+DATA_PATH = Path(os.getenv("DATA_PATH", ROOT_PATH / "data"))
 
 __all__ = [
     "get_logger",
@@ -15,5 +15,5 @@ __all__ = [
     "Float64List",
     "PosFloat64List",
     "SortedPosFloat64List",
-    "CAMS_DATA_PATH",
+    "DATA_PATH",
 ]

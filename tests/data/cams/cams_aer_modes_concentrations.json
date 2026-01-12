@@ -1,0 +1,11 @@
+{
+    "continen": [1.0, 0.0],
+    "black_carbon": [1.0, 0.0],
+    "sulphate": [1.0, 0.0],
+    "organic_matter": [1.0, 0.0],
+    "nitrate": [1.0, 0.0],
+    "ammonium": [1.0, 0.0],
+    "secondary_organic": [1.0, 0.0],
+    "sea_salt": [70.0, 3.0],
+    "dust": [391.0, 8.39]
+}

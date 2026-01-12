@@ -1,3 +1,6 @@
+from pydantic import ValidationError
+import pytest
+
 import xarray as xr
 import netCDF4
 import numpy as np
@@ -5,8 +8,7 @@ import numpy as np
 from pymopsmap.adapt.cams_to_microparams import (
     read_aerosol_modes_concentrations,
     CamsAerosol,
-    CamsVersion,
-    CAMS_DATA_PATH,
+    DATA_PATH,
     _read_refractive_index,
 )
 
@@ -21,7 +23,7 @@ def test_read_aerosol_mode_concentration():
 
 
 def test_read_refractive_index():
-    path = CAMS_DATA_PATH / "cams_aer_microphysical_parameters.nc"
+    path = DATA_PATH / "cams/cams_aer_microphysical_parameters.nc"
 
     ds_test = xr.load_dataset(path)
 
