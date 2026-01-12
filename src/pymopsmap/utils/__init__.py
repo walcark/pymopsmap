@@ -3,8 +3,10 @@ from .temp import get_tempdir, get_tempfile
 from .types import Float64List, PosFloat64List, SortedPosFloat64List
 
 from pathlib import Path
+import os
 
 ROOT_PATH = Path(__file__).resolve().parent.parent.parent.parent
+CAMS_DATA_PATH = Path(os.getenv("CAMS_DATA_PATH", ROOT_PATH / "data/cams"))
 
 __all__ = [
     "get_logger",
@@ -13,5 +15,5 @@ __all__ = [
     "Float64List",
     "PosFloat64List",
     "SortedPosFloat64List",
-    "ROOT_PATH",
+    "CAMS_DATA_PATH",
 ]
