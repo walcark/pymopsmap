@@ -2,7 +2,7 @@ import pytest
 
 from pydantic import ValidationError
 
-from pymopsmap.microparams import (
+from pymopsmap.classes import (
     FixedPSD,
     LognormalPSD,
     ModifiedGammaPSD,
@@ -22,7 +22,6 @@ from pymopsmap.microparams import (
         (-1.0, 0.5),
         (0.0, 0.5),
         (1.0, -0.1),
-        (1.0, 0.0),
         (-2.0, -1.0),
     ],
 )

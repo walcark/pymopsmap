@@ -1,6 +1,6 @@
 import pytest
 
-from pymopsmap.microparams import (
+from pymopsmap.classes import (
     FixedPSD,
     LognormalPSD,
     ModifiedGammaPSD,
@@ -9,7 +9,7 @@ from pymopsmap.microparams import (
     Spheroid,
     MicroParameters,
 )
-from pymopsmap.mopsmap_commands import psd_command, shape_command
+from pymopsmap.mopsmap.commands import psd_command, shape_command
 
 
 def test_FixedPSD_command():
