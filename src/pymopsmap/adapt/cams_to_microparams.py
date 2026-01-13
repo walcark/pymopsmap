@@ -207,21 +207,40 @@ def read_aerosol_modes_concentrations(
 if __name__ == "__main__":
     from pymopsmap.mopsmap import compute_optical_properties
     from pymopsmap.classes import extend_optiprops
+    from pymopsmap.utils import SortedPosFloat64List
+    from .optiprops_to_smartg import create_lut_for_smartg
 
-    index, mps = read_aerosol_microphysical_parameters(
-        aerosol=CamsAerosol.BLACK_CARBON_CAMS,
-        version=CamsVersion.V49_R1,
-        wl_microns=np.linspace(0.490, 1.5, 100),
-        rh=[0.0, 50.0, 90.0],
-    )
+    from numpy.typing import ArrayLike
+    from pathlib import Path
+    import xarray as xr
 
-    ops = [compute_optical_properties(mp=mp) for mp in mps]
+    def cams_to_smartg(
+        aerosol: CamsAerosol,
+        version: CamsVersion,
+        wl_microns: SortedPosFloat64List,
+        rh: ArrayLike,
+        output_directory: Path,
+    ) -> xr.Dataset:
+        """
+        Format an opticam properties dataset for Smart-G from CAMS
+        microphysical parameters.
+        """
 
-    op_tot = extend_optiprops(index, ops)
+        index, mps = read_aerosol_microphysical_parameters(
+            aerosol=aerosol, version=version, wl_microns=wl_microns, rh=rh
+        )
 
-    print(op_tot)
+        ops = [compute_optical_properties(mp=mp) for mp in mps]
+        op_tot = extend_optiprops(index, ops)
 
-    import matplotlib.pyplot as plt
+        ds = create_lut_for_smartg(
+            op_tot, specie=aerosol.value, output_directory=output_directory
+        )
 
-    op_tot.sel("kext", rh=0.0).plot()
-    plt.show()
+        return ds
+
+    version = CamsVersion.V49_R1
+    wls = np.linspace(0.330, 2.1, 50)
+    rhs = np.linspace(0.0, 95.0, 10)
+    for specie in CamsAerosol:
+        cams_to_smartg(specie, version, wls, rhs, DATA_PATH / "smartg")
