@@ -1,6 +1,5 @@
 !config.toml
 .pixi/*
 !.pixi/config.toml
-*.nc
 *.txt
 *__pycache__*
