@@ -1,36 +1,15 @@
 import numpy as np
-from pymopsmap.classes import (
-    Sphere,
-    FixedPSD,
-    extend_optiprops,
-    MicroParameters,
-)
 
-
-from pymopsmap.mopsmap import compute_optical_properties
+from pymopsmap.adapt import cams_to_smartg, CamsVersion, CamsAerosol
+from pymopsmap.utils import DATA_PATH
 
 
 def main():
-    mp: MicroParameters = MicroParameters(
-        wavelength=np.linspace(0.330, 1.5, 100),
-        n_real=[1.0] * 100,
-        n_imag=[1e-4] * 100,
-        shape=Sphere(),
-        psd=FixedPSD(radius=1.0, n=1.0),
-    )
-
-    op = compute_optical_properties(mp=mp)
-
-    index = [
-        {"a": 1, "b": 1},
-        {"a": 2, "b": 1},
-        {"a": 1, "b": 2},
-        {"a": 2, "b": 2},
-    ]
-    opli = [op] * 4
-
-    ops = extend_optiprops(index, opli)
-    print(ops)
+    version = CamsVersion.V49_R1
+    wls = np.linspace(0.330, 2.1, 50)
+    rhs = np.linspace(0.0, 95.0, 10)
+    for specie in CamsAerosol:
+        cams_to_smartg(specie, version, wls, rhs, DATA_PATH / "smartg")
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 [project]
-authors = [{name = "walcark", email = "kevin.walcarius@cnes.fr"}]
+authors = [{ name = "walcark", email = "kevin.walcarius@cnes.fr" }]
 dependencies = []
 name = "pymopsmap"
 requires-python = ">= 3.11"
@@ -19,6 +19,7 @@ pymopsmap = { path = ".", editable = true }
 [tool.pixi.tasks]
 run = "python -m pymopsmap.core.opticalprops"
 run-debug = "PYMOPSMAP_KEEP_TEMP=1 pixi run python -m pymopsmap.core.opticalprops"
+test = "DATA_PATH=tests/data pytest tests"
 
 [tool.pixi.dependencies]
 python = "3.12.*"
@@ -32,6 +33,7 @@ pyyaml = ">=6.0.3,<7"
 colorlog = "*"
 yaml = ">=0.2.5,<0.3"
 scipy = ">=1.16.3,<2"
+einops = ">=0.8.1,<0.9"
 
 [tool.pixi.environments]
 default = { solve-group = "default" }
