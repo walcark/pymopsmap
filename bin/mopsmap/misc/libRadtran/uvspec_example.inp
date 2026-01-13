@@ -1,0 +1,13 @@
+﻿# example of a simple input file for uvspec with MOPSMAP aerosol optical properties
+
+data_files_path /home/josef/uni/bin/libRadtran-2.0.2/data/  # to be adjusted
+atmosphere_file tropics
+rte_solver disort
+quiet
+sza 0
+wavelength 450
+pressure 1013
+zout boa
+
+profile_file aero1 1D aerosol_vertical_profile.inp       # specifies the vertical profile of the aerosol mass concentration
+profile_properties aero1 aerosol_optics.cdf interpolate  # specifies the file with the optical properties (the label 'aero1' is used to link it with the vertical profile)

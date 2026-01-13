@@ -1,0 +1,7 @@
+This example can be run using the 'run_volcano_optics' script, e.g. by 'bash run_volcano_optics'.
+
+Before running it you need:
+1) Download the 'supporting information' from Vogel et al., http://onlinelibrary.wiley.com/doi/10.1002/2016JD026328/abstract
+   Store the files, which are named 'jgrd54020-sup-00XX-2016JD026328-dsXX.txt' with XX a number from 01 to 16, in the directory 'vogel_et_al_data'
+2) Adjust path to MOPSMAP executable in 'run_volcano_optics'
+3) Adjust path to optical dataset in 'make_mopsmap_input.py'

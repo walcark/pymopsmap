@@ -1,0 +1,12 @@
+This directory shows an example how to use the netcdf files created by MOPSMAP in the radiative transfer model uvspec available at http://libradtran.org
+
+mopsmap_example.inp shows a simple example to create such a netcdf file with MOPSMAP. You need to adjust the paths in this file.
+
+aerosol_optics.cdf is the output file created by MOPSMAP in this example.
+
+After you have installed libRadtran - see http://libradtran.org for details - you can use uvspec_example.inp to model the radiative transfer for a simple example.
+Running uvspec is usually done with the following command:
+PATH_TO_LIBRADTRAN/bin/uvspec < uvspec_example.inp
+You need to adjust the paths here and in the file.
+
+Please consult the libRadtran user's guide to adjust the example to your needs and to learn how to interpret the uvspec output.

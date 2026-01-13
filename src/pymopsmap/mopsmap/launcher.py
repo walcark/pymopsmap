@@ -14,7 +14,7 @@ import os
 import subprocess
 from pathlib import Path
 
-from pymopsmap.utils import get_logger
+from pymopsmap.utils import get_logger, MOPSMAP_PATH
 
 logger = get_logger(__name__)
 
@@ -26,13 +26,7 @@ def launch_mopsmap(input_filename: Path) -> dict[str, Any]:
     by the `write_launching_file` method.
     """
 
-    path_to_mopsmap = os.getenv("MOPSMAP_PATH")
-    if path_to_mopsmap is None:
-        raise RuntimeError("MOPSMAP_PATH environment variable not set.")
-
-    exe = Path(path_to_mopsmap) / "mopsmap"
-
-    cmd = [str(exe), str(input_filename)]
+    cmd = [str(MOPSMAP_PATH), str(input_filename)]
     logger.debug(f"Running Mopsmap command: {' '.join(cmd)}")
 
     # Run process and capture streams

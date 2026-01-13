@@ -1,0 +1,10 @@
+0.5       # Aspect ratio distribution used by AERONET for desert dust (Dubovik, 2006); the distribution in this file may deviate slightly from the original due to regridding
+1.4 0.080
+1.6 0.119
+1.8 0.122
+2.0 0.123
+2.2 0.121
+2.4 0.115
+2.6 0.108
+2.8 0.102
+3.0 0.109
