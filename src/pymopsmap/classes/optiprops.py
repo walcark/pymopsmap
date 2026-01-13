@@ -15,8 +15,6 @@ from typing import Union
 import xarray as xr
 import numpy as np
 
-IndexValue = Union[float, int, str]
-
 
 @dataclass(frozen=True)
 class OptiProps:
@@ -28,9 +26,12 @@ class OptiProps:
     def sel(self, prop: str, **kwargs) -> xr.DataArray:
         return self.ds[prop].sel(**kwargs)
 
+    def coord(self, coord: str) -> np.ndarray:
+        return self.ds[coord].values
+
 
 def extend_optiprops(
-    index: list[dict[str, IndexValue]], optiprops_li: list[OptiProps]
+    index: list[dict[str, float]], optiprops_li: list[OptiProps]
 ) -> OptiProps:
     """
     Concatenate multiple OptiProps given an `index` of parameters

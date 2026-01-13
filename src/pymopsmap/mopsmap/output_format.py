@@ -16,6 +16,27 @@ import numpy as np
 from pymopsmap.classes import OptiProps
 
 
+def format_mopsmap_outputs(out_mopsmap: dict[str, Any]) -> OptiProps:
+    """
+    Build a single OptiProps containing:
+      - spectral vars from stdout: (wl)
+      - phase from netcdf: phase(wl, mueller_idx, theta)
+
+    wl is ALWAYS taken from stdout and enforced onto phase coords.
+    """
+    ds_stdout = format_stdout(out_mopsmap["stdout"])
+    wl = ds_stdout["wl"].values
+
+    ds_phase = format_netcdf_file(out_mopsmap["output_path"], wl=wl)
+
+    ds = xr.merge(
+        [ds_stdout, ds_phase[["phase"]]],
+        compat="no_conflicts",
+        join="outer",
+    )
+    return OptiProps(ds=ds)
+
+
 def format_stdout(stdout: str) -> xr.Dataset:
     """
     Parse MOPSMAP stdout blocks split by "integrated" into a Dataset with
@@ -104,26 +125,4 @@ def format_netcdf_file(filename: Path, wl: np.ndarray) -> xr.Dataset:
     return xr.Dataset(
         data_vars={"phase": (("wl", "mueller_idx", "theta"), phase)},
         coords={"wl": wl, "mueller_idx": mueller_idx, "theta": theta},
-        attrs={"source": str(filename)},
     )
-
-
-def format_mopsmap_outputs(out_mopsmap: dict[str, Any]) -> OptiProps:
-    """
-    Build a single OptiProps containing:
-      - spectral vars from stdout: (wl)
-      - phase from netcdf: phase(wl, mueller_idx, theta)
-
-    wl is ALWAYS taken from stdout and enforced onto phase coords.
-    """
-    ds_stdout = format_stdout(out_mopsmap["stdout"])
-    wl = ds_stdout["wl"].values
-
-    ds_phase = format_netcdf_file(out_mopsmap["output_path"], wl=wl)
-
-    ds = xr.merge(
-        [ds_stdout, ds_phase[["phase"]]],
-        compat="no_conflicts",
-        join="outer",
-    )
-    return OptiProps(ds=ds)

@@ -61,13 +61,12 @@ def write_launching_file(
 
     # Final file content
     file_content: str = "\n".join([file_prefix, file_content, file_suffix])
-    logger.debug("File content:\n", file_content)
 
     # Create file in /tmp
     with open(paths["mopsmap"], "w") as f:
         f.write(file_content)
 
-    logger.debug(f"Mopsmap input file writen: {paths['mopsmap']}")
+    logger.debug("Mopsmap input file writen: %s", paths["mopsmap"])
 
     return paths
 
@@ -110,7 +109,7 @@ def _file_suffix(
     file_suffix = [f"output num_theta {n_angles}"]
     file_suffix.append(wl_command())
     if rh is not None:
-        file_suffix.append("rH {rh}")
+        file_suffix.append(f"rH {rh}")
     file_suffix.append("output integrated")
     file_suffix.append(f"output netcdf '{str(nc_path)}'")
 
