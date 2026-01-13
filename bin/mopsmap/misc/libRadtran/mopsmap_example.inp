@@ -1,0 +1,10 @@
+wavelength range 0.4 0.5 0.05
+size log_normal 0.1 2.0 1.0 0.01 40
+refrac file '../../data/refr_mineral'              # Paths need to be adjusted. In web interface use the line with DATAPATH
+#refrac file 'DATAPATH/refr_mineral'
+shape spheroid distr_file '../../data/ar_kandler'
+#shape spheroid distr_file 'DATAPATH/ar_kandler'
+scatlib '/home/josef/uni/optical_dataset'          # Remove this line when running over the web interface
+output netcdf 'aerosol_optics.cdf' reff
+output num_theta 181
+output integrated

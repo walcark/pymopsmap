@@ -1,0 +1,28 @@
+This directory contains miscellaneous files related to MOPSMAP.
+For some commands you need python2 with numpy, matplotlib, and netcdf4.
+
+1) mopsmap_input_example.txt
+This is a simple input file for MOPSMAP. Just run it with the command '../mopsmap mopsmap_input_example.txt'.
+
+2) mopsmap_python_interface.py
+This a python function calling the MOPSMAP Fortran program to calculate optical properties. It may be required to adjust the paths at the beginning of mopsmap_python_interface.py.
+An example  it with the command 'python mopsmap_python_interface_example.py'.
+
+3) plot_integrated_vs_wavelength.py plot_lidar_vs_wavelength.py plot_scattering_matrix.py
+These files can be used to plot the ASCII output from MOPSMAP, e.g., 'python plot_scattering_matrix.py mopsmap_output.scattering_matrix'.
+
+4) plot_vs_size.py
+Plots optical properties from the data set as function of size parameter. The netcdf files from the data set that are to be plotted need to be given as command arguments, e.g., 'python plot_vs_size.py ../optical_dataset/spheres/sphere_1.5200_0.000000.nc ../optical_dataset/spheres/sphere_1.5600_0.000000.nc'.
+
+5) calc_scat_matr.py
+Python function to calculate scattering matrix from expansion coefficients. See plot_vs_size.py as an example how to use it.
+
+6) Directory libRadtran
+Contains an example of how to use optical properties from MOPSMAP in the radiative transfer model libRadtran.
+
+7) Directory paper_examples
+Contains examples from the 2018 GMD paper of MOPSMAP.
+These examples work by executing the *.py file in the directory of each example.
+It may be required to adjust the paths at the beginning of mopsmap_python_interface.py.
+The example sect_54_size_equivalence contains no Python file but the input file for MOPSMAP.
+For example sect_58_volcano_optics consult the README in that directory.

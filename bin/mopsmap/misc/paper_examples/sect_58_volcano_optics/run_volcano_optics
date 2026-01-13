@@ -1,0 +1,16 @@
+shape_size_files=(jgrd54020-sup-0005-2016JD026328-ds05.txt jgrd54020-sup-0006-2016JD026328-ds06.txt jgrd54020-sup-0007-2016JD026328-ds07.txt jgrd54020-sup-0008-2016JD026328-ds08.txt jgrd54020-sup-0009-2016JD026328-ds09.txt  jgrd54020-sup-0010-2016JD026328-ds10.txt jgrd54020-sup-0011-2016JD026328-ds11.txt jgrd54020-sup-0012-2016JD026328-ds12.txt jgrd54020-sup-0013-2016JD026328-ds13.txt)
+
+volcano=(GRI KEL SAK EYJ SPU RED SOU MSH CHA)
+
+refrac_file=(refrac_basalt refrac_basalt_andesite refrac_andesite refrac_andesite refrac_andesite refrac_dacite refrac_dacite refrac_dacite refrac_rhyolite)
+
+mkdir -p results
+
+for i in 0 1 2 3 4 5 6 7 8
+do
+  echo ${shape_size_files[i]}, ${volcano[i]}, ${refrac_file[i]}
+  python make_mopsmap_input.py vogel_et_al_data/${shape_size_files[i]} ${volcano[i]} ${refrac_file[i]} > results/${volcano[i]}.input
+  ~/uni/mopsmap/mopsmap results/${volcano[i]}.input
+done
+
+python make_plot.py
