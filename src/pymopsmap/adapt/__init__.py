@@ -6,7 +6,7 @@ from .cams_to_microparams import (
 from .optiprops_to_smartg import create_lut_for_smartg
 
 from pymopsmap.mopsmap import compute_optical_properties
-from pymopsmap.classes import extend_optiprops
+from pymopsmap.classes import OptiProps
 from pymopsmap.utils import SortedPosFloat64List
 
 from numpy.typing import ArrayLike
@@ -35,15 +35,16 @@ def cams_to_smartg(
     microphysical parameters.
     """
 
-    index, mps = read_aerosol_microphysical_parameters(
+    dispatch = read_aerosol_microphysical_parameters(
         aerosol=aerosol, version=version, wl_microns=wl_microns, rh=rh
     )
 
-    ops = [compute_optical_properties(mp=mp) for mp in mps]
-    op_tot = extend_optiprops(index, ops)
+    op: OptiProps = compute_optical_properties(dispatch)
 
     ds = create_lut_for_smartg(
-        op_tot, specie=aerosol.value, output_directory=output_directory
+        op,
+        specie=aerosol.value,
+        output_directory=output_directory,
     )
 
     return ds

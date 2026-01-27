@@ -33,13 +33,15 @@ import json
 import xarray as xr
 from enum import Enum
 from numpy.typing import ArrayLike
-from pymopsmap.classes.microparams import LognormalPSD, MicroParameters, Sphere
+from pymopsmap.classes import (
+    LognormalPSD,
+    MicroParameters,
+    Sphere,
+    MicroParametersDispatch,
+)
 from pymopsmap.utils import DATA_PATH, SortedPosFloat64List
 
 
-# --------------------------------------------------------------------------
-# Enumeration for the CAMS arguments
-# --------------------------------------------------------------------------
 class CamsAerosol(str, Enum):
     CONTINENTAL = "continen"
     SULPHATE_CAMS = "sulphate"
@@ -58,33 +60,15 @@ class CamsVersion(str, Enum):
     V49_R1 = "49r1"
 
 
-# --------------------------------------------------------------------------
-# Read microphysical parameters
-# --------------------------------------------------------------------------
-"""
-The aerosol microphysical parameters must be a netcdf file. The netcdf
-file store a xarray-like object with the given structure:
-
-...
-"""
-
-
 def read_aerosol_microphysical_parameters(
     aerosol: CamsAerosol,
     version: CamsVersion,
     wl_microns: SortedPosFloat64List,
     rh: ArrayLike,
-) -> tuple[list[dict[str, float]], list[list[MicroParameters]]]:
+) -> MicroParametersDispatch:
     """
-    Extracts the microphysical parameters of a given CAMS aerosol. The
-    parameters are the following:
-        - wavelength
-        - n_real (fine and coarse): the real part of the refr index
-        - n_imag (fine and coarse): the imaginary part of the refr index
-        - rm (fine and coarse): the modal radius of the Log-Normal size
-          distribution
-        - sigma (fine and coarse): the standard deviation of the log-normal
-          size distribution
+    Extracts the microphysical parameters of a given CAMS aerosol, and
+    then dispatch each instance
     """
     path = DATA_PATH / "cams/cams_aer_microphysical_parameters.nc"
 
@@ -98,9 +82,8 @@ def read_aerosol_microphysical_parameters(
     aer, ver = aerosol.value, version.value
 
     rh = [rh] if isinstance(rh, float) else rh
-    vars_li = [{"rh": relhum} for relhum in rh]
 
-    mps = []
+    dispatch: MicroParametersDispatch = MicroParametersDispatch()
     for relhum in rh:
         xrds_sel = xrds.sel(aerosols_species=aer, cams_versions=ver)
         granulo = _read_granulometry(xrds_sel, relhum)
@@ -121,74 +104,35 @@ def read_aerosol_microphysical_parameters(
                 ),
             )
             modes.append(mp)
-        mps.append(modes)
+        dispatch.append(modes=modes, params={"rh": relhum})
 
-    return vars_li, mps
-
-
-def _read_granulometry(
-    ds: xr.Dataset, rh: float
-) -> dict[str, tuple[float, float]]:
-    values = ds.interp(relative_humidity=rh)
-
-    rm_fine = values["rmodal_f"].data
-    rm_coarse = values["rmodal_c"].data
-    sigma_fine = values["lnvar_f"].data
-    sigma_coarse = values["lnvar_c"].data
-
-    return {"fine": (rm_fine, sigma_fine), "coarse": (rm_coarse, sigma_coarse)}
-
-
-def _read_refractive_index(
-    ds: xr.Dataset, rh: float, wl_microns: ArrayLike
-) -> dict[str, tuple[list[float], list[float]]]:
-    """
-    Read the refractive index from the microphysical parameters dataset.
-    The relative humidity `rh` is a float because the aerosol have a
-    size distribution varying with humidity, and thus we need to perform
-    a unique Mopsmap run for each humidity level.
-    """
-    assert isinstance(rh, float)
-
-    wl_nm = np.array(wl_microns) * 1e3
-    values = ds.interp(relative_humidity=rh, wavelength=wl_nm)
-
-    nr_fine = list(values["mr_f"].data)
-    nr_coarse = list(values["mr_c"].data)
-    ni_fine = list(-values["mi_f"].data)
-    ni_coarse = list(-values["mi_c"].data)
-
-    return {"fine": (nr_fine, ni_fine), "coarse": (nr_coarse, ni_coarse)}
-
-
-# --------------------------------------------------------------------------
-# Read aerosol mode concentrations
-# --------------------------------------------------------------------------
-"""
-The aerosol mode concentrations must be a JSON file with a dictionnary
-of aerosol -> [fine, coarse] concentration. For instance:
-
-{
-    "continen": [1.0, 0.0],
-    "black_carbon": [1.0, 0.0],
-    "sulphate": [1.0, 0.0],
-    "organic_matter": [1.0, 0.0],
-    "nitrate": [1.0, 0.0],
-    "ammonium": [1.0, 0.0],
-    "secondary_organic": [1.0, 0.0],
-    "sea_salt": [70.0, 3.0],
-    "dust": [391.0, 8.39]
-}
-"""
+    return dispatch
 
 
 def read_aerosol_modes_concentrations(
     aerosol: CamsAerosol,
 ) -> dict[str, float]:
     """
-    Returns a list [CVfine, CVcoarse] where CVfine is the number of fine
-    particles per m³ and CVcoarse the number of coarse particle per m³,
-    for the CAMS aerosol `aerosol`.
+    Parse the JSON file containing modes concentration for each specie.
+    Modes are organized as follow :
+
+    {
+        "specie1": [CVfine, CVcoarse],
+        "specie2": ...
+    }
+
+    where (CVfine, CVcoarse) are the number of particles per m³ of the
+    fine and coarse modes.
+
+    Parameters
+    ----------
+    aerosol : CamsAerosol
+        The CAMS aerosol of interest.
+
+    Returns
+    -------
+    dict[str, float]
+        A dictionnary {"fine": CVfine, "coarse": CVcoarse}.
     """
     data_path = DATA_PATH / "cams/cams_aer_modes_concentrations.json"
     try:
@@ -204,43 +148,69 @@ def read_aerosol_modes_concentrations(
     return {"fine": conc[0], "coarse": conc[1]}
 
 
-if __name__ == "__main__":
-    from pymopsmap.mopsmap import compute_optical_properties
-    from pymopsmap.classes import extend_optiprops
-    from pymopsmap.utils import SortedPosFloat64List
-    from .optiprops_to_smartg import create_lut_for_smartg
+def _read_granulometry(
+    ds: xr.Dataset, rh: float
+) -> dict[str, tuple[float, float]]:
+    """
+    Read the log-normal distribution arguments (rm, sigma) for the fine
+    and coarse modes in an xarray dataset, for a given relative humidity.
 
-    from numpy.typing import ArrayLike
-    from pathlib import Path
-    import xarray as xr
+    Parameters
+    ----------
+    ds : xr.Dataset
+        The xarray dataset of the CAMS specie of interest.
+    rh : float
+        The relative humidity [%].
 
-    def cams_to_smartg(
-        aerosol: CamsAerosol,
-        version: CamsVersion,
-        wl_microns: SortedPosFloat64List,
-        rh: ArrayLike,
-        output_directory: Path,
-    ) -> xr.Dataset:
-        """
-        Format an opticam properties dataset for Smart-G from CAMS
-        microphysical parameters.
-        """
+    Returns
+    -------
+    dict[str, tuple[float, float]]
+        The dictionary of log-normal distribution arguments:
+        {"fine": (rm_f, sigma_f), "coarse": (rm_c, sigma_c)}.
+    """
+    assert isinstance(rh, float)
 
-        index, mps = read_aerosol_microphysical_parameters(
-            aerosol=aerosol, version=version, wl_microns=wl_microns, rh=rh
-        )
+    values = ds.interp(relative_humidity=rh)
 
-        ops = [compute_optical_properties(mp=mp) for mp in mps]
-        op_tot = extend_optiprops(index, ops)
+    rm_fine = values["rmodal_f"].data
+    rm_coarse = values["rmodal_c"].data
+    sigma_fine = values["lnvar_f"].data
+    sigma_coarse = values["lnvar_c"].data
 
-        ds = create_lut_for_smartg(
-            op_tot, specie=aerosol.value, output_directory=output_directory
-        )
+    return {"fine": (rm_fine, sigma_fine), "coarse": (rm_coarse, sigma_coarse)}
 
-        return ds
 
-    version = CamsVersion.V49_R1
-    wls = np.linspace(0.330, 2.1, 50)
-    rhs = np.linspace(0.0, 95.0, 10)
-    for specie in CamsAerosol:
-        cams_to_smartg(specie, version, wls, rhs, DATA_PATH / "smartg")
+def _read_refractive_index(
+    ds: xr.Dataset, rh: float, wl_microns: ArrayLike
+) -> dict[str, tuple[list[float], list[float]]]:
+    """
+    Read the refractive index (nr, ni) for the fine and coarse modes in
+    an xarray dataset, for a given relative humidity and wavelength.
+    from the microphysical parameters dataset.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        The xarray dataset of the CAMS specie of interest.
+    rh : float
+        The relative humidity [%].
+    wl_microns : ArrayLike
+        The wavelengths for which to get the refractive indexes.
+
+    Returns
+    -------
+    dict[str, tuple[list[float], list[float]]]
+        The dictionary of refractive index real and imaginary parts.
+        {"fine": (nr_arr_f, ni_arr_f), "coarse": (nr_arr_c, ni_arr_c)}.
+    """
+    assert isinstance(rh, float)
+
+    wl_nm = np.array(wl_microns) * 1e3
+    values = ds.interp(relative_humidity=rh, wavelength=wl_nm)
+
+    nr_fine = list(values["mr_f"].data)
+    nr_coarse = list(values["mr_c"].data)
+    ni_fine = list(-values["mi_f"].data)
+    ni_coarse = list(-values["mi_c"].data)
+
+    return {"fine": (nr_fine, ni_fine), "coarse": (nr_coarse, ni_coarse)}
