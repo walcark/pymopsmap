@@ -11,7 +11,6 @@ Summary : Definition of the OptiProps class, encapsulating an
 """
 
 from dataclasses import dataclass
-from typing import Union
 import xarray as xr
 import numpy as np
 

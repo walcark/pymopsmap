@@ -11,9 +11,13 @@ from .microparams import (
     FileDefinedPSD,
     ModifiedGammaPSD,
 )
+
+from .microparams_dispatch import MicroParametersDispatch
+
 from .optiprops import OptiProps, extend_optiprops
 
 __all__ = [
+    "MicroParametersDispatch",
     "MicroParameters",
     "OptiProps",
     "extend_optiprops",
