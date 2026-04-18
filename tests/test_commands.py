@@ -1,13 +1,13 @@
 import pytest
 
 from pymopsmap.classes import (
+    FileDefinedPSD,
     FixedPSD,
     LognormalPSD,
+    MicroParameters,
     ModifiedGammaPSD,
-    FileDefinedPSD,
     Sphere,
     Spheroid,
-    MicroParameters,
 )
 from pymopsmap.mopsmap.commands import psd_command, shape_command
 
@@ -23,9 +23,7 @@ def test_LognormalPSD_command():
 
 
 def test_ModifiedGammaPSD_command():
-    psd = ModifiedGammaPSD(
-        A=0.05, B=1.0, alpha=0.03, gamma=2.0, rmin=0.01, rmax=0.5
-    )
+    psd = ModifiedGammaPSD(A=0.05, B=1.0, alpha=0.03, gamma=2.0, rmin=0.01, rmax=0.5)
     assert psd_command(psd) == "size mod_gamma 0.05 0.01 0.5 0.03 1.0 2.0"
 
 
