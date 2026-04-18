@@ -1,15 +1,11 @@
-from pydantic import ValidationError
-import pytest
-
-import xarray as xr
-import netCDF4
 import numpy as np
+import xarray as xr
 
-from pymopsmap.adapt.cams_to_microparams import (
-    read_aerosol_modes_concentrations,
-    CamsAerosol,
+from pymopsmap.adapters.input.cams import (
     DATA_PATH,
+    CamsAerosol,
     _read_refractive_index,
+    read_aerosol_modes_concentrations,
 )
 
 

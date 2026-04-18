@@ -1,48 +1,22 @@
-"""
-cams_to_microparams.py
+"""CAMS aerosol adapter — interpolates microphysical parameters from CAMS tables."""
 
-Author  : Kévin Walcarius
-Date    : 2025-01-08
-Version : 1.0
-License : MIT
-Summary : Module to transform input CAMS formatted microparameters
-          to an indexed set of MicroParams usable by Mopsmap.
-
-Description:
-
-The input CAMS formatted microparameters is a convention used in
-the MAJA software to store the CAMS microphysical parameters.
-
-Maja assumes (as for now) that each CAMS aerosol is a combination
-of a fine and coarse mode (e.g two size distributions). Sometimes,
-a CAMS aerosol only has one mode, and thus fine is equal to coarse.
-Each mode is defined by a Log-Normal size distribution, whose
-parameters are specified in the micrphysical parameters file.
-
-The microphysical parameters are stored in the folder:
-
-    pymopsmap/data/cams
-
-The file organisation of the folder is the following:
-    - a file stores the aerosols mode concentrations for each mode
-    - a file stores the microphysical parameters for each mode
-"""
+import json
+from enum import StrEnum
 
 import numpy as np
-import json
 import xarray as xr
-from enum import Enum
 from numpy.typing import ArrayLike
-from pymopsmap.classes import (
+
+from pymopsmap.models import (
     LognormalPSD,
     MicroParameters,
-    Sphere,
     MicroParametersDispatch,
+    Sphere,
 )
 from pymopsmap.utils import DATA_PATH, SortedPosFloat64List
 
 
-class CamsAerosol(str, Enum):
+class CamsAerosol(StrEnum):
     CONTINENTAL = "continen"
     SULPHATE_CAMS = "sulphate"
     SEA_SALT_CAMS = "sea_salt"
@@ -54,7 +28,7 @@ class CamsAerosol(str, Enum):
     SECONDARY_ORGANIC = "secondary_organic"
 
 
-class CamsVersion(str, Enum):
+class CamsVersion(StrEnum):
     V47_R1 = "47r1"
     V48_R1 = "48r1"
     V49_R1 = "49r1"
@@ -136,7 +110,7 @@ def read_aerosol_modes_concentrations(
     """
     data_path = DATA_PATH / "cams/cams_aer_modes_concentrations.json"
     try:
-        with open(data_path, "r") as f:
+        with open(data_path) as f:
             data = json.load(f)
     except FileNotFoundError as e:
         raise FileNotFoundError(f"Unable to open file: {data_path}") from e
@@ -148,9 +122,7 @@ def read_aerosol_modes_concentrations(
     return {"fine": conc[0], "coarse": conc[1]}
 
 
-def _read_granulometry(
-    ds: xr.Dataset, rh: float
-) -> dict[str, tuple[float, float]]:
+def _read_granulometry(ds: xr.Dataset, rh: float) -> dict[str, tuple[float, float]]:
     """
     Read the log-normal distribution arguments (rm, sigma) for the fine
     and coarse modes in an xarray dataset, for a given relative humidity.

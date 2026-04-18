@@ -1,16 +1,7 @@
-"""
-microparams_dispatch.py
+"""MicroParametersDispatch: batch aerosol configurations over external parameters."""
 
-Author  : Kévin Walcarius
-Date    : 2025-01-08
-Version : 1.0
-License : MIT
-Summary : Class to encapsulate the evolution of microphysical
-          parameters of an aerosol specie with external parameters.
-"""
-
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Iterable
 
 from .microparams import MicroParameters
 
@@ -24,10 +15,17 @@ class MicroParametersDispatch(Iterable):
 
     def append(self, modes: MPs, params: dict[str, float]):
         modes = [modes] if isinstance(modes, MicroParameters) else modes
+        if self.modes:
+            ref_wl = self.modes[0][0].wavelength
+            for mp in modes:
+                if list(mp.wavelength) != list(ref_wl):
+                    raise ValueError(
+                        "All MicroParameters in a dispatch must share the same "
+                        f"wavelength array. Got {mp.wavelength} vs {ref_wl}."
+                    )
         self.modes.append(modes)
         self.params.append(params)
         assert len(self.modes) == len(self.params)
 
     def __iter__(self):
-        for mode in self.modes:
-            yield mode
+        yield from self.modes

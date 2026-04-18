@@ -3,3 +3,11 @@
 !.pixi/config.toml
 *.txt
 *__pycache__*
+*.pyc
+.venv/
+dist/
+*.egg-info/
+.DS_Store
+*.tmp
+.pytest_cache/
+data/**

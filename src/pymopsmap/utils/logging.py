@@ -1,63 +1,70 @@
-"""
-logging.py
-
-Author  : Kévin Walcarius
-Date    : 2026-01-08
-Version : 1.0
-License : MIT
-Summary : Module used to define loggers. The configuration
-          by default in defined in a YAML file. The configuration
-          is ensured to by applied once and for all for each
-          logger instanciated thoughrough the project.
-
-"""
+"""Structured logging via structlog — colored console + JSON file output."""
 
 from __future__ import annotations
 
 import logging
-import logging.config
-from pathlib import Path
-import yaml
+import sys
+
+import structlog
+
+_INITIALIZED = False
 
 
-DEFAULT_LOGGING_CONFIG = (
-    Path(__file__).resolve().parent.parent.parent.parent
-    / "config"
-    / "logging.yaml"
-)
-
-_LOGGING_INITIALIZED = False
-
-
-def init_logging(config_file: str | Path = DEFAULT_LOGGING_CONFIG) -> None:
-    """
-    Initialize Python logging from a YAML configuration file.
-    Safe: calling it multiple times has no effect.
-    """
-    global _LOGGING_INITIALIZED
-
-    if _LOGGING_INITIALIZED:
+def _configure() -> None:
+    global _INITIALIZED
+    if _INITIALIZED:
         return
 
-    config_file = Path(config_file)
-    if not config_file.exists():
-        raise FileNotFoundError(
-            f"Logging config file not found: {config_file}"
+    shared_processors = [
+        structlog.stdlib.add_logger_name,
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.PositionalArgumentsFormatter(),
+        structlog.processors.TimeStamper(fmt="%Y-%m-%d %H:%M:%S"),
+        structlog.processors.StackInfoRenderer(),
+    ]
+
+    structlog.configure(
+        processors=[
+            *shared_processors,
+            structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
+        ],
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        wrapper_class=structlog.stdlib.BoundLogger,
+        cache_logger_on_first_use=True,
+    )
+
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(
+        structlog.stdlib.ProcessorFormatter(
+            processors=[
+                structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+                structlog.dev.ConsoleRenderer(),
+            ],
+            foreign_pre_chain=shared_processors,
         )
+    )
 
-    with open(config_file, "r") as f:
-        config = yaml.safe_load(f)
+    file_handler = logging.FileHandler("pymopsmap.log")
+    file_handler.setFormatter(
+        structlog.stdlib.ProcessorFormatter(
+            processors=[
+                structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+                structlog.processors.JSONRenderer(),
+            ],
+            foreign_pre_chain=shared_processors,
+        )
+    )
 
-    logging.config.dictConfig(config)
-    _LOGGING_INITIALIZED = True
+    root = logging.getLogger()
+    root.setLevel(logging.DEBUG)
+    root.addHandler(console_handler)
+    root.addHandler(file_handler)
+
+    logging.getLogger("matplotlib").setLevel(logging.WARNING)
+
+    _INITIALIZED = True
 
 
-def get_logger(name: str = "pymopsmap") -> logging.Logger:
-    """
-    Returns a logger configured according to the YAML file.
-    If logging is not initialized yet, initializes it automatically.
-    """
-    if not _LOGGING_INITIALIZED:
-        init_logging(DEFAULT_LOGGING_CONFIG)
-
-    return logging.getLogger(name)
+def get_logger(name: str = "pymopsmap") -> structlog.stdlib.BoundLogger:
+    _configure()
+    return structlog.stdlib.get_logger(name)

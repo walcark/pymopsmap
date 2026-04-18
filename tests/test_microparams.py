@@ -1,15 +1,14 @@
 import pytest
-
 from pydantic import ValidationError
 
-from pymopsmap.classes import (
+from pymopsmap.models import (
+    FileDefinedPSD,
     FixedPSD,
     LognormalPSD,
+    MicroParameters,
     ModifiedGammaPSD,
-    FileDefinedPSD,
     Sphere,
     Spheroid,
-    MicroParameters,
 )
 
 
@@ -80,15 +79,11 @@ def test_ModifiedGammaPSD_arguments_must_be_positive(A, B, rmin, rmax):
 
 def test_ModifiedGammaPSD_radius():
     with pytest.raises(ValueError, match="rmax > rmin required, got"):
-        ModifiedGammaPSD(
-            A=0.05, B=1.0, alpha=0.03, gamma=2.0, rmin=1.0, rmax=0.5
-        )
+        ModifiedGammaPSD(A=0.05, B=1.0, alpha=0.03, gamma=2.0, rmin=1.0, rmax=0.5)
 
 
 def test_ModifiedGammaPSD_command():
-    psd = ModifiedGammaPSD(
-        A=0.05, B=1.0, alpha=0.03, gamma=2.0, rmin=0.01, rmax=0.5
-    )
+    psd = ModifiedGammaPSD(A=0.05, B=1.0, alpha=0.03, gamma=2.0, rmin=0.01, rmax=0.5)
     assert psd.command == "size mod_gamma 0.05 0.01 0.5 0.03 1.0 2.0"
 
 

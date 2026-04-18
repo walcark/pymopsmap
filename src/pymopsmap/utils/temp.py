@@ -1,17 +1,4 @@
-"""
-temp.py
-
-Author  : Kévin Walcarius
-Date    : 2026-01-08
-Version : 1.0
-License : MIT
-Summary : Tools to manage a temporary workspace. A user
-          may wish to keep the temporary files for debug
-          sake.
-
-Usage:
-DISABLE_TEMP_CLEANUP=1 python -m src.pymopsmap.module
-"""
+"""Temporary workspace management (set PYMOPSMAP_KEEP_TEMP=1 to disable cleanup)."""
 
 from __future__ import annotations
 
