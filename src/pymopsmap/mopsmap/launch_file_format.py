@@ -1,116 +1,101 @@
-"""
-mopsmap_launch_file.py
+"""MOPSMAP launch file generation."""
 
-Author  : Kévin Walcarius
-Date    : 2025-11-19
-Version : 1.0
-License : MIT
-Summary : Tools to format the input .txt file used by Mopsmap.
-"""
+from __future__ import annotations
 
-import os
-
-from pymopsmap.utils import get_tempfile, get_logger
-from pymopsmap.classes import MicroParameters
-from .commands import microparams_command, wl_command
 from pathlib import Path
 
+from pymopsmap.classes import MicroParameters
+from pymopsmap.classes.output_request import (
+    DEFAULT_OUTPUT,
+    OutputRequest,
+    OutputType,
+)
+from pymopsmap.utils import DATASET_CACHE_DIR, get_logger, get_tempfile
+
+from .commands import microparams_command, wl_command
+
 logger = get_logger(__name__)
+
+_ASCII_TYPES = {
+    OutputType.PHASE_FUNCTION,
+    OutputType.SCATTERING_MATRIX,
+    OutputType.VOLUME_SCATTERING_FUNCTION,
+    OutputType.LIDAR,
+    OutputType.COEFF,
+}
 
 
 def write_launching_file(
     mp: MicroParameters | list[MicroParameters],
+    output_types: OutputRequest = DEFAULT_OUTPUT,
     n_angles: int = 2000,
     rh: float | None = None,
     mopsmap_data_path: Path | None = None,
 ) -> dict[str, Path]:
     """
-    Generate a temporary launching file for MOPSMAP v1.0.
+    Generate a MOPSMAP launch file and return paths to the generated artefacts.
 
-    This function assembles the complete configuration required by MOPSMAP:
-        - the path of the Optical properties dataset,
-        - the list of aerosol modes,
-        - additionnal parameters (wavelength, rh, number of scattering angles, etc.)
-
-    The resulting configuration file is written to a unique file in the system
-    temporary directory.
-
-    Parameters
-    ----------
-    mp: MicroParameters
-        A list of aerosol micro-parameters.
-    n_angles : int, optional
-        Number of scattering angles (default: 2000).
-    rh : float, optional
-        Relative humidity in percent (0–100). Not included if ``None``.
-
-    Returns
-    -------
-    dict[str, Path]
-        Path to the Mopsmap Launching file and the output netcdf file.
+    Returns a dict with:
+      - mopsmap   : path to the launch .txt file
+      - netcdf    : path to the expected NetCDF output
+      - ascii_base: base path for ASCII output files (only if ascii types requested)
     """
-
-    logger.debug("Writing Mopsmap input file.")
+    logger.debug("Writing MOPSMAP input file.")
 
     paths = _generate_paths()
 
-    # File content
-    file_prefix = _file_prefix(mopsmap_data_path)
+    dataset_path = mopsmap_data_path or DATASET_CACHE_DIR
+
+    mp_list = [mp] if isinstance(mp, MicroParameters) else mp
+
+    file_prefix = f"scatlib '{dataset_path}'"
     file_content = microparams_command(mp)
-    file_suffix = _file_suffix(paths["netcdf"], n_angles, rh)
+    file_suffix = _file_suffix(
+        nc_path=paths["netcdf"],
+        ascii_base=paths.get("ascii_base"),
+        output_types=output_types,
+        n_angles=n_angles,
+        rh=rh,
+        wavelengths=mp_list[0].wavelength,
+    )
 
-    # Final file content
-    file_content: str = "\n".join([file_prefix, file_content, file_suffix])
+    content = "\n".join([file_prefix, file_content, file_suffix])
 
-    # Create file in /tmp
     with open(paths["mopsmap"], "w") as f:
-        f.write(file_content)
+        f.write(content)
 
-    logger.debug("Mopsmap input file writen: %s", paths["mopsmap"])
-
+    logger.debug("MOPSMAP input file written: %s", paths["mopsmap"])
     return paths
 
 
 def _generate_paths() -> dict[str, Path]:
-    """
-    Generates the path of the Mopsmap launch file and of the output
-    netcdf file.
-    """
-    netcdf_path: Path = get_tempfile("output.nc")
-    mopsmap_path: Path = get_tempfile("mopsmap.txt")
-
-    return {"mopsmap": mopsmap_path, "netcdf": netcdf_path}
-
-
-def _file_prefix(path_to_dataset: Path | None = None) -> str:
-    """
-    Write the prefix of the input .txt file used by Mopsmap.
-    """
-
-    if path_to_dataset is None:
-        default_path = os.getenv("MOPSMAP_DATASET_PATH", "")
-        assert default_path != "", (
-            "Mosmap dataset path should be provided as input or "
-            "with the MOPSMAP_DATASET_PATH environment variable."
-        )
-        path_to_dataset = Path(default_path)
-
-    return f"scatlib '{path_to_dataset}'"
+    paths: dict[str, Path] = {
+        "netcdf": get_tempfile("output.nc"),
+        "mopsmap": get_tempfile("mopsmap.txt"),
+    }
+    paths["ascii_base"] = get_tempfile("mopsmap_out")
+    return paths
 
 
 def _file_suffix(
     nc_path: Path,
+    ascii_base: Path | None,
+    output_types: OutputRequest,
     n_angles: int,
-    rh: float | None = None,
+    rh: float | None,
+    wavelengths: list | None = None,
 ) -> str:
-    """
-    Write the suffix of the input .txt file used by Mopsmap.
-    """
-    file_suffix = [f"output num_theta {n_angles}"]
-    file_suffix.append(wl_command())
+    lines = [f"output num_theta {n_angles}", wl_command(wavelengths)]
     if rh is not None:
-        file_suffix.append(f"rH {rh}")
-    file_suffix.append("output integrated")
-    file_suffix.append(f"output netcdf '{str(nc_path)}'")
+        lines.append(f"rH {rh}")
 
-    return "\n".join(file_suffix)
+    lines.append("output integrated")
+    lines.append(f"output netcdf '{nc_path}'")
+
+    ascii_needed = output_types & _ASCII_TYPES
+    if ascii_needed and ascii_base is not None:
+        lines.append(f"output ascii_file '{ascii_base}'")
+        for otype in sorted(ascii_needed, key=lambda x: x.value):
+            lines.append(f"output {otype.value}")
+
+    return "\n".join(lines)

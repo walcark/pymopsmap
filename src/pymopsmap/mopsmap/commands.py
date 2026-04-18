@@ -1,17 +1,15 @@
-"""
-mospmap_commands.py
+"""MOPSMAP input file command builders."""
 
-Author  : Kévin Walcarius
-Date    : 2025-11-19
-Version : 1.0
-License : MIT
-Summary : Module used to define all the Mopsmap commands, as defined
-          in the guide: https://mopsmap.net/mopsmap_userguide.pdf.
-"""
+from __future__ import annotations
 
 from pathlib import Path
-from pymopsmap.utils import SortedPosFloat64List, PosFloat64List, get_tempfile
-from pymopsmap.classes import MicroParameters, Shape, PSD
+from typing import TYPE_CHECKING
+
+from pymopsmap.classes import PSD, MicroParameters, Shape
+from pymopsmap.utils import PosFloat64List, SortedPosFloat64List, get_tempfile
+
+if TYPE_CHECKING:
+    from pymopsmap.classes.output_request import OutputRequest
 
 
 def microparams_command(
@@ -52,7 +50,9 @@ def _single_microparams_command(mp: MicroParameters, num: int = 1) -> str:
     return string
 
 
-def wl_command() -> str:
+def wl_command(wavelengths: SortedPosFloat64List | None = None) -> str:
+    if wavelengths is not None and len(wavelengths) == 1:
+        return f"wavelength {wavelengths[0]:.6f}"
     return "wavelength from_refrac_file"
 
 
@@ -75,6 +75,11 @@ def write_refr_file(
 def refr_command(
     wl: SortedPosFloat64List, nr: PosFloat64List, ni: PosFloat64List
 ) -> str:
+    # MOPSMAP bug: interpolate_linear returns weight_upper=weight_lower=1.0 for
+    # single-element arrays, doubling the refractive index and causing an
+    # out-of-range error. Use constant refrac command to bypass the file path.
+    if len(wl) == 1:
+        return f"refrac {nr[0]:.6f} {ni[0]:.6f}"
     filename = str(write_refr_file(wl=wl, nr=nr, ni=ni))
     return f"refrac file '{filename}'"
 
@@ -87,8 +92,38 @@ def psd_command(psd: PSD) -> str:
     return psd.command
 
 
+def output_request_commands(
+    output_types: OutputRequest,
+    ascii_base: Path,
+    nc_path: Path,
+    n_angles: int = 2000,
+    rh: float | None = None,
+) -> str:
+    """Build the output section of a MOPSMAP launch file."""
+    from pymopsmap.classes.output_request import OutputType
+
+    _ASCII_TYPES = {
+        OutputType.PHASE_FUNCTION,
+        OutputType.SCATTERING_MATRIX,
+        OutputType.VOLUME_SCATTERING_FUNCTION,
+        OutputType.LIDAR,
+        OutputType.COEFF,
+    }
+    lines = [f"output num_theta {n_angles}", wl_command()]
+    if rh is not None:
+        lines.append(f"rH {rh}")
+    lines.append("output integrated")
+    lines.append(f"output netcdf '{nc_path}'")
+    ascii_needed = output_types & _ASCII_TYPES
+    if ascii_needed:
+        lines.append(f"output ascii_file '{ascii_base}'")
+        for otype in sorted(ascii_needed, key=lambda x: x.value):
+            lines.append(f"output {otype.value}")
+    return "\n".join(lines)
+
+
 if __name__ == "__main__":
-    from .microparams import Sphere, Spheroid, FixedPSD
+    from .microparams import FixedPSD, Sphere, Spheroid
 
     mp: MicroParameters = MicroParameters(
         wavelength=[1.5],
