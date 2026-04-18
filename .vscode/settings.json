@@ -1,7 +1,0 @@
-{
-    "python.defaultInterpreterPath": "${workspaceFolder}/.pixi/envs/dev/bin/python",
-    "editor.defaultFormatter": "charliermarsh.ruff",
-    "editor.formatOnPaste": true,
-    "editor.formatOnSave": true,
-    "ruff.enable": true,
-}
