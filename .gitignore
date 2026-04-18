@@ -11,3 +11,6 @@ dist/
 *.tmp
 .pytest_cache/
 data/**
+scripts/
+*.log
+*.png
