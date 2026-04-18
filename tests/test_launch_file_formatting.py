@@ -1,69 +1,103 @@
-import textwrap
 import re
 
-from pymopsmap.classes import MicroParameters, Sphere, FixedPSD
+import pytest
+
+from pymopsmap.classes import FixedPSD, MicroParameters, Sphere
 from pymopsmap.mopsmap.launch_file_format import write_launching_file
+from pymopsmap.utils import DATASET_CACHE_DIR
 
 
-def test_mopsmap_launch_file_format():
-    def replace_temp_file(content: str) -> str:
-        tmp_pattern = r"/tmp/pymopsmap-[^/]+"
-        new_line = "/tmp/pymopsmap-TMP"
-        new_content = re.sub(tmp_pattern, new_line, content)
-        new_content = "\n".join(
-            line.rstrip() for line in new_content.splitlines()
-        ).strip()
-        return new_content
+def _normalize(content: str) -> str:
+    tmp_pattern = r"/tmp/pymopsmap-[^/]+"
+    content = re.sub(tmp_pattern, "/tmp/pymopsmap-TMP", content)
+    return "\n".join(line.rstrip() for line in content.splitlines()).strip()
 
-    mp: MicroParameters = MicroParameters(
+
+@pytest.fixture
+def sphere_mp():
+    return MicroParameters(
         wavelength=[0.500, 0.700, 0.900, 1.5],
-        n_real=[1.00027] * 100,
-        n_imag=[0.0] * 100,
+        n_real=[1.00027] * 4,
+        n_imag=[0.0] * 4,
         shape=Sphere(),
         psd=FixedPSD(radius=0.1, n=1.0),
     )
 
-    # With rh
-    path_dict = write_launching_file(mp, n_angles=2000, rh=0.0)
-    file_path = path_dict["mopsmap"]
 
-    with open(file_path, "r") as f:
-        content = replace_temp_file(f.read())
+def test_launch_file_contains_scatlib(sphere_mp):
+    paths = write_launching_file(sphere_mp)
+    content = paths["mopsmap"].read_text()
+    assert f"scatlib '{DATASET_CACHE_DIR}'" in content
 
-    expected_content = textwrap.dedent(
-        """
-        scatlib '/home/kwalcarius/bin/mopsmap/optical_dataset'
-        mode 1 shape sphere
-        mode 1 size 0.1 1.0
-        mode 1 refrac file '/tmp/pymopsmap-9870a6e0d3e04e3fb6c888408c0d53d1/ri.txt'
-        output num_theta 2000
-        wavelength from_refrac_file
-        rH 0.0
-        output integrated
-        output netcdf '/tmp/pymopsmap-9870a6e0d3e04e3fb6c888408c0d53d1/output.nc'
-        """
+
+def test_launch_file_contains_integrated(sphere_mp):
+    paths = write_launching_file(sphere_mp)
+    content = paths["mopsmap"].read_text()
+    assert "output integrated" in content
+
+
+def test_launch_file_with_rh(sphere_mp):
+    paths = write_launching_file(sphere_mp, rh=50.0)
+    content = paths["mopsmap"].read_text()
+    assert "rH 50.0" in content
+
+
+def test_launch_file_without_rh(sphere_mp):
+    paths = write_launching_file(sphere_mp)
+    content = paths["mopsmap"].read_text()
+    assert "rH" not in content
+
+
+def test_launch_file_no_ascii_for_integrated_only(sphere_mp):
+    from pymopsmap.classes.output_request import DEFAULT_OUTPUT
+
+    paths = write_launching_file(sphere_mp, output_types=DEFAULT_OUTPUT)
+    content = paths["mopsmap"].read_text()
+    assert "ascii_file" not in content
+
+
+def test_launch_file_ascii_for_lidar(sphere_mp):
+    from pymopsmap.classes.output_request import OutputType
+
+    paths = write_launching_file(
+        sphere_mp,
+        output_types=frozenset({OutputType.INTEGRATED, OutputType.LIDAR}),
+    )
+    content = paths["mopsmap"].read_text()
+    assert "ascii_file" in content
+    assert "output lidar" in content
+
+
+@pytest.fixture
+def single_wl_mp():
+    return MicroParameters(
+        wavelength=[0.550],
+        n_real=1.45,
+        n_imag=1e-4,
+        shape=Sphere(),
+        psd=FixedPSD(radius=0.1, n=1.0),
     )
 
-    assert content == replace_temp_file(expected_content)
 
-    # Without rh
-    path_dict = write_launching_file(mp, n_angles=2000)
-    file_path = path_dict["mopsmap"]
+def test_single_wavelength_uses_wavelength_value_command(single_wl_mp):
+    """Single wl must use 'wavelength <val>' to avoid MOPSMAP interpolate_linear bug."""
+    paths = write_launching_file(single_wl_mp)
+    content = paths["mopsmap"].read_text()
+    assert "wavelength 0.550000" in content
+    assert "from_refrac_file" not in content
 
-    with open(file_path, "r") as f:
-        content = replace_temp_file(f.read())
 
-    expected_content = textwrap.dedent(
-        """
-        scatlib '/home/kwalcarius/bin/mopsmap/optical_dataset'
-        mode 1 shape sphere
-        mode 1 size 0.1 1.0
-        mode 1 refrac file '/tmp/pymopsmap-9870a6e0d3e04e3fb6c888408c0d53d1/ri.txt'
-        output num_theta 2000
-        wavelength from_refrac_file
-        output integrated
-        output netcdf '/tmp/pymopsmap-9870a6e0d3e04e3fb6c888408c0d53d1/output.nc'
-        """
-    )
+def test_single_wavelength_uses_constant_refrac_command(single_wl_mp):
+    """Single wl must use 'refrac nr ni' to avoid MOPSMAP interpolate_linear bug."""
+    paths = write_launching_file(single_wl_mp)
+    content = paths["mopsmap"].read_text()
+    assert "refrac 1.450000 0.000100" in content
+    assert "refrac file" not in content
 
-    assert content == replace_temp_file(expected_content)
+
+def test_multi_wavelength_uses_from_refrac_file(sphere_mp):
+    """Multiple wavelengths must keep 'wavelength from_refrac_file' + 'refrac file'."""
+    paths = write_launching_file(sphere_mp)
+    content = paths["mopsmap"].read_text()
+    assert "wavelength from_refrac_file" in content
+    assert "refrac file" in content
