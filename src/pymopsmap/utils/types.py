@@ -1,13 +1,4 @@
-"""
-types.py
-
-Author  : Kévin Walcarius
-Date    : 2026-01-08
-Version : 1.0
-License : MIT
-Summary : Type definitions with pydantic for automatic
-          type checking and corcition.
-"""
+"""Annotated numeric list types with pydantic validation."""
 
 from typing import Annotated, TypeAlias
 
@@ -50,9 +41,7 @@ PosFloat64List: TypeAlias = Annotated[
     Float64List, AfterValidator(assert_strictly_positive)
 ]
 
-SortedFloat64List: TypeAlias = Annotated[
-    Float64List, AfterValidator(assert_sorted)
-]
+SortedFloat64List: TypeAlias = Annotated[Float64List, AfterValidator(assert_sorted)]
 
 SortedPosFloat64List: TypeAlias = Annotated[
     SortedFloat64List, AfterValidator(assert_strictly_positive)
