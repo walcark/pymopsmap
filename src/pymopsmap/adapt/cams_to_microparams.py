@@ -1,43 +1,17 @@
-"""
-cams_to_microparams.py
+"""CAMS aerosol adapter — interpolates microphysical parameters from CAMS tables."""
 
-Author  : Kévin Walcarius
-Date    : 2025-01-08
-Version : 1.0
-License : MIT
-Summary : Module to transform input CAMS formatted microparameters
-          to an indexed set of MicroParams usable by Mopsmap.
-
-Description:
-
-The input CAMS formatted microparameters is a convention used in
-the MAJA software to store the CAMS microphysical parameters.
-
-Maja assumes (as for now) that each CAMS aerosol is a combination
-of a fine and coarse mode (e.g two size distributions). Sometimes,
-a CAMS aerosol only has one mode, and thus fine is equal to coarse.
-Each mode is defined by a Log-Normal size distribution, whose
-parameters are specified in the micrphysical parameters file.
-
-The microphysical parameters are stored in the folder:
-
-    pymopsmap/data/cams
-
-The file organisation of the folder is the following:
-    - a file stores the aerosols mode concentrations for each mode
-    - a file stores the microphysical parameters for each mode
-"""
+import json
+from enum import Enum
 
 import numpy as np
-import json
 import xarray as xr
-from enum import Enum
 from numpy.typing import ArrayLike
+
 from pymopsmap.classes import (
     LognormalPSD,
     MicroParameters,
-    Sphere,
     MicroParametersDispatch,
+    Sphere,
 )
 from pymopsmap.utils import DATA_PATH, SortedPosFloat64List
 
@@ -136,7 +110,7 @@ def read_aerosol_modes_concentrations(
     """
     data_path = DATA_PATH / "cams/cams_aer_modes_concentrations.json"
     try:
-        with open(data_path, "r") as f:
+        with open(data_path) as f:
             data = json.load(f)
     except FileNotFoundError as e:
         raise FileNotFoundError(f"Unable to open file: {data_path}") from e

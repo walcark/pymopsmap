@@ -1,0 +1,226 @@
+"""pymopsmap — Python wrapper for MOPSMAP aerosol optical property computation."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+import xarray as xr
+
+from pymopsmap.classes import (
+    MicroParameters,
+    MicroParametersDispatch,
+    OptiProps,
+)
+
+# Re-export shapes and PSDs for convenience
+from pymopsmap.classes.microparams import (
+    DistrListPSD,
+    DistrType,
+    FileDefinedPSD,
+    FixedPSD,
+    Irregular,
+    IrregularDistrFile,
+    IrregularOverlay,
+    LognormalPSD,
+    ModifiedGammaPSD,
+    Sphere,
+    Spheroid,
+    SpheroidDistrFile,
+    SpheroidLognormal,
+)
+from pymopsmap.classes.output_request import (
+    DEFAULT_OUTPUT,
+    OutputRequest,
+    OutputType,
+)
+from pymopsmap.exceptions import (
+    DatasetSourceNotConfiguredError,
+    DownloadError,
+    IndexFileError,
+    MopsmapError,
+)
+from pymopsmap.mopsmap import compute_optical_properties
+
+# ---------------------------------------------------------------------------
+# Cache status
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class CacheStatusReport:
+    cached: list[str]
+    missing: list[str]
+
+
+def cache_status(
+    mps: MicroParameters | list[MicroParameters] | MicroParametersDispatch,
+) -> CacheStatusReport:
+    """Return which dataset files are cached and which are missing."""
+    from pymopsmap.dataset.cache import OpticalDatasetCache
+    from pymopsmap.dataset.resolver import NCFileResolver
+
+    dataset_cache = OpticalDatasetCache()
+    index_path = dataset_cache.full_path("index.nc")
+
+    if not dataset_cache.is_cached("index.nc"):
+        return CacheStatusReport(cached=[], missing=["index.nc"])
+
+    resolver = NCFileResolver(index_path)
+    modes = _flatten_modes(mps)
+    required = resolver.resolve(modes)
+
+    cached = [p for p in required if dataset_cache.is_cached(p)]
+    missing = [p for p in required if not dataset_cache.is_cached(p)]
+    return CacheStatusReport(cached=cached, missing=missing)
+
+
+# ---------------------------------------------------------------------------
+# Prefetch
+# ---------------------------------------------------------------------------
+
+
+def prefetch(
+    mps: MicroParameters | list[MicroParameters] | MicroParametersDispatch,
+    quiet: bool = False,
+) -> None:
+    """Download all missing dataset files without running MOPSMAP."""
+    from pymopsmap.dataset.cache import OpticalDatasetCache
+    from pymopsmap.dataset.downloader import DatasetDownloader
+    from pymopsmap.dataset.resolver import NCFileResolver
+
+    dataset_cache = OpticalDatasetCache()
+    downloader = DatasetDownloader(cache=dataset_cache, quiet=quiet)
+
+    if not dataset_cache.is_cached("index.nc"):
+        downloader.download("index.nc")
+
+    index_path = dataset_cache.full_path("index.nc")
+    resolver = NCFileResolver(index_path)
+    modes = _flatten_modes(mps)
+    required = resolver.resolve(modes)
+    downloader.download_missing(required)
+
+
+# ---------------------------------------------------------------------------
+# Primary compute entry point
+# ---------------------------------------------------------------------------
+
+
+def compute(
+    mps: MicroParameters | list[MicroParameters] | MicroParametersDispatch,
+    output_types: OutputRequest = DEFAULT_OUTPUT,
+    rh: float | None = None,
+    quiet: bool = False,
+) -> OptiProps:
+    """
+    Compute optical properties.
+
+    Handles file resolution, caching, downloading, and MOPSMAP execution
+    transparently.
+    """
+    return compute_optical_properties(
+        dispatch=mps,
+        output_types=output_types,
+        rh=rh,
+        quiet=quiet,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Convenience wrappers
+# ---------------------------------------------------------------------------
+
+
+def kext(
+    mps: MicroParameters | list[MicroParameters] | MicroParametersDispatch,
+    rh: float | None = None,
+    quiet: bool = False,
+) -> xr.DataArray:
+    return compute(mps, rh=rh, quiet=quiet).sel("kext")
+
+
+def ssa(
+    mps: MicroParameters | list[MicroParameters] | MicroParametersDispatch,
+    rh: float | None = None,
+    quiet: bool = False,
+) -> xr.DataArray:
+    return compute(mps, rh=rh, quiet=quiet).sel("ssa")
+
+
+def phase(
+    mps: MicroParameters | list[MicroParameters] | MicroParametersDispatch,
+    rh: float | None = None,
+    quiet: bool = False,
+) -> xr.DataArray:
+    from pymopsmap.classes.output_request import OutputType
+
+    return compute(
+        mps,
+        output_types=frozenset(
+            {OutputType.INTEGRATED, OutputType.PHASE_FUNCTION}
+        ),
+        rh=rh,
+        quiet=quiet,
+    ).sel("phase")
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
+
+def _flatten_modes(
+    mps: MicroParameters | list[MicroParameters] | MicroParametersDispatch,
+) -> list[MicroParameters]:
+    if isinstance(mps, MicroParametersDispatch):
+        result = []
+        for mode_list in mps.modes:
+            result.extend(mode_list)
+        return result
+    if isinstance(mps, MicroParameters):
+        return [mps]
+    return list(mps)
+
+
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
+
+__all__ = [
+    # Main entry points
+    "compute",
+    "cache_status",
+    "prefetch",
+    "kext",
+    "ssa",
+    "phase",
+    # Classes
+    "MicroParameters",
+    "MicroParametersDispatch",
+    "OptiProps",
+    "CacheStatusReport",
+    # Output types
+    "OutputType",
+    "OutputRequest",
+    "DEFAULT_OUTPUT",
+    # Shape types
+    "Sphere",
+    "Spheroid",
+    "SpheroidLognormal",
+    "SpheroidDistrFile",
+    "Irregular",
+    "IrregularDistrFile",
+    "IrregularOverlay",
+    # PSD types
+    "FixedPSD",
+    "LognormalPSD",
+    "ModifiedGammaPSD",
+    "FileDefinedPSD",
+    "DistrListPSD",
+    "DistrType",
+    # Exceptions
+    "DatasetSourceNotConfiguredError",
+    "DownloadError",
+    "IndexFileError",
+    "MopsmapError",
+]

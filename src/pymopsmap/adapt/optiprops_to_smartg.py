@@ -1,22 +1,13 @@
-"""
-optiprops_to_smartg.py
+"""OptiProps to SMART-G AerOPAC LUT adapter."""
 
-Author  : Kévin Walcarius
-Date    : 2025-01-08
-Version : 1.0
-License : MIT
-Summary : Module to transform optical parameters derived with
-          Mopsmap into an xarray dataset readable by the Smart-G
-          AerOPAC class.
-"""
-
-from einops import rearrange
 from datetime import datetime
 from pathlib import Path
 
+import xarray as xr
+from einops import rearrange
+
 from pymopsmap.classes import OptiProps
 from pymopsmap.utils import get_logger
-import xarray as xr
 
 logger = get_logger(__name__)
 

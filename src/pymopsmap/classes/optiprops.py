@@ -1,18 +1,9 @@
-"""
-optiprops.py
-
-Author  : Kévin Walcarius
-Date    : 2026-01-08
-Version : 1.0
-License : MIT
-Summary : Definition of the OptiProps class, encapsulating an
-          xr.Dataset with all the optical properties computed
-          by Mopsmap.
-"""
+"""OptiProps: xarray-backed container for MOPSMAP optical properties."""
 
 from dataclasses import dataclass
-import xarray as xr
+
 import numpy as np
+import xarray as xr
 
 
 @dataclass(frozen=True)
