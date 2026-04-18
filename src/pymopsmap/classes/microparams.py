@@ -1,20 +1,11 @@
-"""
-microparams.py
+"""Aerosol microphysical parameter models (shape, PSD, refractive index)."""
 
-Author  : Kévin Walcarius
-Date    : 2025-01-08
-Version : 1.0
-License : MIT
-Summary : Class to encapsulate the microphysical parameters of an
-          atmospheric constituant.
-"""
+from enum import Enum
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, PositiveFloat, model_validator
+from pydantic import BaseModel, Field, PositiveFloat, model_validator
 
 from pymopsmap.utils import Float64List, PosFloat64List, SortedPosFloat64List
-from typing import Annotated, Literal, Union
-
-from pydantic import Field
 
 
 # --------------------------------------------------------------------------
@@ -92,15 +83,13 @@ class IrregularOverlay(BaseModel):
 
 
 Shape = Annotated[
-    Union[
-        Sphere,
-        Spheroid,
-        SpheroidLognormal,
-        SpheroidDistrFile,
-        Irregular,
-        IrregularDistrFile,
-        IrregularOverlay,
-    ],
+    Sphere
+    | Spheroid
+    | SpheroidLognormal
+    | SpheroidDistrFile
+    | Irregular
+    | IrregularDistrFile
+    | IrregularOverlay,
     Field(discriminator="type"),
 ]
 
@@ -185,7 +174,10 @@ class ModifiedGammaPSD(BaseModel):
 
     @property
     def command(self) -> str:
-        return f"size mod_gamma {self.A} {self.rmin} {self.rmax} {self.alpha} {self.B} {self.gamma}"
+        return (
+            f"size mod_gamma {self.A} {self.rmin} {self.rmax}"
+            f" {self.alpha} {self.B} {self.gamma}"
+        )
 
 
 class FileDefinedPSD(BaseModel):
@@ -197,23 +189,85 @@ class FileDefinedPSD(BaseModel):
         return f"size bin_file '{self.filename}'"
 
 
+class DistrType(str, Enum):
+    DNDR = "dndr"
+    DNDLNR = "dndlnr"
+    DNDLOGR = "dndlogr"
+    DADR = "dadr"
+    DADLNR = "dadlnr"
+    DADLOGR = "dadlogr"
+    DVDR = "dvdr"
+    DVDLNR = "dvdlnr"
+    DVDLOGR = "dvdlogr"
+
+
+class DistrListPSD(BaseModel):
+    type: Literal["distr-list"] = "distr-list"
+    radii: SortedPosFloat64List
+    concentrations: list[float]
+    distr_type: DistrType
+
+    @model_validator(mode="after")
+    def check_lengths(self):
+        if len(self.radii) != len(self.concentrations):
+            raise ValueError(
+                f"radii and concentrations must have the same length, "
+                f"got {len(self.radii)} vs {len(self.concentrations)}"
+            )
+        if len(self.radii) < 2:
+            raise ValueError(
+                "DistrListPSD requires at least 2 radius/concentration pairs"
+            )
+        return self
+
+    @property
+    def command(self) -> str:
+        pairs = " ".join(
+            f"{r} {c}" for r, c in zip(self.radii, self.concentrations)
+        )
+        return f"size distr_list {self.distr_type.value} {pairs}"
+
+
 PSD = Annotated[
-    Union[FixedPSD, LognormalPSD, FileDefinedPSD, ModifiedGammaPSD],
+    FixedPSD | LognormalPSD | FileDefinedPSD | ModifiedGammaPSD | DistrListPSD,
     Field(discriminator="type"),
 ]
 
 
-# =================================================================================================
+# ---------------------------------------------------------------------------
 # MicroParameters
-# =================================================================================================
+# ---------------------------------------------------------------------------
 class MicroParameters(BaseModel):
     wavelength: SortedPosFloat64List
-    n_real: PosFloat64List
-    n_imag: Float64List
+    n_real: PosFloat64List | float
+    n_imag: Float64List | float
     shape: Shape
     psd: PSD
     kappa: PositiveFloat | None = None
     density: PositiveFloat | None = None
+
+    @model_validator(mode="after")
+    def broadcast_refractive_index(self):
+        n = len(self.wavelength)
+        # Pydantic coerces a scalar float to a 1-element list via BeforeValidator;
+        # treat length-1 lists as scalars and broadcast when wavelength count > 1.
+        if isinstance(self.n_real, float):
+            self.n_real = [self.n_real] * n
+        elif len(self.n_real) == 1 and n > 1:
+            self.n_real = self.n_real * n
+        elif len(self.n_real) != n:
+            raise ValueError(
+                f"n_real length ({len(self.n_real)}) must match wavelength length ({n})"
+            )
+        if isinstance(self.n_imag, float):
+            self.n_imag = [self.n_imag] * n
+        elif len(self.n_imag) == 1 and n > 1:
+            self.n_imag = self.n_imag * n
+        elif len(self.n_imag) != n:
+            raise ValueError(
+                f"n_imag length ({len(self.n_imag)}) must match wavelength length ({n})"
+            )
+        return self
 
     def command(self, num: int | None = None) -> str:
         mode: str = f"mode {num} "
