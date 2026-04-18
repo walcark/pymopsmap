@@ -1,20 +1,22 @@
-"""Adapters — CAMS microphysical tables and SMART-G LUT converters."""
+"""Adapters — input converters (CAMS) and output converters (SMART-G)."""
+
+from __future__ import annotations
 
 from pathlib import Path
 
 import xarray as xr
 from numpy.typing import ArrayLike
 
-from pymopsmap.classes import OptiProps
-from pymopsmap.classes.output_request import DEFAULT_OUTPUT, OutputRequest
+from pymopsmap.models import OptiProps
+from pymopsmap.models.output_request import DEFAULT_OUTPUT, OutputRequest
 from pymopsmap.utils import SortedPosFloat64List
 
-from .cams_to_microparams import (
+from .input.cams import (
     CamsAerosol,
     CamsVersion,
     read_aerosol_microphysical_parameters,
 )
-from .optiprops_to_smartg import create_lut_for_smartg
+from .output.smartg import create_lut_for_smartg
 
 
 def cams_to_smartg(
@@ -40,12 +42,7 @@ def cams_to_kext(
     quiet: bool = False,
 ) -> xr.DataArray:
     op: OptiProps = cams_to_optiprops(
-        aerosol,
-        version,
-        wl_microns,
-        rh,
-        output_types=output_types,
-        quiet=quiet,
+        aerosol, version, wl_microns, rh, output_types=output_types, quiet=quiet
     )
     return op.sel("kext")
 
@@ -58,22 +55,20 @@ def cams_to_optiprops(
     output_types: OutputRequest = DEFAULT_OUTPUT,
     quiet: bool = False,
 ) -> OptiProps:
-    from pymopsmap import compute
+    from pymopsmap.engine import compute_optical_properties
 
     dispatch = read_aerosol_microphysical_parameters(
-        aerosol=aerosol,
-        version=version,
-        wl_microns=wl_microns,
-        rh=rh,
+        aerosol=aerosol, version=version, wl_microns=wl_microns, rh=rh
     )
-    return compute(dispatch, output_types=output_types, quiet=quiet)
+    return compute_optical_properties(dispatch, output_types=output_types, quiet=quiet)
 
 
-_all_ = [
+__all__ = [
+    "CamsAerosol",
+    "CamsVersion",
     "read_aerosol_microphysical_parameters",
     "create_lut_for_smartg",
     "cams_to_smartg",
-    "CamsVersion",
-    "CamsAerosol",
     "cams_to_kext",
+    "cams_to_optiprops",
 ]

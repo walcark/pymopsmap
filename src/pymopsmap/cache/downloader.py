@@ -10,7 +10,7 @@ from tqdm import tqdm
 from pymopsmap.exceptions import DatasetSourceNotConfiguredError, DownloadError
 from pymopsmap.utils import DATASET_SOURCE, get_logger
 
-from .cache import OpticalDatasetCache
+from .optical import OpticalDatasetCache
 
 logger = get_logger(__name__)
 
@@ -47,9 +47,7 @@ class DatasetDownloader:
         for attempt in range(_MAX_RETRIES):
             try:
                 if Path(source).exists() or not source.startswith("http"):
-                    self._copy_local(
-                        Path(url_or_path), tmp_path, relative_path
-                    )
+                    self._copy_local(Path(url_or_path), tmp_path, relative_path)
                 else:
                     self._download_https(url_or_path, tmp_path, relative_path)
                 self.cache.register(relative_path, tmp_path)

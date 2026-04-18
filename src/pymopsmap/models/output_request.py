@@ -1,9 +1,9 @@
 """OutputType enum and OutputRequest frozen-set type."""
 
-from enum import Enum
+from enum import StrEnum
 
 
-class OutputType(str, Enum):
+class OutputType(StrEnum):
     INTEGRATED = "integrated"
     LIDAR = "lidar"
     PHASE_FUNCTION = "phase_function"

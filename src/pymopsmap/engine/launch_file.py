@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pymopsmap.classes import MicroParameters
-from pymopsmap.classes.output_request import (
+from pymopsmap.models import MicroParameters
+from pymopsmap.models.output_request import (
     DEFAULT_OUTPUT,
     OutputRequest,
     OutputType,

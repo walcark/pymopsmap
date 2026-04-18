@@ -1,6 +1,6 @@
 """Aerosol microphysical parameter models (shape, PSD, refractive index)."""
 
-from enum import Enum
+from enum import StrEnum
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, PositiveFloat, model_validator
@@ -142,7 +142,9 @@ class LognormalPSD(BaseModel):
 
     @property
     def command(self) -> str:
-        return f"size log_normal {self.rm} {self.sigma} {self.n} {self.rmin} {self.rmax}"
+        return (
+            f"size log_normal {self.rm} {self.sigma} {self.n} {self.rmin} {self.rmax}"
+        )
 
 
 class ModifiedGammaPSD(BaseModel):
@@ -189,7 +191,7 @@ class FileDefinedPSD(BaseModel):
         return f"size bin_file '{self.filename}'"
 
 
-class DistrType(str, Enum):
+class DistrType(StrEnum):
     DNDR = "dndr"
     DNDLNR = "dndlnr"
     DNDLOGR = "dndlogr"
@@ -222,9 +224,7 @@ class DistrListPSD(BaseModel):
 
     @property
     def command(self) -> str:
-        pairs = " ".join(
-            f"{r} {c}" for r, c in zip(self.radii, self.concentrations)
-        )
+        pairs = " ".join(f"{r} {c}" for r, c in zip(self.radii, self.concentrations))
         return f"size distr_list {self.distr_type.value} {pairs}"
 
 

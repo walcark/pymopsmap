@@ -1,6 +1,6 @@
 import numpy as np
 
-from pymopsmap.adapt import (
+from pymopsmap.adapters import (
     CamsAerosol,
     CamsVersion,
     cams_to_kext,

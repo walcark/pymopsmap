@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from pymopsmap.classes import (
+from pymopsmap.models import (
     FileDefinedPSD,
     FixedPSD,
     LognormalPSD,

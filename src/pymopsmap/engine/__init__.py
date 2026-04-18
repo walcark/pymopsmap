@@ -5,12 +5,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pymopsmap.classes import (
+    from pymopsmap.models import (
         MicroParameters,
         MicroParametersDispatch,
         OptiProps,
     )
-    from pymopsmap.classes.output_request import OutputRequest
+    from pymopsmap.models.output_request import OutputRequest
 
     Modes = MicroParameters | list[MicroParameters]
 
@@ -30,23 +30,19 @@ def compute_optical_properties(
       3. Write MOPSMAP launch file → run MOPSMAP → parse outputs.
       4. Store result in cache → return.
     """
-    from pymopsmap.classes import MicroParametersDispatch, extend_optiprops
-    from pymopsmap.classes.output_request import DEFAULT_OUTPUT
+    from pymopsmap.models import MicroParametersDispatch, extend_optiprops
+    from pymopsmap.models.output_request import DEFAULT_OUTPUT
 
     if output_types is None:
         output_types = DEFAULT_OUTPUT
 
     if not isinstance(dispatch, MicroParametersDispatch):
-        return _compute_single(
-            dispatch, output_types=output_types, rh=rh, quiet=quiet
-        )
+        return _compute_single(dispatch, output_types=output_types, rh=rh, quiet=quiet)
 
     return extend_optiprops(
         index=dispatch.params,
         optiprops_li=[
-            _compute_single(
-                modes, output_types=output_types, rh=rh, quiet=quiet
-            )
+            _compute_single(modes, output_types=output_types, rh=rh, quiet=quiet)
             for modes in dispatch
         ],
     )
@@ -58,13 +54,13 @@ def _compute_single(
     rh: float | None,
     quiet: bool,
 ) -> OptiProps:
-    from pymopsmap.dataset.cache import OpticalDatasetCache
-    from pymopsmap.dataset.downloader import DatasetDownloader
-    from pymopsmap.dataset.resolver import NCFileResolver
-    from pymopsmap.result_cache.cache import ResultCache
+    from pymopsmap.cache.downloader import DatasetDownloader
+    from pymopsmap.cache.optical import OpticalDatasetCache
+    from pymopsmap.cache.resolver import NCFileResolver
+    from pymopsmap.cache.results import ResultCache
     from pymopsmap.utils import DATASET_CACHE_DIR
 
-    from .launch_file_format import write_launching_file
+    from .launch_file import write_launching_file
     from .launcher import launch_mopsmap
     from .output_format import format_mopsmap_outputs
 

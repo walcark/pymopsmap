@@ -6,14 +6,21 @@ from dataclasses import dataclass
 
 import xarray as xr
 
-from pymopsmap.classes import (
+from pymopsmap.engine import compute_optical_properties
+from pymopsmap.exceptions import (
+    DatasetSourceNotConfiguredError,
+    DownloadError,
+    IndexFileError,
+    MopsmapError,
+)
+from pymopsmap.models import (
     MicroParameters,
     MicroParametersDispatch,
     OptiProps,
 )
 
 # Re-export shapes and PSDs for convenience
-from pymopsmap.classes.microparams import (
+from pymopsmap.models.microparams import (
     DistrListPSD,
     DistrType,
     FileDefinedPSD,
@@ -28,18 +35,11 @@ from pymopsmap.classes.microparams import (
     SpheroidDistrFile,
     SpheroidLognormal,
 )
-from pymopsmap.classes.output_request import (
+from pymopsmap.models.output_request import (
     DEFAULT_OUTPUT,
     OutputRequest,
     OutputType,
 )
-from pymopsmap.exceptions import (
-    DatasetSourceNotConfiguredError,
-    DownloadError,
-    IndexFileError,
-    MopsmapError,
-)
-from pymopsmap.mopsmap import compute_optical_properties
 
 # ---------------------------------------------------------------------------
 # Cache status
@@ -56,8 +56,8 @@ def cache_status(
     mps: MicroParameters | list[MicroParameters] | MicroParametersDispatch,
 ) -> CacheStatusReport:
     """Return which dataset files are cached and which are missing."""
-    from pymopsmap.dataset.cache import OpticalDatasetCache
-    from pymopsmap.dataset.resolver import NCFileResolver
+    from pymopsmap.cache.optical import OpticalDatasetCache
+    from pymopsmap.cache.resolver import NCFileResolver
 
     dataset_cache = OpticalDatasetCache()
     index_path = dataset_cache.full_path("index.nc")
@@ -84,9 +84,9 @@ def prefetch(
     quiet: bool = False,
 ) -> None:
     """Download all missing dataset files without running MOPSMAP."""
-    from pymopsmap.dataset.cache import OpticalDatasetCache
-    from pymopsmap.dataset.downloader import DatasetDownloader
-    from pymopsmap.dataset.resolver import NCFileResolver
+    from pymopsmap.cache.downloader import DatasetDownloader
+    from pymopsmap.cache.optical import OpticalDatasetCache
+    from pymopsmap.cache.resolver import NCFileResolver
 
     dataset_cache = OpticalDatasetCache()
     downloader = DatasetDownloader(cache=dataset_cache, quiet=quiet)
@@ -152,13 +152,11 @@ def phase(
     rh: float | None = None,
     quiet: bool = False,
 ) -> xr.DataArray:
-    from pymopsmap.classes.output_request import OutputType
+    from pymopsmap.models.output_request import OutputType
 
     return compute(
         mps,
-        output_types=frozenset(
-            {OutputType.INTEGRATED, OutputType.PHASE_FUNCTION}
-        ),
+        output_types=frozenset({OutputType.INTEGRATED, OutputType.PHASE_FUNCTION}),
         rh=rh,
         quiet=quiet,
     ).sel("phase")

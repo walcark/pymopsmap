@@ -12,8 +12,8 @@ import xarray as xr
 from pymopsmap.exceptions import IndexFileError
 
 if TYPE_CHECKING:
-    from pymopsmap.classes import MicroParameters
-    from pymopsmap.classes.microparams import Shape
+    from pymopsmap.models import MicroParameters
+    from pymopsmap.models.microparams import Shape
 
 
 def _fmt_mreal(v: float) -> str:
@@ -57,24 +57,16 @@ class NCFileResolver:
             raise IndexFileError(
                 f"Cannot open index.nc at {index_path}: {exc}"
             ) from exc
-        self.avail_mreal: np.ndarray = np.sort(
-            ds["mreal"].values.astype(float)
-        )
-        self.avail_mimag: np.ndarray = np.sort(
-            ds["mimag"].values.astype(float)
-        )
+        self.avail_mreal: np.ndarray = np.sort(ds["mreal"].values.astype(float))
+        self.avail_mimag: np.ndarray = np.sort(ds["mimag"].values.astype(float))
         if "eps" in ds:
-            self.avail_eps: np.ndarray = np.sort(
-                ds["eps"].values.astype(float)
-            )
+            self.avail_eps: np.ndarray = np.sort(ds["eps"].values.astype(float))
         else:
             self.avail_eps = np.array([])
         ds.close()
 
-    def resolve(
-        self, mp: MicroParameters | list[MicroParameters]
-    ) -> list[str]:
-        from pymopsmap.classes import MicroParameters as MP
+    def resolve(self, mp: MicroParameters | list[MicroParameters]) -> list[str]:
+        from pymopsmap.models import MicroParameters as MP
 
         modes = [mp] if isinstance(mp, MP) else mp
 
@@ -84,10 +76,8 @@ class NCFileResolver:
                 files.update(self._files_for_params(mode.shape, mr, mi))
         return sorted(files)
 
-    def _files_for_params(
-        self, shape: Shape, mreal: float, mimag: float
-    ) -> list[str]:
-        from pymopsmap.classes.microparams import (
+    def _files_for_params(self, shape: Shape, mreal: float, mimag: float) -> list[str]:
+        from pymopsmap.models.microparams import (
             Irregular,
             IrregularDistrFile,
             IrregularOverlay,
@@ -113,9 +103,7 @@ class NCFileResolver:
                 for eps, mr, mi in product(eps_vals, mr_vals, mi_vals)
             ]
 
-        if isinstance(
-            shape, (Irregular, IrregularDistrFile, IrregularOverlay)
-        ):
+        if isinstance(shape, (Irregular, IrregularDistrFile, IrregularOverlay)):
             shape_id = self._irregular_id(shape)
             return [
                 f"irregular/shape{shape_id}_{_fmt_mreal(mr)}_{_fmt_mimag(mi)}.nc"
@@ -125,7 +113,7 @@ class NCFileResolver:
         return []
 
     def _eps_for_shape(self, shape: Shape) -> list[float]:
-        from pymopsmap.classes.microparams import Spheroid, SpheroidLognormal
+        from pymopsmap.models.microparams import Spheroid, SpheroidLognormal
 
         if len(self.avail_eps) == 0:
             return []
@@ -148,7 +136,7 @@ class NCFileResolver:
 
     @staticmethod
     def _irregular_id(shape: Shape) -> str:
-        from pymopsmap.classes.microparams import (
+        from pymopsmap.models.microparams import (
             Irregular,
         )
 

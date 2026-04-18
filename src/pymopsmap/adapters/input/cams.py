@@ -1,13 +1,13 @@
 """CAMS aerosol adapter — interpolates microphysical parameters from CAMS tables."""
 
 import json
-from enum import Enum
+from enum import StrEnum
 
 import numpy as np
 import xarray as xr
 from numpy.typing import ArrayLike
 
-from pymopsmap.classes import (
+from pymopsmap.models import (
     LognormalPSD,
     MicroParameters,
     MicroParametersDispatch,
@@ -16,7 +16,7 @@ from pymopsmap.classes import (
 from pymopsmap.utils import DATA_PATH, SortedPosFloat64List
 
 
-class CamsAerosol(str, Enum):
+class CamsAerosol(StrEnum):
     CONTINENTAL = "continen"
     SULPHATE_CAMS = "sulphate"
     SEA_SALT_CAMS = "sea_salt"
@@ -28,7 +28,7 @@ class CamsAerosol(str, Enum):
     SECONDARY_ORGANIC = "secondary_organic"
 
 
-class CamsVersion(str, Enum):
+class CamsVersion(StrEnum):
     V47_R1 = "47r1"
     V48_R1 = "48r1"
     V49_R1 = "49r1"
@@ -122,9 +122,7 @@ def read_aerosol_modes_concentrations(
     return {"fine": conc[0], "coarse": conc[1]}
 
 
-def _read_granulometry(
-    ds: xr.Dataset, rh: float
-) -> dict[str, tuple[float, float]]:
+def _read_granulometry(ds: xr.Dataset, rh: float) -> dict[str, tuple[float, float]]:
     """
     Read the log-normal distribution arguments (rm, sigma) for the fine
     and coarse modes in an xarray dataset, for a given relative humidity.

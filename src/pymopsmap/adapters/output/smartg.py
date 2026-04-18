@@ -6,7 +6,7 @@ from pathlib import Path
 import xarray as xr
 from einops import rearrange
 
-from pymopsmap.classes import OptiProps
+from pymopsmap.models import OptiProps
 from pymopsmap.utils import get_logger
 
 logger = get_logger(__name__)
@@ -32,9 +32,7 @@ def create_lut_for_smartg(
         xr.Dataset
             The LUT for the specie of interest
     """
-    logger.debug(
-        "Processing Mopsmap output LUT to create filename: %s", specie
-    )
+    logger.debug("Processing Mopsmap output LUT to create filename: %s", specie)
 
     # Extract wavelength, humidity, theta and mueller index from op
     wls = op.coord("wl")

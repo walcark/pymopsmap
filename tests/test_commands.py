@@ -1,6 +1,7 @@
 import pytest
 
-from pymopsmap.classes import (
+from pymopsmap.engine.commands import psd_command, shape_command
+from pymopsmap.models import (
     FileDefinedPSD,
     FixedPSD,
     LognormalPSD,
@@ -9,7 +10,6 @@ from pymopsmap.classes import (
     Sphere,
     Spheroid,
 )
-from pymopsmap.mopsmap.commands import psd_command, shape_command
 
 
 def test_FixedPSD_command():

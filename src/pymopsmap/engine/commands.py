@@ -5,11 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from pymopsmap.classes import PSD, MicroParameters, Shape
+from pymopsmap.models import PSD, MicroParameters, Shape
 from pymopsmap.utils import PosFloat64List, SortedPosFloat64List, get_tempfile
 
 if TYPE_CHECKING:
-    from pymopsmap.classes.output_request import OutputRequest
+    from pymopsmap.models.output_request import OutputRequest
 
 
 def microparams_command(
@@ -19,10 +19,7 @@ def microparams_command(
     mpli = [mp] if isinstance(mp, MicroParameters) else mp
 
     mp_command = "\n".join(
-        [
-            _single_microparams_command(m, i + 1)
-            for m, i in zip(mpli, range(len(mpli)))
-        ]
+        [_single_microparams_command(m, i + 1) for m, i in zip(mpli, range(len(mpli)))]
     )
 
     return mp_command
@@ -100,7 +97,7 @@ def output_request_commands(
     rh: float | None = None,
 ) -> str:
     """Build the output section of a MOPSMAP launch file."""
-    from pymopsmap.classes.output_request import OutputType
+    from pymopsmap.models.output_request import OutputType
 
     _ASCII_TYPES = {
         OutputType.PHASE_FUNCTION,

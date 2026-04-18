@@ -1,7 +1,7 @@
 import numpy as np
 import xarray as xr
 
-from pymopsmap.adapt.cams_to_microparams import (
+from pymopsmap.adapters.input.cams import (
     DATA_PATH,
     CamsAerosol,
     _read_refractive_index,

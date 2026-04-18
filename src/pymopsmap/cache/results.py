@@ -10,12 +10,12 @@ from pymopsmap.utils import RESULT_CACHE_DIR
 from pymopsmap.utils.caching import cache_key
 
 if TYPE_CHECKING:
-    from pymopsmap.classes import (
+    from pymopsmap.models import (
         MicroParameters,
         MicroParametersDispatch,
         OptiProps,
     )
-    from pymopsmap.classes.output_request import OutputRequest
+    from pymopsmap.models.output_request import OutputRequest
 
 
 class ResultCache:
@@ -36,7 +36,7 @@ class ResultCache:
     def get(self, key: str) -> OptiProps | None:
         import xarray as xr
 
-        from pymopsmap.classes import OptiProps
+        from pymopsmap.models import OptiProps
 
         p = self._path(key)
         if not p.exists() or p.stat().st_size == 0:

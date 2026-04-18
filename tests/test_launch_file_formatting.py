@@ -2,8 +2,8 @@ import re
 
 import pytest
 
-from pymopsmap.classes import FixedPSD, MicroParameters, Sphere
-from pymopsmap.mopsmap.launch_file_format import write_launching_file
+from pymopsmap.engine.launch_file import write_launching_file
+from pymopsmap.models import FixedPSD, MicroParameters, Sphere
 from pymopsmap.utils import DATASET_CACHE_DIR
 
 
@@ -49,7 +49,7 @@ def test_launch_file_without_rh(sphere_mp):
 
 
 def test_launch_file_no_ascii_for_integrated_only(sphere_mp):
-    from pymopsmap.classes.output_request import DEFAULT_OUTPUT
+    from pymopsmap.models.output_request import DEFAULT_OUTPUT
 
     paths = write_launching_file(sphere_mp, output_types=DEFAULT_OUTPUT)
     content = paths["mopsmap"].read_text()
@@ -57,7 +57,7 @@ def test_launch_file_no_ascii_for_integrated_only(sphere_mp):
 
 
 def test_launch_file_ascii_for_lidar(sphere_mp):
-    from pymopsmap.classes.output_request import OutputType
+    from pymopsmap.models.output_request import OutputType
 
     paths = write_launching_file(
         sphere_mp,
