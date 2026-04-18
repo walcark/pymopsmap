@@ -1,72 +1,65 @@
-"""
-mopsmap.py
+"""MOPSMAP binary execution and output capture."""
 
-Author  : Kévin Walcarius
-Date    : 2025-11-19
-Version : 1.0
-License : MIT
-Summary : Module used to define the Mopsmap launch command.
-"""
+from __future__ import annotations
 
-import numpy as np
-from typing import Any
-import os
 import subprocess
 from pathlib import Path
+from typing import Any
 
-from pymopsmap.utils import get_logger, MOPSMAP_PATH
+from pymopsmap.exceptions import MopsmapError
+from pymopsmap.utils import MOPSMAP_PATH, get_logger
 
 logger = get_logger(__name__)
 
 
-def launch_mopsmap(input_filename: Path) -> dict[str, Any]:
+def launch_mopsmap(
+    input_filename: Path,
+    expected_output: Path | None = None,
+) -> dict[str, Any]:
     """
-    Launches the Mopsmap executable given a Mopsmap input file
-    with all the execution directives. The filename is formatted
-    by the `write_launching_file` method.
-    """
+    Launch the MOPSMAP binary and return captured artefacts.
 
+    Parameters
+    ----------
+    input_filename : Path
+        Path to the MOPSMAP launch file.
+    expected_output : Path, optional
+        Expected path of the NetCDF output file. When not supplied, the
+        function searches for ``output.nc`` in the same directory as the
+        launch file.
+    """
     cmd = [str(MOPSMAP_PATH), str(input_filename)]
-    logger.debug(f"Running Mopsmap command: {' '.join(cmd)}")
+    logger.debug("Running MOPSMAP: %s", " ".join(cmd))
 
-    # Run process and capture streams
-    proc = subprocess.run(
-        cmd,
-        text=True,
-        capture_output=True,  # keep capture
-        check=False,  # we handle error ourselves
-    )
+    proc = subprocess.run(cmd, text=True, capture_output=True, check=False)
 
     stdout = proc.stdout or ""
     stderr = proc.stderr or ""
 
-    # Log everything in debug mode
     if stdout.strip():
-        logger.debug("[MOPSMAP STDOUT]\n" + stdout)
-
+        logger.debug("[MOPSMAP STDOUT]\n%s", stdout)
     if stderr.strip():
-        logger.warning("[MOPSMAP STDERR]\n" + stderr)
+        logger.warning("[MOPSMAP STDERR]\n%s", stderr)
 
-    # Detect process failure
     if proc.returncode != 0:
-        raise RuntimeError(
-            f"MOPSMAP exited with code {proc.returncode}\n"
-            f"STDERR:\n{stderr}\n"
-            f"STDOUT:\n{stdout}"
+        raise MopsmapError(
+            f"MOPSMAP exited with code {proc.returncode}",
+            returncode=proc.returncode,
+            stderr=stderr,
         )
 
-    # Detect silent failure when output.nc is not in the /tmp/... directory.
-    output_dir = input_filename.parent
-    output = list(output_dir.glob("output.nc"))
+    if expected_output is not None:
+        output_path = expected_output
+    else:
+        candidates = list(input_filename.parent.glob("output.nc"))
+        output_path = candidates[0] if candidates else None
 
-    if not output:
-        raise RuntimeError(
-            "MOPSMAP finished with returncode 0 but did NOT produce "
-            "output.nc. This indicates a silent failure. "
-            "Check STDERR above."
+    if output_path is None or not output_path.exists():
+        raise MopsmapError(
+            "MOPSMAP exited with code 0 but produced no output file.",
+            returncode=0,
+            stderr=stderr,
         )
 
-    logger.debug("Mopsmap finished successfully.")
-    logger.debug(f"Output file: {output[0]}")
-
-    return {"output_path": output[0], "stdout": stdout}
+    logger.debug("MOPSMAP finished. Output: %s", output_path)
+    return {"output_path": output_path, "stdout": stdout}
