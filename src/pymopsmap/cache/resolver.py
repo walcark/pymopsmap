@@ -99,7 +99,8 @@ class NCFileResolver:
         if isinstance(shape, (Spheroid, SpheroidLognormal, SpheroidDistrFile)):
             eps_vals = self._eps_for_shape(shape)
             return [
-                f"spheroids_merged/spheroid_merged_{_fmt_eps(eps)}_{_fmt_mreal(mr)}_{_fmt_mimag(mi)}.nc"
+                "spheroids_merged/spheroid_merged_"
+                f"{_fmt_eps(eps)}_{_fmt_mreal(mr)}_{_fmt_mimag(mi)}.nc"
                 for eps, mr, mi in product(eps_vals, mr_vals, mi_vals)
             ]
 
@@ -119,7 +120,13 @@ class NCFileResolver:
             return []
 
         if isinstance(shape, Spheroid):
-            return _bracket(self.avail_eps, shape.aspect_ratio)
+            # MOPSMAP stores prolate spheroids under eps = 1/aspect_ratio
+            eps = (
+                1 / shape.aspect_ratio
+                if shape.mode == "prolate"
+                else shape.aspect_ratio
+            )
+            return _bracket(self.avail_eps, eps)
 
         if isinstance(shape, SpheroidLognormal):
             # Lognormal distribution covers a range; return all eps in range.
