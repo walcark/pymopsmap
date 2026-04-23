@@ -100,7 +100,12 @@ def format_stdout(stdout: str) -> xr.Dataset:
     blocks = stdout.split("integrated")
     rows: list[np.ndarray] = []
     for blk in blocks[1:]:
-        toks = blk.strip().split()
+        lines = [
+            ln
+            for ln in blk.splitlines()
+            if ln.strip() and not ln.strip().startswith("Warning:")
+        ]
+        toks = " ".join(lines).split()
         if not toks:
             continue
         rows.append(np.asarray(toks, dtype=np.float32))
