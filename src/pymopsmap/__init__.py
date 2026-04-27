@@ -15,8 +15,9 @@ from pymopsmap.exceptions import (
 )
 from pymopsmap.models import (
     MicroParameters,
-    MicroParametersDispatch,
     OptiProps,
+    ParametricSweep,
+    ParticleMixture,
 )
 
 # Re-export shapes and PSDs for convenience
@@ -53,7 +54,7 @@ class CacheStatusReport:
 
 
 def cache_status(
-    mps: MicroParameters | list[MicroParameters] | MicroParametersDispatch,
+    mps: MicroParameters | ParticleMixture | ParametricSweep,
 ) -> CacheStatusReport:
     """Return which dataset files are cached and which are missing."""
     from pymopsmap.cache.optical import OpticalDatasetCache
@@ -80,7 +81,7 @@ def cache_status(
 
 
 def prefetch(
-    mps: MicroParameters | list[MicroParameters] | MicroParametersDispatch,
+    mps: MicroParameters | ParticleMixture | ParametricSweep,
     quiet: bool = False,
 ) -> None:
     """Download all missing dataset files without running MOPSMAP."""
@@ -107,7 +108,7 @@ def prefetch(
 
 
 def compute(
-    mps: MicroParameters | list[MicroParameters] | MicroParametersDispatch,
+    mps: MicroParameters | ParticleMixture | ParametricSweep,
     output_types: OutputRequest = DEFAULT_OUTPUT,
     rh: float | None = None,
     quiet: bool = False,
@@ -118,8 +119,10 @@ def compute(
     Handles file resolution, caching, downloading, and MOPSMAP execution
     transparently.
     """
+    if isinstance(mps, MicroParameters):
+        mps = ParticleMixture([mps])
     return compute_optical_properties(
-        dispatch=mps,
+        target=mps,
         output_types=output_types,
         rh=rh,
         quiet=quiet,
@@ -132,7 +135,7 @@ def compute(
 
 
 def kext(
-    mps: MicroParameters | list[MicroParameters] | MicroParametersDispatch,
+    mps: MicroParameters | ParticleMixture | ParametricSweep,
     rh: float | None = None,
     quiet: bool = False,
 ) -> xr.DataArray:
@@ -140,7 +143,7 @@ def kext(
 
 
 def ssa(
-    mps: MicroParameters | list[MicroParameters] | MicroParametersDispatch,
+    mps: MicroParameters | ParticleMixture | ParametricSweep,
     rh: float | None = None,
     quiet: bool = False,
 ) -> xr.DataArray:
@@ -148,7 +151,7 @@ def ssa(
 
 
 def phase(
-    mps: MicroParameters | list[MicroParameters] | MicroParametersDispatch,
+    mps: MicroParameters | ParticleMixture | ParametricSweep,
     rh: float | None = None,
     quiet: bool = False,
 ) -> xr.DataArray:
@@ -168,16 +171,16 @@ def phase(
 
 
 def _flatten_modes(
-    mps: MicroParameters | list[MicroParameters] | MicroParametersDispatch,
+    mps: MicroParameters | ParticleMixture | ParametricSweep,
 ) -> list[MicroParameters]:
-    if isinstance(mps, MicroParametersDispatch):
+    if isinstance(mps, ParametricSweep):
         result = []
-        for mode_list in mps.modes:
-            result.extend(mode_list)
+        for mixture in mps.mixtures:
+            result.extend(mixture.modes)
         return result
-    if isinstance(mps, MicroParameters):
-        return [mps]
-    return list(mps)
+    if isinstance(mps, ParticleMixture):
+        return list(mps.modes)
+    return [mps]
 
 
 # ---------------------------------------------------------------------------
@@ -194,7 +197,8 @@ __all__ = [
     "phase",
     # Classes
     "MicroParameters",
-    "MicroParametersDispatch",
+    "ParticleMixture",
+    "ParametricSweep",
     "OptiProps",
     "CacheStatusReport",
     # Output types

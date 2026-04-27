@@ -1,4 +1,4 @@
-"""Domain model classes — MicroParameters, OptiProps, dispatch, output request."""
+"""Domain model classes — MicroParameters, OptiProps, particle systems, outputs."""
 
 from .microparams import (
     PSD,
@@ -18,13 +18,14 @@ from .microparams import (
     SpheroidDistrFile,
     SpheroidLognormal,
 )
-from .microparams_dispatch import MicroParametersDispatch
 from .optiprops import OptiProps, extend_optiprops
 from .output_request import DEFAULT_OUTPUT, OutputRequest, OutputType
+from .particle_mixture import ParametricSweep, ParticleMixture
 
 __all__ = [
     "MicroParameters",
-    "MicroParametersDispatch",
+    "ParticleMixture",
+    "ParametricSweep",
     "OptiProps",
     "extend_optiprops",
     "Shape",

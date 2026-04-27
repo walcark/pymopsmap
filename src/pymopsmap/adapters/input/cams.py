@@ -10,7 +10,8 @@ from numpy.typing import ArrayLike
 from pymopsmap.models import (
     LognormalPSD,
     MicroParameters,
-    MicroParametersDispatch,
+    ParametricSweep,
+    ParticleMixture,
     Sphere,
 )
 from pymopsmap.utils import DATA_PATH, SortedPosFloat64List
@@ -39,10 +40,10 @@ def read_aerosol_microphysical_parameters(
     version: CamsVersion,
     wl_microns: SortedPosFloat64List,
     rh: ArrayLike,
-) -> MicroParametersDispatch:
+) -> ParametricSweep:
     """
-    Extracts the microphysical parameters of a given CAMS aerosol, and
-    then dispatch each instance
+    Extracts the microphysical parameters of a given CAMS aerosol and
+    builds a ParametricSweep over relative humidity.
     """
     path = DATA_PATH / "cams/cams_aer_microphysical_parameters.nc"
 
@@ -57,7 +58,7 @@ def read_aerosol_microphysical_parameters(
 
     rh = [rh] if isinstance(rh, float) else rh
 
-    dispatch: MicroParametersDispatch = MicroParametersDispatch()
+    sweep = ParametricSweep()
     for relhum in rh:
         xrds_sel = xrds.sel(aerosols_species=aer, cams_versions=ver)
         granulo = _read_granulometry(xrds_sel, relhum)
@@ -78,9 +79,9 @@ def read_aerosol_microphysical_parameters(
                 ),
             )
             modes.append(mp)
-        dispatch.append(modes=modes, params={"rh": relhum})
+        sweep.add(ParticleMixture(modes), {"rh": relhum})
 
-    return dispatch
+    return sweep
 
 
 def read_aerosol_modes_concentrations(

@@ -12,7 +12,6 @@ from pymopsmap.utils.caching import cache_key
 if TYPE_CHECKING:
     from pymopsmap.models import (
         MicroParameters,
-        MicroParametersDispatch,
         OptiProps,
     )
     from pymopsmap.models.output_request import OutputRequest
@@ -25,7 +24,7 @@ class ResultCache:
 
     def key(
         self,
-        mp: MicroParameters | list[MicroParameters] | MicroParametersDispatch,
+        mp: MicroParameters | list[MicroParameters],
         outputs: OutputRequest,
     ) -> str:
         return cache_key(mp, extra=sorted(outputs))

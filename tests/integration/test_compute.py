@@ -70,12 +70,18 @@ class TestSingleSphere:
             )
 
 
-class TestDispatchRh:
-    def test_dispatch_returns_rh_dimension(self):
-        from pymopsmap import MicroParameters, MicroParametersDispatch, Sphere, compute
+class TestParametricSweepRh:
+    def test_sweep_returns_rh_dimension(self):
+        from pymopsmap import (
+            MicroParameters,
+            ParametricSweep,
+            ParticleMixture,
+            Sphere,
+            compute,
+        )
         from pymopsmap.models.microparams import LognormalPSD
 
-        dispatch = MicroParametersDispatch()
+        sweep = ParametricSweep()
         for rh in [0.0, 50.0, 80.0]:
             mp = MicroParameters(
                 wavelength=[0.55],
@@ -85,7 +91,7 @@ class TestDispatchRh:
                 psd=LognormalPSD(rm=0.1, sigma=2.0, n=1e6, rmin=0.005, rmax=20.0),
                 kappa=0.3,
             )
-            dispatch.append(modes=mp, params={"rh": rh})
+            sweep.add(ParticleMixture([mp]), {"rh": rh})
 
-        op = compute(dispatch, quiet=True)
+        op = compute(sweep, quiet=True)
         assert "rh" in op.ds.dims or "rh" in op.ds.coords

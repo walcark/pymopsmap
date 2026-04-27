@@ -7,8 +7,9 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pymopsmap.models import (
         MicroParameters,
-        MicroParametersDispatch,
         OptiProps,
+        ParametricSweep,
+        ParticleMixture,
     )
     from pymopsmap.models.output_request import OutputRequest
 
@@ -16,13 +17,13 @@ if TYPE_CHECKING:
 
 
 def compute_optical_properties(
-    dispatch: Modes | MicroParametersDispatch,
+    target: ParticleMixture | ParametricSweep,
     output_types: OutputRequest | None = None,
     rh: float | None = None,
     quiet: bool = False,
 ) -> OptiProps:
     """
-    Compute optical properties for a single mode set or a dispatch.
+    Compute optical properties for a ParticleMixture or a ParametricSweep.
 
     Transparent pipeline:
       1. Check result cache → return hit immediately.
@@ -30,22 +31,24 @@ def compute_optical_properties(
       3. Write MOPSMAP launch file → run MOPSMAP → parse outputs.
       4. Store result in cache → return.
     """
-    from pymopsmap.models import MicroParametersDispatch, extend_optiprops
+    from pymopsmap.models import ParametricSweep, extend_optiprops
     from pymopsmap.models.output_request import DEFAULT_OUTPUT
 
     if output_types is None:
         output_types = DEFAULT_OUTPUT
 
-    if not isinstance(dispatch, MicroParametersDispatch):
-        return _compute_single(dispatch, output_types=output_types, rh=rh, quiet=quiet)
+    if isinstance(target, ParametricSweep):
+        return extend_optiprops(
+            index=target.params,
+            optiprops_li=[
+                _compute_single(
+                    mixture.modes, output_types=output_types, rh=rh, quiet=quiet
+                )
+                for mixture in target.mixtures
+            ],
+        )
 
-    return extend_optiprops(
-        index=dispatch.params,
-        optiprops_li=[
-            _compute_single(modes, output_types=output_types, rh=rh, quiet=quiet)
-            for modes in dispatch
-        ],
-    )
+    return _compute_single(target.modes, output_types=output_types, rh=rh, quiet=quiet)
 
 
 def _compute_single(
@@ -54,12 +57,17 @@ def _compute_single(
     rh: float | None,
     quiet: bool,
 ) -> OptiProps:
+    import numpy as np
+    import xarray as xr
+
     from pymopsmap.cache.downloader import DatasetDownloader
     from pymopsmap.cache.optical import OpticalDatasetCache
     from pymopsmap.cache.resolver import NCFileResolver
     from pymopsmap.cache.results import ResultCache
+    from pymopsmap.models import OptiProps
     from pymopsmap.utils import DATASET_CACHE_DIR
 
+    from .coverage import clip_modes_to_coverage
     from .launch_file import write_launching_file
     from .launcher import launch_mopsmap
     from .output_format import format_mopsmap_outputs
@@ -68,10 +76,18 @@ def _compute_single(
     dataset_cache = OpticalDatasetCache()
     downloader = DatasetDownloader(cache=dataset_cache, quiet=quiet)
 
+    # Cache key is based on the original (unclipped) request so the full masked
+    # result is stored and returned on subsequent calls.
     key = result_cache.key(modes, output_types)
     cached = result_cache.get(key)
     if cached is not None:
         return cached
+
+    # Clip wavelengths that exceed dataset size-parameter coverage.
+    # original_wl is used to reindex the result back to the full grid after the run.
+    mp_ref = modes if not isinstance(modes, list) else modes[0]
+    original_wl = list(mp_ref.wavelength)
+    modes_run, valid_mask = clip_modes_to_coverage(modes)
 
     # Ensure index.nc is present first
     index_path = dataset_cache.full_path("index.nc")
@@ -80,13 +96,13 @@ def _compute_single(
 
     # Resolve required dataset files and download missing ones
     resolver = NCFileResolver(index_path)
-    mp_list = [modes] if not isinstance(modes, list) else modes
+    mp_list = [modes_run] if not isinstance(modes_run, list) else modes_run
     required = resolver.resolve(mp_list)
     downloader.download_missing(required)
 
-    # Run MOPSMAP
+    # Run MOPSMAP on the (possibly clipped) wavelength grid
     paths = write_launching_file(
-        mp=modes,
+        mp=modes_run,
         output_types=output_types,
         rh=rh,
         mopsmap_data_path=DATASET_CACHE_DIR,
@@ -95,6 +111,19 @@ def _compute_single(
     out_mopsmap["ascii_base"] = paths.get("ascii_base")
 
     result = format_mopsmap_outputs(out_mopsmap, output_types=output_types)
+
+    # Reindex to original wavelength grid; clipped positions become NaN.
+    # We insert by position (valid_mask) rather than matching float values, because
+    # MOPSMAP echoes wavelengths as float32 strings that may not round-trip exactly.
+    if not valid_mask.all():
+        wl_full = np.asarray(original_wl, dtype=np.float32)
+        new_vars = {}
+        for name, da in result.ds.data_vars.items():
+            full = np.full(len(wl_full), np.nan, dtype=np.float32)
+            full[valid_mask] = da.values
+            new_vars[name] = (("wl",), full)
+        ds_full = xr.Dataset(new_vars, coords={"wl": wl_full})
+        result = OptiProps(ds=ds_full)
 
     result_cache.put(key, result)
     return result
