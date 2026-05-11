@@ -78,7 +78,7 @@ def _compute_single(
 
     # Cache key is based on the original (unclipped) request so the full masked
     # result is stored and returned on subsequent calls.
-    key = result_cache.key(modes, output_types)
+    key = result_cache.key(modes, output_types, rh=rh)
     cached = result_cache.get(key)
     if cached is not None:
         return cached

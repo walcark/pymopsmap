@@ -26,8 +26,9 @@ class ResultCache:
         self,
         mp: MicroParameters | list[MicroParameters],
         outputs: OutputRequest,
+        rh: float | None = None,
     ) -> str:
-        return cache_key(mp, extra=sorted(outputs))
+        return cache_key(mp, extra=(sorted(outputs), rh))
 
     def _path(self, key: str) -> Path:
         return self.root_dir / f"{key}.nc"
