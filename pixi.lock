@@ -2511,7 +2511,7 @@ packages:
 - pypi: ./
   name: pymopsmap
   version: 0.2.0
-  sha256: 6a2c96a5f2abc73ab4ed8539497151a09e294c5086316932374a1d0482b71d0a
+  sha256: 8c930eb9a5ae05937e32c7b09a327a7e9ab1f5eca60a98c441d3d07429691fcf
   requires_python: '>=3.11'
   editable: true
 - conda: https://conda.anaconda.org/conda-forge/noarch/pyparsing-3.3.1-pyhcf101f3_0.conda

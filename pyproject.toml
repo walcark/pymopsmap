@@ -46,7 +46,7 @@ pre-commit = ">=4.4.0,<5"
 pytest = ">=9.0.1,<10"
 
 [tool.ruff]
-line-length = 88
+line-length = 79
 exclude = [".pixi/", "bin/"]
 
 [tool.ruff.lint]
