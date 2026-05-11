@@ -55,7 +55,12 @@ class TestDistrListPSD:
         cmd = psd.command
         assert cmd.startswith("size distr_list dndr")
         assert "0.1" in cmd
-        assert "1e+04" in cmd or "10000" in cmd or "1e4" in cmd or "10000.0" in cmd
+        assert (
+            "1e+04" in cmd
+            or "10000" in cmd
+            or "1e4" in cmd
+            or "10000.0" in cmd
+        )
 
     def test_length_mismatch_raises(self):
         with pytest.raises(ValidationError):

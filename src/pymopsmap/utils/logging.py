@@ -15,7 +15,7 @@ def _configure() -> None:
     if _INITIALIZED:
         return
 
-    shared_processors = [
+    shared_processors: list = [  # type: ignore[type-arg]
         structlog.stdlib.add_logger_name,
         structlog.stdlib.add_log_level,
         structlog.stdlib.PositionalArgumentsFormatter(),

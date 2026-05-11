@@ -43,13 +43,17 @@ def format_mopsmap_outputs(
     ascii_base: Path | None = out_mopsmap.get("ascii_base")
 
     if OutputType.INTEGRATED in output_types:
-        # When ascii_file is active MOPSMAP writes integrated to {base}.integrated
-        # (no "integrated" prefix, just columns); stdout is empty in that case.
+        # When ascii_file is active, MOPSMAP writes integrated to
+        # {base}.integrated (no prefix, just columns); stdout is empty.
         integrated_file = (
-            Path(str(ascii_base) + ".integrated") if ascii_base is not None else None
+            Path(str(ascii_base) + ".integrated")
+            if ascii_base is not None
+            else None
         )
         if integrated_file is not None and integrated_file.exists():
-            datasets.append(_parse_integrated_file(integrated_file.read_text()))
+            datasets.append(
+                _parse_integrated_file(integrated_file.read_text())
+            )
         else:
             datasets.append(format_stdout(out_mopsmap["stdout"]))
 
@@ -80,7 +84,7 @@ def format_mopsmap_outputs(
     for ds in datasets:
         overlap = set(ds.data_vars) & merged_vars
         clean.append(ds.drop_vars(list(overlap)) if overlap else ds)
-        merged_vars.update(ds.data_vars)
+        merged_vars.update(ds.data_vars)  # type: ignore[arg-type]
 
     ds = xr.merge(clean, compat="no_conflicts", join="outer")
     return OptiProps(ds=ds)
@@ -111,7 +115,9 @@ def format_stdout(stdout: str) -> xr.Dataset:
         rows.append(np.asarray(toks, dtype=np.float32))
 
     if not rows:
-        raise ValueError("No numeric data found in stdout (split by 'integrated').")
+        raise ValueError(
+            "No numeric data found in stdout (split by 'integrated')."
+        )
 
     arr = np.stack(rows, axis=0)
     wl = arr[:, 0].astype(np.float32)
@@ -305,7 +311,9 @@ def format_netcdf_file(filename: Path, wl: np.ndarray) -> xr.Dataset:
     if "phase" not in xrds:
         raise KeyError("Variable 'phase' not found in netCDF file.")
 
-    theta = np.linspace(0.0, 180.0, len(xrds.nthetamax.data), dtype=np.float32)[::-1]
+    theta = np.linspace(
+        0.0, 180.0, len(xrds.nthetamax.data), dtype=np.float32
+    )[::-1]
     wl = np.asarray(wl, dtype=np.float32)
     phase = np.asarray(xrds["phase"].data, dtype=np.float32)
 
@@ -317,7 +325,8 @@ def format_netcdf_file(filename: Path, wl: np.ndarray) -> xr.Dataset:
         phase = phase.transpose(1, 0, 2)
     else:
         raise ValueError(
-            f"Cannot align phase with wl: wl.size={wl.size}, phase.shape={phase.shape}."
+            f"Cannot align phase with wl: "
+            f"wl.size={wl.size}, phase.shape={phase.shape}."
         )
 
     mueller_idx = np.arange(phase.shape[1], dtype=np.int32)

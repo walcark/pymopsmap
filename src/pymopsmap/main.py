@@ -8,7 +8,6 @@ from pymopsmap.adapters import (
 
 
 def main():
-
     import matplotlib.pyplot as plt
 
     version = CamsVersion.V49_R1

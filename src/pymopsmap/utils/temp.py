@@ -1,4 +1,4 @@
-"""Temporary workspace management (set PYMOPSMAP_KEEP_TEMP=1 to disable cleanup)."""
+"""Temporary workspace management (PYMOPSMAP_KEEP_TEMP=1 disables cleanup)."""
 
 from __future__ import annotations
 

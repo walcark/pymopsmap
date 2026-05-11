@@ -96,7 +96,9 @@ class TestSphericalFilenames:
             shape=Sphere(),
             psd=LognormalPSD(rm=0.1, sigma=2.0, n=1e6, rmin=0.005, rmax=20.0),
         )
-        sphere_files = [f for f in resolver.resolve(mp) if f.startswith("spheres/")]
+        sphere_files = [
+            f for f in resolver.resolve(mp) if f.startswith("spheres/")
+        ]
         for f in sphere_files:
             assert f.startswith("spheres/sphere_")
             assert f.endswith(".nc")
@@ -118,7 +120,7 @@ class TestIrregularFilenames:
 
 class TestMultipleWavelengths:
     def test_deduplication_across_wavelengths(self, resolver):
-        # Two wavelengths with same n_real/n_imag → same files as one wavelength
+        # Same n_real/n_imag → same files regardless of wavelength count
         mp_two = MicroParameters(
             wavelength=[0.55, 0.67],
             n_real=[1.45, 1.45],

@@ -2,7 +2,7 @@
 
 
 class DatasetSourceNotConfiguredError(Exception):
-    """Raised when PYMOPSMAP_DATASET_SOURCE is not set and a download is needed."""
+    """Raised when PYMOPSMAP_DATASET_SOURCE is not set."""
 
 
 class DownloadError(Exception):

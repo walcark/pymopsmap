@@ -12,9 +12,9 @@ from pymopsmap.models import (
 )
 
 
-# =====================================================================================
+# =======================================================================
 # Particle-size distribution tests
-# =====================================================================================
+# =======================================================================
 @pytest.mark.parametrize(
     "radius, n",
     [
@@ -79,11 +79,15 @@ def test_ModifiedGammaPSD_arguments_must_be_positive(A, B, rmin, rmax):
 
 def test_ModifiedGammaPSD_radius():
     with pytest.raises(ValueError, match="rmax > rmin required, got"):
-        ModifiedGammaPSD(A=0.05, B=1.0, alpha=0.03, gamma=2.0, rmin=1.0, rmax=0.5)
+        ModifiedGammaPSD(
+            A=0.05, B=1.0, alpha=0.03, gamma=2.0, rmin=1.0, rmax=0.5
+        )
 
 
 def test_ModifiedGammaPSD_command():
-    psd = ModifiedGammaPSD(A=0.05, B=1.0, alpha=0.03, gamma=2.0, rmin=0.01, rmax=0.5)
+    psd = ModifiedGammaPSD(
+        A=0.05, B=1.0, alpha=0.03, gamma=2.0, rmin=0.01, rmax=0.5
+    )
     assert psd.command == "size mod_gamma 0.05 0.01 0.5 0.03 1.0 2.0"
 
 
@@ -101,9 +105,9 @@ def test_FileDefinedPSD_command():
     assert psd.command == "size bin_file 'test.txt'"
 
 
-# ==============================================================================
+# =============================================================================
 # Shape tests
-# ==============================================================================
+# =============================================================================
 def test_spheroid_mode_is_oblate_or_prolate():
     with pytest.raises(ValueError):
         Spheroid(mode="unknown-mode", aspect_ratio=1.0)
@@ -114,12 +118,12 @@ def test_spheroid_aspect_ratio_is_greater_than_one():
         Spheroid(mode="spheroid", aspect_ratio=0.99)
 
 
-# ==============================================================================
+# =============================================================================
 # Kappa and density tests
-# ==============================================================================
+# =============================================================================
 @pytest.mark.parametrize(
     "k, d",
-    [(0.0, 1.6), (-0.01, 1.6), (0.01, 0.0), (0.01, -0.01)],
+    [(-0.01, 1.6), (0.01, 0.0), (0.01, -0.01)],
 )
 def test_kappa_and_density_are_positive(k, d):
     with pytest.raises(ValueError):

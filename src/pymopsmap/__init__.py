@@ -1,4 +1,4 @@
-"""pymopsmap — Python wrapper for MOPSMAP aerosol optical property computation."""
+"""pymopsmap — Python wrapper for MOPSMAP aerosol optical properties."""
 
 from __future__ import annotations
 
@@ -159,7 +159,9 @@ def phase(
 
     return compute(
         mps,
-        output_types=frozenset({OutputType.INTEGRATED, OutputType.PHASE_FUNCTION}),
+        output_types=frozenset(
+            {OutputType.INTEGRATED, OutputType.PHASE_FUNCTION}
+        ),
         rh=rh,
         quiet=quiet,
     ).sel("phase")

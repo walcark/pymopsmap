@@ -123,12 +123,12 @@ class OpacMix:
             if mode == OpacHumidityMode.GEISA:
                 modes = [
                     _build_mode_geisa(sp, n, datasets[sp], wavelengths, rh)
-                    for sp, n in self.components.items()
+                    for sp, n in self.components.items()  # type: ignore[union-attr]
                 ]
             else:
                 modes = [
                     _build_mode_kappa(sp, n, datasets[sp], wavelengths, rh)
-                    for sp, n in self.components.items()
+                    for sp, n in self.components.items()  # type: ignore[union-attr]
                 ]
             sweep.add(ParticleMixture(modes), {"rh": rh})
         return compute_optical_properties(

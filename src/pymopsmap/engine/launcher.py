@@ -48,6 +48,7 @@ def launch_mopsmap(
             stderr=stderr,
         )
 
+    output_path: Path | None
     if expected_output is not None:
         output_path = expected_output
     else:

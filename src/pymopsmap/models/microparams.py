@@ -86,7 +86,8 @@ class IrregularOverlay(BaseModel):
     @property
     def command(self) -> str:
         return (
-            f"shape irregular_overlay {self.distr_filename} {{self.xmin}} {{self.xmax}}"
+            f"shape irregular_overlay {self.distr_filename}"
+            f" {{self.xmin}} {{self.xmax}}"
         )
 
 
@@ -141,14 +142,16 @@ class LognormalPSD(BaseModel):
     def check_rmin_rmax(self):
         if self.rmax <= self.rmin:
             raise ValueError(
-                f"rmax > rmin required, got rmax={self.rmax} and rmin={self.rmin})."
+                f"rmax > rmin required, "
+                f"got rmax={self.rmax} and rmin={self.rmin})."
             )
         return self
 
     @property
     def command(self) -> str:
         return (
-            f"size log_normal {self.rm} {self.sigma} {self.n} {self.rmin} {self.rmax}"
+            f"size log_normal {self.rm} {self.sigma}"
+            f" {self.n} {self.rmin} {self.rmax}"
         )
 
 
@@ -174,7 +177,8 @@ class ModifiedGammaPSD(BaseModel):
     def check_bounds(self):
         if self.rmax <= self.rmin:
             raise ValueError(
-                f"rmax > rmin required, got rmax={self.rmax} and rmin={self.rmin})."
+                f"rmax > rmin required, "
+                f"got rmax={self.rmax} and rmin={self.rmin})."
             )
         return self
 
@@ -228,7 +232,9 @@ class DistrListPSD(BaseModel):
 
     @property
     def command(self) -> str:
-        pairs = " ".join(f"{r} {c}" for r, c in zip(self.radii, self.concentrations))
+        pairs = " ".join(
+            f"{r} {c}" for r, c in zip(self.radii, self.concentrations)
+        )
         return f"size distr_list {self.distr_type.value} {pairs}"
 
 
@@ -259,7 +265,8 @@ class MicroParameters(BaseModel):
             self.n_real = self.n_real * n
         elif len(self.n_real) != n:
             raise ValueError(
-                f"n_real length ({len(self.n_real)}) must match wavelength length ({n})"
+                f"n_real length ({len(self.n_real)}) must match"
+                f" wavelength length ({n})"
             )
         if isinstance(self.n_imag, float):
             self.n_imag = [self.n_imag] * n
@@ -267,26 +274,7 @@ class MicroParameters(BaseModel):
             self.n_imag = self.n_imag * n
         elif len(self.n_imag) != n:
             raise ValueError(
-                f"n_imag length ({len(self.n_imag)}) must match wavelength length ({n})"
+                f"n_imag length ({len(self.n_imag)}) must match"
+                f" wavelength length ({n})"
             )
         return self
-
-    def command(self, num: int | None = None) -> str:
-        mode: str = f"mode {num} "
-        string = (
-            mode
-            + self.shape.command
-            + "\n"
-            + mode
-            + self.psd.command
-            + "\n"
-            + mode
-            + self.refr_index.command
-        )
-        if self.kappa is not None:
-            string += "\n" + mode + f"kappa {self.kappa}"
-
-        if self.density is not None:
-            string += "\n" + mode + f"density {self.density}"
-
-        return string

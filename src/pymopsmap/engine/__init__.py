@@ -1,8 +1,8 @@
-"""MOPSMAP computation pipeline — file resolution, execution, result caching."""
+"""MOPSMAP computation pipeline — resolution, execution, caching."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeAlias
 
 if TYPE_CHECKING:
     from pymopsmap.models import (
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     )
     from pymopsmap.models.output_request import OutputRequest
 
-    Modes = MicroParameters | list[MicroParameters]
+    Modes: TypeAlias = MicroParameters | list[MicroParameters]
 
 
 def compute_optical_properties(
@@ -42,13 +42,18 @@ def compute_optical_properties(
             index=target.params,
             optiprops_li=[
                 _compute_single(
-                    mixture.modes, output_types=output_types, rh=rh, quiet=quiet
+                    mixture.modes,
+                    output_types=output_types,
+                    rh=rh,
+                    quiet=quiet,
                 )
                 for mixture in target.mixtures
             ],
         )
 
-    return _compute_single(target.modes, output_types=output_types, rh=rh, quiet=quiet)
+    return _compute_single(
+        target.modes, output_types=output_types, rh=rh, quiet=quiet
+    )
 
 
 def _compute_single(
@@ -84,7 +89,7 @@ def _compute_single(
         return cached
 
     # Clip wavelengths that exceed dataset size-parameter coverage.
-    # original_wl is used to reindex the result back to the full grid after the run.
+    # original_wl is used to reindex the result back to the full grid.
     mp_ref = modes if not isinstance(modes, list) else modes[0]
     original_wl = list(mp_ref.wavelength)
     modes_run, valid_mask = clip_modes_to_coverage(modes)
@@ -113,8 +118,8 @@ def _compute_single(
     result = format_mopsmap_outputs(out_mopsmap, output_types=output_types)
 
     # Reindex to original wavelength grid; clipped positions become NaN.
-    # We insert by position (valid_mask) rather than matching float values, because
-    # MOPSMAP echoes wavelengths as float32 strings that may not round-trip exactly.
+    # Insert by position (valid_mask), not by float value: MOPSMAP echoes
+    # wavelengths as float32 strings that may not round-trip exactly.
     if not valid_mask.all():
         wl_full = np.asarray(original_wl, dtype=np.float32)
         new_vars = {}

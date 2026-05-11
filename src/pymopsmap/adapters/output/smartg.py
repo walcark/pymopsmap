@@ -32,7 +32,9 @@ def create_lut_for_smartg(
         xr.Dataset
             The LUT for the specie of interest
     """
-    logger.debug("Processing Mopsmap output LUT to create filename: %s", specie)
+    logger.debug(
+        "Processing Mopsmap output LUT to create filename: %s", specie
+    )
 
     # Extract wavelength, humidity, theta and mueller index from op
     wls = op.coord("wl")

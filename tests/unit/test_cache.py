@@ -18,7 +18,9 @@ from pymopsmap.utils.caching import cache_key
 def _make_optiprops() -> OptiProps:
     wl = np.array([0.55, 0.67], dtype=np.float32)
     ds = xr.Dataset(
-        data_vars={"kext": (("wl",), np.array([1e-3, 2e-3], dtype=np.float32))},
+        data_vars={
+            "kext": (("wl",), np.array([1e-3, 2e-3], dtype=np.float32))
+        },
         coords={"wl": wl},
     )
     return OptiProps(ds=ds)
@@ -48,7 +50,9 @@ class TestOpticalDatasetCache:
 
     def test_full_path(self, tmp_path):
         c = OpticalDatasetCache(root_dir=tmp_path)
-        assert c.full_path("spheres/test.nc") == tmp_path / "spheres" / "test.nc"
+        assert (
+            c.full_path("spheres/test.nc") == tmp_path / "spheres" / "test.nc"
+        )
 
     def test_register_atomic_write(self, tmp_path):
         c = OpticalDatasetCache(root_dir=tmp_path)
@@ -90,7 +94,9 @@ class TestResultCache:
         rc.put(k, op)
         loaded = rc.get(k)
         assert loaded is not None
-        np.testing.assert_allclose(loaded.sel("kext").values, op.sel("kext").values)
+        np.testing.assert_allclose(
+            loaded.sel("kext").values, op.sel("kext").values
+        )
 
     def test_key_determinism(self, tmp_path):
         rc = ResultCache(root_dir=tmp_path)

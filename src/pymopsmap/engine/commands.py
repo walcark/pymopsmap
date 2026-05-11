@@ -19,7 +19,10 @@ def microparams_command(
     mpli = [mp] if isinstance(mp, MicroParameters) else mp
 
     mp_command = "\n".join(
-        [_single_microparams_command(m, i + 1) for m, i in zip(mpli, range(len(mpli)))]
+        [
+            _single_microparams_command(m, i + 1)
+            for m, i in zip(mpli, range(len(mpli)))
+        ]
     )
 
     return mp_command
@@ -36,7 +39,7 @@ def _single_microparams_command(mp: MicroParameters, num: int = 1) -> str:
         + psd_command(mp.psd)
         + "\n"
         + mode
-        + refr_command(wl=mp.wavelength, nr=mp.n_real, ni=mp.n_imag)
+        + refr_command(wl=mp.wavelength, nr=mp.n_real, ni=mp.n_imag)  # type: ignore[arg-type]
     )
     if mp.kappa is not None:
         string += "\n" + mode + f"kappa {mp.kappa}"

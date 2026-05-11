@@ -1,4 +1,4 @@
-"""Domain model classes — MicroParameters, OptiProps, particle systems, outputs."""
+"""Domain model classes — MicroParameters, OptiProps, particle systems."""
 
 from .microparams import (
     PSD,

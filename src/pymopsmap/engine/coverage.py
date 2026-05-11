@@ -1,4 +1,4 @@
-"""Size-parameter coverage checks against Gasteiger & Wiegner (2018) dataset limits."""
+"""Size-parameter coverage checks (Gasteiger & Wiegner 2018 limits)."""
 
 from __future__ import annotations
 
@@ -44,7 +44,7 @@ def _max_radius(psd) -> float | None:
 
 
 def _valid_mask(mp: MicroParameters) -> np.ndarray:
-    """Boolean mask over wl where the size parameter falls in dataset limits."""
+    """Boolean mask: True where size parameter is within dataset limits."""
     x_min, x_max = _X_LIMITS.get(mp.shape.type, (0.0, float("inf")))
     r_max = _max_radius(mp.psd)
 
@@ -61,8 +61,8 @@ def _clip_mp(mp: MicroParameters, mask: np.ndarray) -> MicroParameters:
 
     return MicroParameters(
         wavelength=[w for w, v in zip(mp.wavelength, mask) if v],
-        n_real=[r for r, v in zip(mp.n_real, mask) if v],
-        n_imag=[i for i, v in zip(mp.n_imag, mask) if v],
+        n_real=[r for r, v in zip(mp.n_real, mask) if v],  # type: ignore[arg-type]
+        n_imag=[i for i, v in zip(mp.n_imag, mask) if v],  # type: ignore[arg-type]
         shape=mp.shape,
         psd=mp.psd,
         kappa=mp.kappa,
@@ -74,21 +74,25 @@ def clip_modes_to_coverage(
     modes: MicroParameters | list[MicroParameters],
 ) -> tuple[MicroParameters | list[MicroParameters], np.ndarray]:
     """
-    Clip wavelengths to the dataset size-parameter coverage for each shape type.
+    Clip wavelengths outside the Gasteiger & Wiegner (2018) coverage.
 
-    When any wavelength falls outside the valid range, a UserWarning is issued and
-    those wavelengths are removed before the MOPSMAP run.  The caller is responsible
-    for reindexing the result back to the original wavelength grid (filling clipped
-    positions with NaN).
+    Wavelengths outside the valid size-parameter range emit a UserWarning
+    and are dropped before the MOPSMAP run. The caller must reindex the
+    result back to the original grid (clipped positions become NaN).
 
     Returns:
-        clipped_modes  — same type as input, with out-of-range wavelengths removed.
-        valid_mask     — boolean array over the *original* wl axis (True = kept).
+        clipped_modes — same type as input, out-of-range wavelengths dropped.
+        valid_mask    — boolean over the *original* wl axis (True = kept).
     """
     from pymopsmap.models.microparams import MicroParameters as MP
 
     single = isinstance(modes, MP)
-    mp_list: list[MP] = [modes] if single else list(modes)
+    if single:
+        assert isinstance(modes, MP)
+        mp_list: list[MP] = [modes]
+    else:
+        assert isinstance(modes, list)
+        mp_list = list(modes)
 
     per_mask = [_valid_mask(mp) for mp in mp_list]
     combined: np.ndarray = np.ones(len(mp_list[0].wavelength), dtype=bool)
@@ -112,15 +116,18 @@ def clip_modes_to_coverage(
         if r_max is not None:
             x_clip = 2.0 * math.pi * r_max / clipped_wl
             parts.append(
-                f"shape '{mp.shape.type}': x ∈ [{x_clip.min():.3g}, {x_clip.max():.3g}]"
+                f"shape '{mp.shape.type}':"
+                f" x ∈ [{x_clip.min():.3g}, {x_clip.max():.3g}]"
                 f" exceeds limit [{x_min:.3g}, {x_max:.3g}]"
             )
         else:
-            parts.append(f"shape '{mp.shape.type}': limit [{x_min:.3g}, {x_max:.3g}]")
+            parts.append(
+                f"shape '{mp.shape.type}': limit [{x_min:.3g}, {x_max:.3g}]"
+            )
 
     warnings.warn(
         f"pymopsmap: {n_clipped}/{len(combined)} wavelength(s) clipped. "
-        f"size-parameter coverage (Gasteiger & Wiegner 2018, GMD, Tables 1–2). "
+        f"size-parameter coverage (Gasteiger & Wiegner 2018 Tables 1–2). "
         + "; ".join(parts)
         + ". Out-of-range positions will be NaN in the result.",
         UserWarning,

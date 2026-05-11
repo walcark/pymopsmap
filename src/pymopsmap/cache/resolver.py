@@ -57,26 +57,36 @@ class NCFileResolver:
             raise IndexFileError(
                 f"Cannot open index.nc at {index_path}: {exc}"
             ) from exc
-        self.avail_mreal: np.ndarray = np.sort(ds["mreal"].values.astype(float))
-        self.avail_mimag: np.ndarray = np.sort(ds["mimag"].values.astype(float))
+        self.avail_mreal: np.ndarray = np.sort(
+            ds["mreal"].values.astype(float)
+        )
+        self.avail_mimag: np.ndarray = np.sort(
+            ds["mimag"].values.astype(float)
+        )
         if "eps" in ds:
-            self.avail_eps: np.ndarray = np.sort(ds["eps"].values.astype(float))
+            self.avail_eps: np.ndarray = np.sort(
+                ds["eps"].values.astype(float)
+            )
         else:
             self.avail_eps = np.array([])
         ds.close()
 
-    def resolve(self, mp: MicroParameters | list[MicroParameters]) -> list[str]:
+    def resolve(
+        self, mp: MicroParameters | list[MicroParameters]
+    ) -> list[str]:
         from pymopsmap.models import MicroParameters as MP
 
         modes = [mp] if isinstance(mp, MP) else mp
 
         files: set[str] = {"index.nc"}
         for mode in modes:
-            for mr, mi in zip(mode.n_real, mode.n_imag):
+            for mr, mi in zip(mode.n_real, mode.n_imag):  # type: ignore[arg-type]
                 files.update(self._files_for_params(mode.shape, mr, mi))
         return sorted(files)
 
-    def _files_for_params(self, shape: Shape, mreal: float, mimag: float) -> list[str]:
+    def _files_for_params(
+        self, shape: Shape, mreal: float, mimag: float
+    ) -> list[str]:
         from pymopsmap.models.microparams import (
             Irregular,
             IrregularDistrFile,
@@ -104,7 +114,9 @@ class NCFileResolver:
                 for eps, mr, mi in product(eps_vals, mr_vals, mi_vals)
             ]
 
-        if isinstance(shape, (Irregular, IrregularDistrFile, IrregularOverlay)):
+        if isinstance(
+            shape, (Irregular, IrregularDistrFile, IrregularOverlay)
+        ):
             shape_id = self._irregular_id(shape)
             return [
                 f"irregular/shape{shape_id}_{_fmt_mreal(mr)}_{_fmt_mimag(mi)}.nc"
@@ -149,6 +161,6 @@ class NCFileResolver:
 
         if isinstance(shape, Irregular):
             return shape.shape_id
-        # For file-defined irregular, we can't know which shape_id, return a placeholder
-        # that will cause a downstream error rather than silently miss a file.
+        # For file-defined irregular, we can't know the shape_id — return a
+        # placeholder that causes a downstream error rather than a silent miss.
         return "A"

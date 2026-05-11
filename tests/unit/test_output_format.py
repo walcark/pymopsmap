@@ -130,7 +130,14 @@ class TestParseScatteringMatrix:
 
     def test_element_coord(self):
         ds = parse_scattering_matrix(SCATTERING_MATRIX_SAMPLE)
-        assert list(ds["element"].values) == ["a1", "a2", "a3", "a4", "b1", "b2"]
+        assert list(ds["element"].values) == [
+            "a1",
+            "a2",
+            "a3",
+            "a4",
+            "b1",
+            "b2",
+        ]
 
 
 # ---------------------------------------------------------------------------
@@ -170,7 +177,9 @@ class TestParseLidar:
 
     def test_lidar_ratio_value(self):
         ds = parse_lidar(LIDAR_SAMPLE)
-        assert float(ds["lidar_ratio"].isel(wl=0)) == pytest.approx(27.0, rel=1e-4)
+        assert float(ds["lidar_ratio"].isel(wl=0)) == pytest.approx(
+            27.0, rel=1e-4
+        )
 
 
 # ---------------------------------------------------------------------------

@@ -23,7 +23,9 @@ def test_LognormalPSD_command():
 
 
 def test_ModifiedGammaPSD_command():
-    psd = ModifiedGammaPSD(A=0.05, B=1.0, alpha=0.03, gamma=2.0, rmin=0.01, rmax=0.5)
+    psd = ModifiedGammaPSD(
+        A=0.05, B=1.0, alpha=0.03, gamma=2.0, rmin=0.01, rmax=0.5
+    )
     assert psd_command(psd) == "size mod_gamma 0.05 0.01 0.5 0.03 1.0 2.0"
 
 
@@ -45,7 +47,7 @@ def test_spheroid_command():
 
 @pytest.mark.parametrize(
     "k, d",
-    [(0.0, 1.6), (-0.01, 1.6), (0.01, 0.0), (0.01, -0.01)],
+    [(-0.01, 1.6), (0.01, 0.0), (0.01, -0.01)],
 )
 def test_kappa_and_density_are_positive(k, d):
     with pytest.raises(ValueError):

@@ -28,7 +28,7 @@ class ResultCache:
         outputs: OutputRequest,
         rh: float | None = None,
     ) -> str:
-        return cache_key(mp, extra=(sorted(outputs), rh))
+        return cache_key(mp, extra=(sorted(outputs), rh))  # type: ignore[arg-type]
 
     def _path(self, key: str) -> Path:
         return self.root_dir / f"{key}.nc"

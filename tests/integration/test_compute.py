@@ -6,7 +6,7 @@ These tests require:
   - The required .nc files present (or downloadable)
 
 Run with:
-  DATA_PATH=tests/data pixi run -e test pytest tests/integration/test_compute.py
+  pixi run -e dev pytest tests/integration/test_compute.py
 """
 
 import os
@@ -58,7 +58,11 @@ class TestSingleSphere:
     def test_invalid_params_raises_before_io(self):
         from pydantic import ValidationError
 
-        from pymopsmap.models.microparams import LognormalPSD, MicroParameters, Sphere
+        from pymopsmap.models.microparams import (
+            LognormalPSD,
+            MicroParameters,
+            Sphere,
+        )
 
         with pytest.raises(ValidationError):
             MicroParameters(
@@ -66,7 +70,9 @@ class TestSingleSphere:
                 n_real=1.4,
                 n_imag=1e-4,
                 shape=Sphere(),
-                psd=LognormalPSD(rm=0.1, sigma=2.0, n=1e6, rmin=10.0, rmax=1.0),
+                psd=LognormalPSD(
+                    rm=0.1, sigma=2.0, n=1e6, rmin=10.0, rmax=1.0
+                ),
             )
 
 
@@ -88,7 +94,9 @@ class TestParametricSweepRh:
                 n_real=1.45,
                 n_imag=1e-4,
                 shape=Sphere(),
-                psd=LognormalPSD(rm=0.1, sigma=2.0, n=1e6, rmin=0.005, rmax=20.0),
+                psd=LognormalPSD(
+                    rm=0.1, sigma=2.0, n=1e6, rmin=0.005, rmax=20.0
+                ),
                 kappa=0.3,
             )
             sweep.add(ParticleMixture([mp]), {"rh": rh})

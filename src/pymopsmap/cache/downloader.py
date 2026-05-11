@@ -33,7 +33,7 @@ class DatasetDownloader:
         if self.source is None:
             raise DatasetSourceNotConfiguredError(
                 "PYMOPSMAP_DATASET_SOURCE is not configured. "
-                "Set the environment variable or pass source= to DatasetDownloader."
+                "Set the env var or pass source= to DatasetDownloader."
             )
         return str(self.source)
 
@@ -47,7 +47,9 @@ class DatasetDownloader:
         for attempt in range(_MAX_RETRIES):
             try:
                 if Path(source).exists() or not source.startswith("http"):
-                    self._copy_local(Path(url_or_path), tmp_path, relative_path)
+                    self._copy_local(
+                        Path(url_or_path), tmp_path, relative_path
+                    )
                 else:
                     self._download_https(url_or_path, tmp_path, relative_path)
                 self.cache.register(relative_path, tmp_path)
@@ -60,7 +62,7 @@ class DatasetDownloader:
                     time.sleep(_RETRY_DELAYS[attempt])
 
         raise DownloadError(
-            f"Failed to download {relative_path} after {_MAX_RETRIES} attempts",
+            f"Failed to download {relative_path} after {_MAX_RETRIES} retries",
             file_path=relative_path,
             source=source,
             cause=last_exc,

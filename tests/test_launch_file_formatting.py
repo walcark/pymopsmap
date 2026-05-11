@@ -80,7 +80,7 @@ def single_wl_mp():
 
 
 def test_single_wavelength_uses_wavelength_value_command(single_wl_mp):
-    """Single wl must use 'wavelength <val>' to avoid MOPSMAP interpolate_linear bug."""
+    """Single wl: use 'wavelength <val>' (MOPSMAP interpolate_linear bug)."""
     paths = write_launching_file(single_wl_mp)
     content = paths["mopsmap"].read_text()
     assert "wavelength 0.550000" in content
@@ -88,7 +88,7 @@ def test_single_wavelength_uses_wavelength_value_command(single_wl_mp):
 
 
 def test_single_wavelength_uses_constant_refrac_command(single_wl_mp):
-    """Single wl must use 'refrac nr ni' to avoid MOPSMAP interpolate_linear bug."""
+    """Single wl must use 'refrac nr ni' (MOPSMAP interpolate_linear bug)."""
     paths = write_launching_file(single_wl_mp)
     content = paths["mopsmap"].read_text()
     assert "refrac 1.450000 0.000100" in content
@@ -96,7 +96,7 @@ def test_single_wavelength_uses_constant_refrac_command(single_wl_mp):
 
 
 def test_multi_wavelength_uses_from_refrac_file(sphere_mp):
-    """Multiple wavelengths must keep 'wavelength from_refrac_file' + 'refrac file'."""
+    """Multi-wl must use 'wavelength from_refrac_file' and 'refrac file'."""
     paths = write_launching_file(sphere_mp)
     content = paths["mopsmap"].read_text()
     assert "wavelength from_refrac_file" in content

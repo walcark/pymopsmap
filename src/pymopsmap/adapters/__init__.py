@@ -42,7 +42,12 @@ def cams_to_kext(
     quiet: bool = False,
 ) -> xr.DataArray:
     op: OptiProps = cams_to_optiprops(
-        aerosol, version, wl_microns, rh, output_types=output_types, quiet=quiet
+        aerosol,
+        version,
+        wl_microns,
+        rh,
+        output_types=output_types,
+        quiet=quiet,
     )
     return op.sel("kext")
 
@@ -60,7 +65,9 @@ def cams_to_optiprops(
     dispatch = read_aerosol_microphysical_parameters(
         aerosol=aerosol, version=version, wl_microns=wl_microns, rh=rh
     )
-    return compute_optical_properties(dispatch, output_types=output_types, quiet=quiet)
+    return compute_optical_properties(
+        dispatch, output_types=output_types, quiet=quiet
+    )
 
 
 __all__ = [

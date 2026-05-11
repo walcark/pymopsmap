@@ -27,7 +27,7 @@ RHS = ("00", "50", "70", "80", "90", "95", "98", "99")
 
 
 def parse_geisa_output(text: str) -> dict:
-    """Parse a GEISA OPAC file and return PSD params and refractive index table."""
+    """Parse a GEISA OPAC file, return PSD and refractive index table."""
     psd_keys = ("rmin", "rmax", "sigma", "rmod")
     psd_vals: list[float] = []
     wl: list[float] = []
@@ -132,7 +132,8 @@ def download_opac_microparams():
         - sigma     : lognormal distribution width
         - rmod      : modal radius [µm]
         - n_real    : real refractive index (rh × wavelength)
-        - n_imag    : imaginary refractive index (rh × wavelength), negative convention
+        - n_imag    : imaginary refractive index (rh × wavelength),
+                      negative convention
 
     Outputs are saved as NetCDF files, one per species.
     """

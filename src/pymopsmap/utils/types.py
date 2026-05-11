@@ -41,7 +41,9 @@ PosFloat64List: TypeAlias = Annotated[
     Float64List, AfterValidator(assert_strictly_positive)
 ]
 
-SortedFloat64List: TypeAlias = Annotated[Float64List, AfterValidator(assert_sorted)]
+SortedFloat64List: TypeAlias = Annotated[
+    Float64List, AfterValidator(assert_sorted)
+]
 
 SortedPosFloat64List: TypeAlias = Annotated[
     SortedFloat64List, AfterValidator(assert_strictly_positive)

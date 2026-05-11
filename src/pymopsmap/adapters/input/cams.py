@@ -1,4 +1,4 @@
-"""CAMS aerosol adapter — interpolates microphysical parameters from CAMS tables."""
+"""CAMS aerosol adapter — maps CAMS tables to MicroParameters."""
 
 import json
 from enum import StrEnum
@@ -56,13 +56,15 @@ def read_aerosol_microphysical_parameters(
 
     aer, ver = aerosol.value, version.value
 
-    rh = [rh] if isinstance(rh, float) else rh
+    rh_vals: list[float] = (
+        [rh] if isinstance(rh, float) else list(rh)  # type: ignore[arg-type, union-attr]
+    )
 
     sweep = ParametricSweep()
-    for relhum in rh:
+    for relhum in rh_vals:
         xrds_sel = xrds.sel(aerosols_species=aer, cams_versions=ver)
-        granulo = _read_granulometry(xrds_sel, relhum)
-        refr_index = _read_refractive_index(xrds_sel, relhum, wl_microns)
+        granulo = _read_granulometry(xrds_sel, relhum)  # type: ignore[arg-type]
+        refr_index = _read_refractive_index(xrds_sel, relhum, wl_microns)  # type: ignore[arg-type]
         modes = []
         for mode in ["fine", "coarse"]:
             mp: MicroParameters = MicroParameters(
@@ -72,14 +74,14 @@ def read_aerosol_microphysical_parameters(
                 shape=Sphere(),
                 psd=LognormalPSD(
                     rm=np.round(granulo[mode][0], 6),
-                    sigma=np.round(np.exp(granulo[mode][1]), 6),
+                    sigma=float(np.round(np.exp(granulo[mode][1]), 6)),
                     n=conc[mode],
                     rmin=0.001,
                     rmax=40.0,
                 ),
             )
             modes.append(mp)
-        sweep.add(ParticleMixture(modes), {"rh": relhum})
+        sweep.add(ParticleMixture(modes), {"rh": relhum})  # type: ignore[dict-item]
 
     return sweep
 
@@ -123,7 +125,9 @@ def read_aerosol_modes_concentrations(
     return {"fine": conc[0], "coarse": conc[1]}
 
 
-def _read_granulometry(ds: xr.Dataset, rh: float) -> dict[str, tuple[float, float]]:
+def _read_granulometry(
+    ds: xr.Dataset, rh: float
+) -> dict[str, tuple[float, float]]:
     """
     Read the log-normal distribution arguments (rm, sigma) for the fine
     and coarse modes in an xarray dataset, for a given relative humidity.
