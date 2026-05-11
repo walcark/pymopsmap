@@ -74,6 +74,10 @@ type-check = { cmd = "mypy src/pymopsmap" }
 test = { cmd = "python -m pytest tests --cov=src/pymopsmap --cov-report=xml", env = { DATA_PATH = "tests/data", PYMOPSMAP_CACHE_DIR = "tests/data/cache" } }
 all = { depends-on = ["fmt", "lint", "type-check", "test"] }
 
+[tool.pixi.feature.builder.dependencies]
+python = "3.12.*"
+pip = ">=23.0"
+
 [tool.pixi.feature.builder.tasks]
 install-build = { cmd = "python -m pip install --upgrade build twine" }
 build = { cmd = "python -m build" }
