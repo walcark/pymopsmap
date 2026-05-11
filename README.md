@@ -5,7 +5,7 @@
   <a href="https://pixi.sh"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/prefix-dev/pixi/main/assets/badge/v0.json"></a>
   <a href="https://github.com/astral-sh/ruff"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json"></a>
   <a href="https://pypi.org/project/pymopsmap/"><img src="https://img.shields.io/pypi/v/pymopsmap.svg"></a>
-  <img src="https://img.shields.io/github/license/walcark/pymopsmap">
+  <a href="https://github.com/walcark/pymopsmap/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-green"></a>
   <img src="https://img.shields.io/badge/python-3.11%2B-blue">
 </p>
 
