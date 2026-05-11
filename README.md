@@ -42,11 +42,11 @@ kext = pm.kext(mp)      # → DataArray indexed by wavelength
 ### Batch computation over external parameters
 
 ```python
-dispatch = pm.MicroParametersDispatch(
-    modes=[[mp_rh0], [mp_rh50], [mp_rh80]],
-    params={"rh": [0, 50, 80]},
-)
-op = pm.compute(dispatch)   # → OptiProps with an extra 'rh' dimension
+sweep = pm.ParametricSweep()
+for rh, mp_rh in zip([0, 50, 80], [mp_rh0, mp_rh50, mp_rh80]):
+    sweep.add(pm.ParticleMixture([mp_rh]), {"rh": rh})
+
+op = pm.compute(sweep)   # → OptiProps with an extra 'rh' dimension
 ```
 
 ### CAMS aerosol adapter
