@@ -1,10 +1,19 @@
-# pymopsmap
+# PyMopsmap
+
+<p align="center">
+  <img src="https://github.com/walcark/pymopsmap/actions/workflows/ci.yml/badge.svg">
+  <a href="https://pixi.sh"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/prefix-dev/pixi/main/assets/badge/v0.json"></a>
+  <a href="https://github.com/astral-sh/ruff"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json"></a>
+  <a href="https://pypi.org/project/pymopsmap/"><img src="https://img.shields.io/pypi/v/pymopsmap.svg"></a>
+  <img src="https://img.shields.io/github/license/walcark/pymopsmap">
+  <img src="https://img.shields.io/badge/python-3.11%2B-blue">
+</p>
 
 Python wrapper for [MOPSMAP](https://mopsmap.net) — aerosol optical property computation based on Mie, T-matrix, and DDA single-particle scattering.
 
 ## Overview
 
-pymopsmap drives the MOPSMAP Fortran binary from Python. Given a set of aerosol microphysical parameters (shape, size distribution, refractive index), it:
+PyMopsmap drives the MOPSMAP Fortran binary from Python. Given a set of aerosol microphysical parameters (shape, size distribution, refractive index), it:
 
 1. resolves and downloads the required optical dataset files,
 2. writes a MOPSMAP launch file and runs the binary,
@@ -62,6 +71,25 @@ kext = cams_to_kext(
 )
 ```
 
+### OPAC aerosol adapter
+
+```python
+from pymopsmap.adapters.input.opac import OpacMix, OpacMixName, OpacHumidityMode
+
+mix = OpacMix(OpacMixName.CONTINENTAL_AVERAGE)
+
+# GEISA mode: wet PSD and refractive index interpolated from GEISA tables
+op = mix.compute(wavelengths=[0.44, 0.55, 0.67], rhs=[0, 50, 80])
+
+# Kappa mode: hygroscopic growth via κ parameterisation (Zieger et al. 2013)
+# with volume-weighted refractive index mixing with water
+op = mix.compute(
+    wavelengths=[0.44, 0.55, 0.67],
+    rhs=[0, 50, 80],
+    mode=OpacHumidityMode.KAPPA,
+)
+```
+
 ## Output types
 
 ```python
@@ -92,11 +120,11 @@ pm.prefetch(mp)       # download without computing
 
 ```
 src/pymopsmap/
-├── models/      # MicroParameters, OptiProps, OutputRequest, dispatch
+├── models/      # MicroParameters, OptiProps, OutputRequest, particle systems
 ├── engine/      # MOPSMAP binary interface (launch file, runner, output parser)
 ├── cache/       # Optical dataset files and result cache
 ├── adapters/
-│   ├── input/   # External data formats → MicroParameters  (e.g. CAMS)
+│   ├── input/   # External data formats → MicroParameters  (e.g. CAMS, OPAC)
 │   └── output/  # OptiProps → external formats             (e.g. SMART-G)
 └── utils/       # Logging, types, temp files, caching
 ```
@@ -104,6 +132,7 @@ src/pymopsmap/
 ## Development
 
 ```bash
-pixi run -e test pytest
-pixi run -e dev ruff check src/
+pixi run -e dev test    # pytest + coverage
+pixi run -e dev lint    # ruff
+pixi run -e dev all     # fmt + lint + type-check + test
 ```
