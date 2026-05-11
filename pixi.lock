@@ -2510,8 +2510,8 @@ packages:
   timestamp: 1750615908735
 - pypi: ./
   name: pymopsmap
-  version: 0.2.0
-  sha256: 8c930eb9a5ae05937e32c7b09a327a7e9ab1f5eca60a98c441d3d07429691fcf
+  version: 0.3.0
+  sha256: 4970c4c327d9ede739baca535ebd2ac0a11bf78b1f29f9106b610c08ae1c0608
   requires_python: '>=3.11'
   editable: true
 - conda: https://conda.anaconda.org/conda-forge/noarch/pyparsing-3.3.1-pyhcf101f3_0.conda
