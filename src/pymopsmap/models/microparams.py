@@ -3,7 +3,13 @@
 from enum import StrEnum
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, PositiveFloat, model_validator
+from pydantic import (
+    BaseModel,
+    Field,
+    NonNegativeFloat,
+    PositiveFloat,
+    model_validator,
+)
 
 from pymopsmap.utils import Float64List, PosFloat64List, SortedPosFloat64List
 
@@ -79,7 +85,9 @@ class IrregularOverlay(BaseModel):
 
     @property
     def command(self) -> str:
-        return f"shape irregular_overlay {self.distr_filename} {self.xmin} {self.xmax}"
+        return (
+            f"shape irregular_overlay {self.distr_filename} {{self.xmin}} {{self.xmax}}"
+        )
 
 
 Shape = Annotated[
@@ -114,15 +122,12 @@ class FixedPSD(BaseModel):
 
 class LognormalPSD(BaseModel):
     """
-    Defines a log-normal size distribution (particle number density per particle radius
-    interval) according to:
-
-        n(r) = 1/sqrt(2) * n/ln(sigma) * 1/r * exp[-0.5 * (ln(r/rm) / ln(sigma))²)
+    Defines a log-normal size distribution.
 
     Particles in the radius range from rmin to rmax are covered.
-    The total particle number density n0 needs to be given in units of m^-3. Note that
-    the actual particle number density of the modeled ensemble may be lower than n0
-    because of clipping at rmin and rmax.
+    The total particle number density n0 needs to be given in units of m^-3.
+    Note that the actual particle number density of the modeled ensemble may
+    be lower than n0 because of clipping at rmin and rmax.
     """
 
     type: Literal["lognormal"] = "lognormal"
@@ -149,8 +154,7 @@ class LognormalPSD(BaseModel):
 
 class ModifiedGammaPSD(BaseModel):
     """
-    Defines a modified gamma distribution (particle number density per particle radius
-    interval) according to:
+    Defines a modified gamma distribution:
 
             n(r) = A * r^alpha * exp[-B * r^gamma]
 
@@ -243,14 +247,12 @@ class MicroParameters(BaseModel):
     n_imag: Float64List | float
     shape: Shape
     psd: PSD
-    kappa: PositiveFloat | None = None
+    kappa: NonNegativeFloat | None = None
     density: PositiveFloat | None = None
 
     @model_validator(mode="after")
     def broadcast_refractive_index(self):
         n = len(self.wavelength)
-        # Pydantic coerces a scalar float to a 1-element list via BeforeValidator;
-        # treat length-1 lists as scalars and broadcast when wavelength count > 1.
         if isinstance(self.n_real, float):
             self.n_real = [self.n_real] * n
         elif len(self.n_real) == 1 and n > 1:

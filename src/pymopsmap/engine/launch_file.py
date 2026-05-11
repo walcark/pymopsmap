@@ -10,7 +10,12 @@ from pymopsmap.models.output_request import (
     OutputRequest,
     OutputType,
 )
-from pymopsmap.utils import DATASET_CACHE_DIR, get_logger, get_tempfile
+from pymopsmap.utils import (
+    DATASET_CACHE_DIR,
+    MOPSMAP_PATH,
+    get_logger,
+    get_tempfile,
+)
 
 from .commands import microparams_command, wl_command
 
@@ -38,7 +43,7 @@ def write_launching_file(
     Returns a dict with:
       - mopsmap   : path to the launch .txt file
       - netcdf    : path to the expected NetCDF output
-      - ascii_base: base path for ASCII output files (only if ascii types requested)
+      - ascii_base: base path for ASCII output files
     """
     logger.debug("Writing MOPSMAP input file.")
 
@@ -48,7 +53,8 @@ def write_launching_file(
 
     mp_list = [mp] if isinstance(mp, MicroParameters) else mp
 
-    file_prefix = f"scatlib '{dataset_path}'"
+    water_refr = MOPSMAP_PATH.parent / "data" / "refr_water_segelstein"
+    file_prefix = f"scatlib '{dataset_path}'\nwater_refrac_file '{water_refr}'"
     file_content = microparams_command(mp)
     file_suffix = _file_suffix(
         nc_path=paths["netcdf"],
