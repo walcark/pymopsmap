@@ -3798,8 +3798,8 @@ packages:
   timestamp: 1750615908735
 - pypi: ./
   name: pymopsmap
-  version: 0.3.0
-  sha256: 8781a1c0b4d238c30d2ecb86e32d0b3889adb83066972177d047c47d77ff0d17
+  version: 0.3.1
+  sha256: 68ad551ae5633ed31673fa6f52f5737f0956a9a4cae57362684c50ae690645cf
   requires_dist:
   - pydantic>=2.0
   - xarray>=2024.1

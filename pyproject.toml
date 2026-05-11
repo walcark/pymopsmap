@@ -1,6 +1,6 @@
 [project]
 name = "pymopsmap"
-version = "0.3.0"
+version = "0.3.1"
 description = "Python wrapper for MOPSMAP aerosol optical properties computation"
 readme = "README.md"
 license = "Apache-2.0"

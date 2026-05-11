@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/python-3.11%2B-blue">
 </p>
 
-Python wrapper for [MOPSMAP](https://mopsmap.net) — aerosol optical property computation based on Mie, T-matrix, and DDA single-particle scattering.
+Python wrapper for [MOPSMAP](https://mopsmap.net) — aerosol optical property computation based on Mie, T-matrix, and DDA single-particle scattering ([Gasteiger & Wiegner 2018, GMD](https://doi.org/10.5194/gmd-11-2739-2018)).
 
 ## Overview
 
@@ -20,15 +20,47 @@ PyMopsmap drives the MOPSMAP Fortran binary from Python. Given a set of aerosol 
 3. parses the outputs into an `xarray`-backed `OptiProps` object,
 4. caches the result on disk keyed by a blake2b hash of the inputs.
 
-## Requirements
-
-- Python ≥ 3.11 (managed via [pixi](https://prefix.dev/))
-- MOPSMAP optical dataset — set `PYMOPSMAP_DATASET_SOURCE` to a local path or HTTP base URL
-
 ## Installation
 
+### From PyPI
+
 ```bash
-pixi install
+pip install pymopsmap
+```
+
+### From source (development)
+
+```bash
+git clone https://github.com/walcark/pymopsmap.git
+cd pymopsmap
+pixi install -e dev
+```
+
+| Environment | Dev tools | Command |
+|---|---|---|
+| `default` | No | `pixi install` |
+| `dev` | ruff, mypy, pytest | `pixi install -e dev` |
+
+### MOPSMAP binary
+
+The MOPSMAP Fortran binary must be placed at `bin/mopsmap/mopsmap` relative to the repository root. Download it from [mopsmap.net](https://mopsmap.net).
+
+### Optical dataset
+
+MOPSMAP requires a pre-computed optical dataset. Set `PYMOPSMAP_DATASET_SOURCE` to a local path or HTTP base URL pointing to the dataset root:
+
+```bash
+export PYMOPSMAP_DATASET_SOURCE=/path/to/optical_dataset
+# or
+export PYMOPSMAP_DATASET_SOURCE=https://your-server.org/mopsmap_dataset
+```
+
+Dataset files are downloaded on demand and cached under `~/.cache/pymopsmap/` (override with `PYMOPSMAP_CACHE_DIR`).
+
+### Verify
+
+```bash
+pixi run -e dev python -c "import pymopsmap; print('pymopsmap OK')"
 ```
 
 ## Quick start
@@ -102,14 +134,13 @@ op = pm.compute(mp, output_types=frozenset({
 
 Available: `INTEGRATED`, `LIDAR`, `PHASE_FUNCTION`, `SCATTERING_MATRIX`, `VOLUME_SCATTERING_FUNCTION`, `COEFF`.
 
+## Design philosophy
+
+The adapter layer (`adapters/input/`) is designed for progressive extension. Each adapter translates an external aerosol description format — CAMS reanalysis tables, OPAC climatology, user-defined files — into the common `MicroParameters` + `ParametricSweep` representation that the engine consumes. Adding support for a new data source means implementing one adapter without touching the engine or the cache.
+
+The same extensibility applies to output adapters (`adapters/output/`): once optical properties are computed as `OptiProps`, they can be converted to any downstream format (e.g. SMART-G LUT) by adding an output adapter.
+
 ## Dataset cache
-
-Files are cached under `~/.cache/pymopsmap/` by default.
-
-```bash
-export PYMOPSMAP_DATASET_SOURCE=/path/to/optical_dataset
-export PYMOPSMAP_CACHE_DIR=/custom/cache/dir   # optional
-```
 
 ```python
 pm.cache_status(mp)   # lists cached vs missing dataset files
@@ -129,10 +160,15 @@ src/pymopsmap/
 └── utils/       # Logging, types, temp files, caching
 ```
 
+## Roadmap
+
+- **Transparent remote dataset** — automatic download of the full optical dataset from a hosted server when `PYMOPSMAP_DATASET_SOURCE` is not set, removing the manual setup step.
+- **Article validation** — complete reproduction of the figures from [Gasteiger & Wiegner (2018)](https://doi.org/10.5194/gmd-11-2739-2018) as a test suite, ensuring physical correctness of the computed optical properties across all shape types and size parameters.
+
 ## Development
 
 ```bash
-pixi run -e dev test    # pytest + coverage
-pixi run -e dev lint    # ruff
-pixi run -e dev all     # fmt + lint + type-check + test
+pixi run -e dev test          # pytest + coverage
+pixi run -e dev lint          # ruff
+pixi run -e dev all           # fmt + lint + type-check + test
 ```
