@@ -1,5 +1,6 @@
 """Annotated numeric list types with pydantic validation."""
 
+import math
 from typing import Annotated, TypeAlias
 
 import numpy as np
@@ -15,6 +16,12 @@ def coerce_as_list_with_10_decimals(
     value_arr = np.atleast_1d(np.asarray(value))
     value_arr = np.round(value_arr, decimals=10)
     return value_arr.tolist()
+
+
+def assert_finite(value: list[float]) -> list[float]:
+    if any(not math.isfinite(v) for v in value):
+        raise ValueError("Input value should be finite (no NaN, no infinity).")
+    return value
 
 
 def assert_strictly_positive(value: list[float]) -> list[float]:
@@ -33,8 +40,13 @@ def assert_sorted(value: list[float]) -> list[float]:
 # --------------------------------------------------------------------------
 # Types definition
 # --------------------------------------------------------------------------
+# assert_finite guards every downstream type: a NaN passes the positivity
+# check (nan <= 0 is False) and would otherwise reach the dataset resolver,
+# where it silently selects an arbitrary refractive index grid point.
 Float64List: TypeAlias = Annotated[
-    list[float], BeforeValidator(coerce_as_list_with_10_decimals)
+    list[float],
+    BeforeValidator(coerce_as_list_with_10_decimals),
+    AfterValidator(assert_finite),
 ]
 
 PosFloat64List: TypeAlias = Annotated[
