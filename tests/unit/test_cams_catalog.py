@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.resources as resources
 import json
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -107,39 +108,49 @@ class TestConventions:
 
 
 class TestAgreementWithTheLegacyAdapter:
-    """The catalogue must carry the same physics as the adapter it replaces."""
+    """
+    The catalogue must carry the same physics as the adapter it replaced.
 
-    @pytest.mark.parametrize("specie", ["sulphate", "sea_salt", "dust"])
-    @pytest.mark.parametrize("rh", [0.0, 50.0, 90.0])
-    def test_same_size_distribution_and_refractive_index(self, specie, rh):
-        from pymopsmap.adapters.input.cams import (
-            CamsAerosol,
-            CamsVersion,
-            read_aerosol_microphysical_parameters,
+    The reference was recorded from that adapter before it was removed, so
+    this keeps guarding future rebuilds of the catalogue. Size distribution
+    parameters are compared to six decimals, the precision the adapter could
+    represent: it applied np.round(x, 6) to the modal radius and the width.
+    Refractive indices are compared exactly.
+    """
+
+    # The adapter rounded rm and sigma to six decimals.
+    ROUNDED = 5e-7
+
+    @pytest.fixture(scope="class")
+    def reference(self):
+        path = (
+            Path(__file__).parents[1] / "data" / "cams_legacy_reference.json"
         )
+        return json.loads(path.read_text())
 
-        wl = [0.44, 0.55, 0.67]
-        legacy = read_aerosol_microphysical_parameters(
-            aerosol=CamsAerosol(specie),
-            version=CamsVersion.V49_R1,
-            wl_microns=wl,
-            rh=[rh],
-        ).mixtures[0]
-
-        tree = _catalogue("49r1")
-        for legacy_mode, name in zip(legacy.modes, ("fine", "coarse")):
-            node = tree[f"{specie}/{name}"].to_dataset().interp(rh=rh, wl=wl)
-
-            assert float(node["rm"]) == pytest.approx(
-                legacy_mode.psd.rm, abs=1e-6
-            )
-            assert float(node["sigma"]) == pytest.approx(
-                legacy_mode.psd.sigma, abs=1e-6
-            )
-            assert float(node["n"]) == pytest.approx(legacy_mode.psd.n)
-            np.testing.assert_allclose(
-                node["n_real"].values, legacy_mode.n_real, rtol=1e-12
-            )
-            np.testing.assert_allclose(
-                node["n_imag"].values, legacy_mode.n_imag, rtol=1e-12
-            )
+    def test_every_recorded_case_matches(self, reference):
+        wl = reference["wl"]
+        for case in reference["cases"]:
+            tree = _catalogue("49r1")
+            for expected, mode in zip(case["modes"], ("fine", "coarse")):
+                node = (
+                    tree[f"{case['specie']}/{mode}"]
+                    .to_dataset()
+                    .interp(rh=case["rh"], wl=wl)
+                )
+                where = f"{case['specie']}/{mode} at rh={case['rh']}"
+                for scalar in ("rm", "sigma"):
+                    assert float(node[scalar]) == pytest.approx(
+                        expected[scalar], abs=self.ROUNDED
+                    ), f"{where}: {scalar}"
+                for scalar in ("n", "rmin", "rmax"):
+                    assert float(node[scalar]) == pytest.approx(
+                        expected[scalar], rel=1e-12
+                    ), f"{where}: {scalar}"
+                for name in ("n_real", "n_imag"):
+                    np.testing.assert_allclose(
+                        node[name].values,
+                        expected[name],
+                        rtol=1e-12,
+                        err_msg=f"{where}: {name}",
+                    )
