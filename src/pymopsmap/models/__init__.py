@@ -1,4 +1,4 @@
-"""Domain model classes — MicroParameters, OptiProps, particle systems."""
+"""Domain model classes: micro-parameters, shapes, size distributions."""
 
 from .microparams import (
     PSD,
@@ -18,13 +18,10 @@ from .microparams import (
     SpheroidDistrFile,
     SpheroidLognormal,
 )
-from .optiprops import OptiProps, extend_optiprops
 from .output_request import DEFAULT_OUTPUT, OutputRequest, OutputType
 
 __all__ = [
     "MicroParameters",
-    "OptiProps",
-    "extend_optiprops",
     "Shape",
     "PSD",
     "Sphere",

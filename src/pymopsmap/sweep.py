@@ -12,6 +12,7 @@ from itertools import product
 from typing import Any
 
 import numpy as np
+import xarray as xr
 
 
 def as_space(**axes: Any) -> tuple[list[dict[str, Any]], list[str]]:
@@ -60,3 +61,41 @@ def _is_sequence(value: Any) -> bool:
 
 def _scalar(value: Any) -> Any:
     return value.item() if isinstance(value, np.generic) else value
+
+
+def assemble(
+    index: list[dict[str, Any]], results: list[xr.Dataset]
+) -> xr.Dataset:
+    """
+    Stack per-point results onto the dimensions that were swept.
+
+    Parameters
+    ----------
+    index : list of dict
+        One entry per result, holding the swept axes and their values.
+    results : list of xr.Dataset
+        The per-point results, in the same order.
+
+    Returns
+    -------
+    xr.Dataset
+        A single dataset carrying one dimension per swept axis.
+    """
+    if not results:
+        raise ValueError("Cannot assemble an empty sweep.")
+    if len(index) != len(results):
+        raise ValueError(
+            f"index and results must have the same length, got "
+            f"{len(index)} and {len(results)}."
+        )
+
+    axes = list(index[0])
+    ds = xr.concat(results, dim="run")
+    for axis in axes:
+        ds = ds.assign_coords(
+            {axis: ("run", np.asarray([point[axis] for point in index]))}
+        )
+
+    if len(axes) == 1:
+        return ds.swap_dims({"run": axes[0]})
+    return ds.set_index(run=axes).unstack("run")

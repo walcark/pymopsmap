@@ -1,4 +1,4 @@
-"""Disk cache — optical dataset NC files and computed OptiProps results."""
+"""Disk cache: optical dataset NC files and computed results."""
 
 from .downloader import DatasetDownloader
 from .optical import OpticalDatasetCache

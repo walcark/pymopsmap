@@ -5,7 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, TypeAlias
 
 if TYPE_CHECKING:
-    from pymopsmap.models import MicroParameters, OptiProps
+    import xarray as xr
+
+    from pymopsmap.models import MicroParameters
     from pymopsmap.models.output_request import OutputRequest
 
     Modes: TypeAlias = MicroParameters | list[MicroParameters]
@@ -16,7 +18,7 @@ def run_point(
     output_types: OutputRequest,
     rh: float | None = None,
     quiet: bool = False,
-) -> OptiProps:
+) -> xr.Dataset:
     """
     Run MOPSMAP once, for one point of a parameter space.
 
@@ -28,7 +30,6 @@ def run_point(
     from pymopsmap.cache.optical import OpticalDatasetCache
     from pymopsmap.cache.resolver import NCFileResolver
     from pymopsmap.cache.results import ResultCache
-    from pymopsmap.models import OptiProps
     from pymopsmap.utils import DATASET_CACHE_DIR
 
     from .coverage import clip_modes_to_coverage, reindex_to_full_grid
@@ -78,9 +79,7 @@ def run_point(
 
     # Reindex to the original wavelength grid; clipped positions become NaN.
     if not valid_mask.all():
-        result = OptiProps(
-            ds=reindex_to_full_grid(result.ds, original_wl, valid_mask)
-        )
+        result = reindex_to_full_grid(result, original_wl, valid_mask)
 
     result_cache.put(key, result)
     return result

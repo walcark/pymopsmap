@@ -7,7 +7,6 @@ import pytest
 import xarray as xr
 
 import pymopsmap as pm
-from pymopsmap.models import OptiProps
 from pymopsmap.sweep import as_space
 
 WL = [0.44, 0.55, 0.67]
@@ -21,11 +20,9 @@ def engine(monkeypatch):
     def fake_run_point(modes, output_types, rh, quiet):
         calls.append({"modes": modes, "rh": rh, "outputs": output_types})
         wl = np.asarray(modes[0].wavelength, dtype=np.float32)
-        return OptiProps(
-            ds=xr.Dataset(
-                {"kext": (("wl",), np.arange(len(wl), dtype=np.float32))},
-                coords={"wl": wl},
-            )
+        return xr.Dataset(
+            {"kext": (("wl",), np.arange(len(wl), dtype=np.float32))},
+            coords={"wl": wl},
         )
 
     monkeypatch.setattr("pymopsmap.engine.run_point", fake_run_point)
@@ -75,7 +72,7 @@ class TestComputeScalar:
     def test_returns_a_result_indexed_by_wavelength(self, engine):
         op = pm.load(pm.CAMS.SULPHATE).compute(wl=WL, rh=50.0)
 
-        assert op.ds["kext"].dims == ("wl",)
+        assert op["kext"].dims == ("wl",)
         assert len(engine) == 1
 
     def test_both_modes_reach_the_engine(self, engine):
@@ -93,8 +90,8 @@ class TestComputeList:
     def test_a_list_adds_a_humidity_dimension(self, engine):
         op = pm.load(pm.CAMS.SULPHATE).compute(wl=WL, rh=[0.0, 50.0, 90.0])
 
-        assert op.ds["kext"].dims == ("rh", "wl")
-        assert list(op.ds["rh"].values) == [0.0, 50.0, 90.0]
+        assert op["kext"].dims == ("rh", "wl")
+        assert list(op["rh"].values) == [0.0, 50.0, 90.0]
 
     def test_one_engine_run_per_humidity(self, engine):
         pm.load(pm.CAMS.SULPHATE).compute(wl=WL, rh=[0.0, 50.0, 90.0])

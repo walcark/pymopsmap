@@ -38,7 +38,7 @@ class TestSingleSphere:
         from pymopsmap.models.output_request import DEFAULT_OUTPUT
 
         op = run_point([_sphere_mp()], DEFAULT_OUTPUT, quiet=True)
-        kext = op.sel("kext")
+        kext = op["kext"]
         assert kext.dims == ("wl",)
         assert len(kext) == 3
         assert (kext.values > 0).all()

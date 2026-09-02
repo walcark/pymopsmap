@@ -9,9 +9,8 @@ from typing import NamedTuple
 import xarray as xr
 
 from pymopsmap.models.microparams import MicroParameters
-from pymopsmap.models.optiprops import OptiProps
 from pymopsmap.models.output_request import DEFAULT_OUTPUT, OutputRequest
-from pymopsmap.sweep import as_space
+from pymopsmap.sweep import as_space, assemble
 from pymopsmap.utils import check_within_grid
 
 from .catalog import CamsSpecie, path_for
@@ -121,7 +120,7 @@ class Specie:
         kappa: float | None = None,
         outputs: OutputRequest = DEFAULT_OUTPUT,
         quiet: bool = False,
-    ) -> OptiProps:
+    ) -> xr.Dataset:
         """
         Compute the optical properties of the species.
 
@@ -142,10 +141,10 @@ class Specie:
 
         Returns
         -------
-        OptiProps
+        xr.Dataset
+            One variable per optical property, with a dimension per swept axis.
         """
         from pymopsmap import engine
-        from pymopsmap.models import extend_optiprops
 
         points, dims = as_space(rh=rh)
         # Materialise every point first: an invalid request must fail before
@@ -166,7 +165,7 @@ class Specie:
         if not dims:
             return results[0]
         index = [{dim: point[dim] for dim in dims} for point in points]
-        return extend_optiprops(index=index, optiprops_li=results)
+        return assemble(index, results)
 
     @property
     def _where(self) -> str:

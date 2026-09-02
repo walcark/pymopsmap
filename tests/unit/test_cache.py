@@ -5,7 +5,6 @@ import xarray as xr
 
 from pymopsmap.cache.optical import OpticalDatasetCache
 from pymopsmap.cache.results import ResultCache
-from pymopsmap.models import OptiProps
 from pymopsmap.models.microparams import FixedPSD, MicroParameters, Sphere
 from pymopsmap.models.output_request import DEFAULT_OUTPUT, OutputType
 from pymopsmap.utils.caching import cache_key
@@ -15,7 +14,7 @@ from pymopsmap.utils.caching import cache_key
 # ---------------------------------------------------------------------------
 
 
-def _make_optiprops() -> OptiProps:
+def _make_result() -> xr.Dataset:
     wl = np.array([0.55, 0.67], dtype=np.float32)
     ds = xr.Dataset(
         data_vars={
@@ -23,7 +22,7 @@ def _make_optiprops() -> OptiProps:
         },
         coords={"wl": wl},
     )
-    return OptiProps(ds=ds)
+    return ds
 
 
 def _make_mp(**kwargs) -> MicroParameters:
@@ -89,14 +88,12 @@ class TestResultCache:
     def test_put_and_get(self, tmp_path):
         rc = ResultCache(root_dir=tmp_path)
         mp = _make_mp()
-        op = _make_optiprops()
+        op = _make_result()
         k = rc.key(mp, DEFAULT_OUTPUT)
         rc.put(k, op)
         loaded = rc.get(k)
         assert loaded is not None
-        np.testing.assert_allclose(
-            loaded.sel("kext").values, op.sel("kext").values
-        )
+        np.testing.assert_allclose(loaded["kext"].values, op["kext"].values)
 
     def test_key_determinism(self, tmp_path):
         rc = ResultCache(root_dir=tmp_path)
@@ -123,7 +120,7 @@ class TestResultCache:
     def test_atomic_write(self, tmp_path):
         rc = ResultCache(root_dir=tmp_path)
         mp = _make_mp()
-        op = _make_optiprops()
+        op = _make_result()
         k = rc.key(mp, DEFAULT_OUTPUT)
         rc.put(k, op)
         # tmp file must be gone

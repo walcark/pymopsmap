@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import xarray as xr
 
-from pymopsmap.models import OptiProps
 from pymopsmap.models.output_request import OutputRequest, OutputType
 
 if TYPE_CHECKING:
@@ -23,9 +22,9 @@ if TYPE_CHECKING:
 def format_mopsmap_outputs(
     out_mopsmap: dict[str, Any],
     output_types: OutputRequest | None = None,
-) -> OptiProps:
+) -> xr.Dataset:
     """
-    Build an OptiProps from MOPSMAP output artefacts.
+    Build a result dataset from MOPSMAP output artefacts.
 
     out_mopsmap keys:
       - stdout      : captured stdout string
@@ -86,8 +85,7 @@ def format_mopsmap_outputs(
         clean.append(ds.drop_vars(list(overlap)) if overlap else ds)
         merged_vars.update(ds.data_vars)  # type: ignore[arg-type]
 
-    ds = xr.merge(clean, compat="no_conflicts", join="outer")
-    return OptiProps(ds=ds)
+    return xr.merge(clean, compat="no_conflicts", join="outer")
 
 
 # ---------------------------------------------------------------------------

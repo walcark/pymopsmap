@@ -11,7 +11,7 @@ from pymopsmap.exceptions import (
     IndexFileError,
     MopsmapError,
 )
-from pymopsmap.models import MicroParameters, OptiProps
+from pymopsmap.models import MicroParameters
 
 # Re-export shapes and PSDs for convenience
 from pymopsmap.models.microparams import (
@@ -96,7 +96,6 @@ __all__ = [
     "prefetch",
     # Classes
     "MicroParameters",
-    "OptiProps",
     "CacheStatusReport",
     # Output types
     "OutputType",

@@ -1,4 +1,4 @@
-"""ResultCache: read/write OptiProps to a blake2b-keyed NetCDF store."""
+"""ResultCache: read/write results to a blake2b-keyed NetCDF store."""
 
 from __future__ import annotations
 
@@ -10,10 +10,9 @@ from pymopsmap.utils import RESULT_CACHE_DIR
 from pymopsmap.utils.caching import cache_key
 
 if TYPE_CHECKING:
-    from pymopsmap.models import (
-        MicroParameters,
-        OptiProps,
-    )
+    import xarray as xr
+
+    from pymopsmap.models import MicroParameters
     from pymopsmap.models.output_request import OutputRequest
 
 
@@ -33,22 +32,21 @@ class ResultCache:
     def _path(self, key: str) -> Path:
         return self.root_dir / f"{key}.nc"
 
-    def get(self, key: str) -> OptiProps | None:
+    def get(self, key: str) -> xr.Dataset | None:
         import xarray as xr
-
-        from pymopsmap.models import OptiProps
 
         p = self._path(key)
         if not p.exists() or p.stat().st_size == 0:
             return None
         try:
-            ds = xr.open_dataset(p)
-            return OptiProps(ds=ds)
+            # Loaded eagerly: a lazy handle would stay open for the lifetime
+            # of every cache hit.
+            return xr.open_dataset(p).load()
         except Exception:
             return None
 
-    def put(self, key: str, result: OptiProps) -> None:
+    def put(self, key: str, result: xr.Dataset) -> None:
         target = self._path(key)
         tmp = target.with_suffix(".tmp")
-        result.ds.to_netcdf(tmp)
+        result.to_netcdf(tmp)
         os.replace(tmp, target)
