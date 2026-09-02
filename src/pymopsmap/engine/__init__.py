@@ -5,63 +5,25 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, TypeAlias
 
 if TYPE_CHECKING:
-    from pymopsmap.models import (
-        MicroParameters,
-        OptiProps,
-        ParametricSweep,
-        ParticleMixture,
-    )
+    from pymopsmap.models import MicroParameters, OptiProps
     from pymopsmap.models.output_request import OutputRequest
 
     Modes: TypeAlias = MicroParameters | list[MicroParameters]
 
 
-def compute_optical_properties(
-    target: ParticleMixture | ParametricSweep,
-    output_types: OutputRequest | None = None,
+def run_point(
+    modes: Modes,
+    output_types: OutputRequest,
     rh: float | None = None,
     quiet: bool = False,
 ) -> OptiProps:
     """
-    Compute optical properties for a ParticleMixture or a ParametricSweep.
+    Run MOPSMAP once, for one point of a parameter space.
 
-    Transparent pipeline:
-      1. Check result cache → return hit immediately.
-      2. Ensure required dataset files are present (download if missing).
-      3. Write MOPSMAP launch file → run MOPSMAP → parse outputs.
-      4. Store result in cache → return.
+    Transparent pipeline: check the result cache, ensure the required dataset
+    files are present, write the launch file, run the binary, parse the
+    outputs, store the result.
     """
-    from pymopsmap.models import ParametricSweep, extend_optiprops
-    from pymopsmap.models.output_request import DEFAULT_OUTPUT
-
-    if output_types is None:
-        output_types = DEFAULT_OUTPUT
-
-    if isinstance(target, ParametricSweep):
-        return extend_optiprops(
-            index=target.params,
-            optiprops_li=[
-                run_point(
-                    mixture.modes,
-                    output_types=output_types,
-                    rh=rh,
-                    quiet=quiet,
-                )
-                for mixture in target.mixtures
-            ],
-        )
-
-    return run_point(
-        target.modes, output_types=output_types, rh=rh, quiet=quiet
-    )
-
-
-def run_point(
-    modes: Modes,
-    output_types: OutputRequest,
-    rh: float | None,
-    quiet: bool,
-) -> OptiProps:
     from pymopsmap.cache.downloader import DatasetDownloader
     from pymopsmap.cache.optical import OpticalDatasetCache
     from pymopsmap.cache.resolver import NCFileResolver
@@ -124,4 +86,4 @@ def run_point(
     return result
 
 
-__all__ = ["compute_optical_properties", "run_point"]
+__all__ = ["run_point"]

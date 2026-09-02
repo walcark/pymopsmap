@@ -20,12 +20,9 @@ from .microparams import (
 )
 from .optiprops import OptiProps, extend_optiprops
 from .output_request import DEFAULT_OUTPUT, OutputRequest, OutputType
-from .particle_mixture import ParametricSweep, ParticleMixture
 
 __all__ = [
     "MicroParameters",
-    "ParticleMixture",
-    "ParametricSweep",
     "OptiProps",
     "extend_optiprops",
     "Shape",

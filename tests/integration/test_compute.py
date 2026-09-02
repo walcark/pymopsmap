@@ -33,27 +33,26 @@ def _sphere_mp(wl_count=3):
 
 
 class TestSingleSphere:
-    def test_basic_compute_returns_optiprops(self):
-        from pymopsmap import compute
+    def test_basic_run_returns_optiprops(self):
+        from pymopsmap.engine import run_point
+        from pymopsmap.models.output_request import DEFAULT_OUTPUT
 
-        mp = _sphere_mp()
-        op = compute(mp, quiet=True)
+        op = run_point([_sphere_mp()], DEFAULT_OUTPUT, quiet=True)
         kext = op.sel("kext")
         assert kext.dims == ("wl",)
         assert len(kext) == 3
         assert (kext.values > 0).all()
 
     def test_result_cache_hit(self, tmp_path):
-        from pymopsmap import compute
         from pymopsmap.cache.results import ResultCache
+        from pymopsmap.engine import run_point
         from pymopsmap.models.output_request import DEFAULT_OUTPUT
 
         mp = _sphere_mp()
-        compute(mp, quiet=True)
+        run_point([mp], DEFAULT_OUTPUT, quiet=True)
 
         rc = ResultCache()
-        k = rc.key(mp, DEFAULT_OUTPUT)
-        assert rc.get(k) is not None
+        assert rc.get(rc.key([mp], DEFAULT_OUTPUT)) is not None
 
     def test_invalid_params_raises_before_io(self):
         from pydantic import ValidationError
@@ -74,32 +73,3 @@ class TestSingleSphere:
                     rm=0.1, sigma=2.0, n=1e6, rmin=10.0, rmax=1.0
                 ),
             )
-
-
-class TestParametricSweepRh:
-    def test_sweep_returns_rh_dimension(self):
-        from pymopsmap import (
-            MicroParameters,
-            ParametricSweep,
-            ParticleMixture,
-            Sphere,
-            compute,
-        )
-        from pymopsmap.models.microparams import LognormalPSD
-
-        sweep = ParametricSweep()
-        for rh in [0.0, 50.0, 80.0]:
-            mp = MicroParameters(
-                wavelength=[0.55],
-                n_real=1.45,
-                n_imag=1e-4,
-                shape=Sphere(),
-                psd=LognormalPSD(
-                    rm=0.1, sigma=2.0, n=1e6, rmin=0.005, rmax=20.0
-                ),
-                kappa=0.3,
-            )
-            sweep.add(ParticleMixture([mp]), {"rh": rh})
-
-        op = compute(sweep, quiet=True)
-        assert "rh" in op.ds.dims or "rh" in op.ds.coords

@@ -4,22 +4,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import xarray as xr
-
 from pymopsmap import species
-from pymopsmap.engine import compute_optical_properties
 from pymopsmap.exceptions import (
     DatasetSourceNotConfiguredError,
     DownloadError,
     IndexFileError,
     MopsmapError,
 )
-from pymopsmap.models import (
-    MicroParameters,
-    OptiProps,
-    ParametricSweep,
-    ParticleMixture,
-)
+from pymopsmap.models import MicroParameters, OptiProps
 
 # Re-export shapes and PSDs for convenience
 from pymopsmap.models.microparams import (
@@ -46,7 +38,7 @@ from pymopsmap.species import CamsSpecie as CAMS
 from pymopsmap.species import Specie, load
 
 # ---------------------------------------------------------------------------
-# Cache status
+# Dataset cache
 # ---------------------------------------------------------------------------
 
 
@@ -56,38 +48,25 @@ class CacheStatusReport:
     missing: list[str]
 
 
-def cache_status(
-    mps: MicroParameters | ParticleMixture | ParametricSweep,
-) -> CacheStatusReport:
-    """Return which dataset files are cached and which are missing."""
+def cache_status(modes: list[MicroParameters]) -> CacheStatusReport:
+    """Return which optical dataset files are cached and which are missing."""
     from pymopsmap.cache.optical import OpticalDatasetCache
     from pymopsmap.cache.resolver import NCFileResolver
 
     dataset_cache = OpticalDatasetCache()
-    index_path = dataset_cache.full_path("index.nc")
-
     if not dataset_cache.is_cached("index.nc"):
         return CacheStatusReport(cached=[], missing=["index.nc"])
 
-    resolver = NCFileResolver(index_path)
-    modes = _flatten_modes(mps)
+    resolver = NCFileResolver(dataset_cache.full_path("index.nc"))
     required = resolver.resolve(modes)
-
-    cached = [p for p in required if dataset_cache.is_cached(p)]
-    missing = [p for p in required if not dataset_cache.is_cached(p)]
-    return CacheStatusReport(cached=cached, missing=missing)
-
-
-# ---------------------------------------------------------------------------
-# Prefetch
-# ---------------------------------------------------------------------------
+    return CacheStatusReport(
+        cached=[p for p in required if dataset_cache.is_cached(p)],
+        missing=[p for p in required if not dataset_cache.is_cached(p)],
+    )
 
 
-def prefetch(
-    mps: MicroParameters | ParticleMixture | ParametricSweep,
-    quiet: bool = False,
-) -> None:
-    """Download all missing dataset files without running MOPSMAP."""
+def prefetch(modes: list[MicroParameters], quiet: bool = False) -> None:
+    """Download all missing optical dataset files without running MOPSMAP."""
     from pymopsmap.cache.downloader import DatasetDownloader
     from pymopsmap.cache.optical import OpticalDatasetCache
     from pymopsmap.cache.resolver import NCFileResolver
@@ -98,94 +77,8 @@ def prefetch(
     if not dataset_cache.is_cached("index.nc"):
         downloader.download("index.nc")
 
-    index_path = dataset_cache.full_path("index.nc")
-    resolver = NCFileResolver(index_path)
-    modes = _flatten_modes(mps)
-    required = resolver.resolve(modes)
-    downloader.download_missing(required)
-
-
-# ---------------------------------------------------------------------------
-# Primary compute entry point
-# ---------------------------------------------------------------------------
-
-
-def compute(
-    mps: MicroParameters | ParticleMixture | ParametricSweep,
-    output_types: OutputRequest = DEFAULT_OUTPUT,
-    rh: float | None = None,
-    quiet: bool = False,
-) -> OptiProps:
-    """
-    Compute optical properties.
-
-    Handles file resolution, caching, downloading, and MOPSMAP execution
-    transparently.
-    """
-    if isinstance(mps, MicroParameters):
-        mps = ParticleMixture([mps])
-    return compute_optical_properties(
-        target=mps,
-        output_types=output_types,
-        rh=rh,
-        quiet=quiet,
-    )
-
-
-# ---------------------------------------------------------------------------
-# Convenience wrappers
-# ---------------------------------------------------------------------------
-
-
-def kext(
-    mps: MicroParameters | ParticleMixture | ParametricSweep,
-    rh: float | None = None,
-    quiet: bool = False,
-) -> xr.DataArray:
-    return compute(mps, rh=rh, quiet=quiet).sel("kext")
-
-
-def ssa(
-    mps: MicroParameters | ParticleMixture | ParametricSweep,
-    rh: float | None = None,
-    quiet: bool = False,
-) -> xr.DataArray:
-    return compute(mps, rh=rh, quiet=quiet).sel("ssa")
-
-
-def phase(
-    mps: MicroParameters | ParticleMixture | ParametricSweep,
-    rh: float | None = None,
-    quiet: bool = False,
-) -> xr.DataArray:
-    from pymopsmap.models.output_request import OutputType
-
-    return compute(
-        mps,
-        output_types=frozenset(
-            {OutputType.INTEGRATED, OutputType.PHASE_FUNCTION}
-        ),
-        rh=rh,
-        quiet=quiet,
-    ).sel("phase")
-
-
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
-
-
-def _flatten_modes(
-    mps: MicroParameters | ParticleMixture | ParametricSweep,
-) -> list[MicroParameters]:
-    if isinstance(mps, ParametricSweep):
-        result = []
-        for mixture in mps.mixtures:
-            result.extend(mixture.modes)
-        return result
-    if isinstance(mps, ParticleMixture):
-        return list(mps.modes)
-    return [mps]
+    resolver = NCFileResolver(dataset_cache.full_path("index.nc"))
+    downloader.download_missing(resolver.resolve(modes))
 
 
 # ---------------------------------------------------------------------------
@@ -198,17 +91,11 @@ __all__ = [
     "Specie",
     "load",
     "species",
-    # Main entry points
-    "compute",
+    # Dataset cache
     "cache_status",
     "prefetch",
-    "kext",
-    "ssa",
-    "phase",
     # Classes
     "MicroParameters",
-    "ParticleMixture",
-    "ParametricSweep",
     "OptiProps",
     "CacheStatusReport",
     # Output types
