@@ -1,4 +1,4 @@
-"""Optical dataset local cache — lookup and storage of NC files by key."""
+"""Local cache of the optical dataset: lookup and storage by key."""
 
 import os
 from pathlib import Path

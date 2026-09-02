@@ -50,8 +50,8 @@ class CacheStatusReport:
 
 def cache_status(modes: list[MicroParameters]) -> CacheStatusReport:
     """Return which optical dataset files are cached and which are missing."""
-    from pymopsmap.cache.optical import OpticalDatasetCache
-    from pymopsmap.cache.resolver import NCFileResolver
+    from pymopsmap.scatlib.cache import OpticalDatasetCache
+    from pymopsmap.scatlib.resolver import NCFileResolver
 
     dataset_cache = OpticalDatasetCache()
     if not dataset_cache.is_cached("index.nc"):
@@ -67,9 +67,9 @@ def cache_status(modes: list[MicroParameters]) -> CacheStatusReport:
 
 def prefetch(modes: list[MicroParameters], quiet: bool = False) -> None:
     """Download all missing optical dataset files without running MOPSMAP."""
-    from pymopsmap.cache.downloader import DatasetDownloader
-    from pymopsmap.cache.optical import OpticalDatasetCache
-    from pymopsmap.cache.resolver import NCFileResolver
+    from pymopsmap.scatlib.cache import OpticalDatasetCache
+    from pymopsmap.scatlib.downloader import DatasetDownloader
+    from pymopsmap.scatlib.resolver import NCFileResolver
 
     dataset_cache = OpticalDatasetCache()
     downloader = DatasetDownloader(cache=dataset_cache, quiet=quiet)

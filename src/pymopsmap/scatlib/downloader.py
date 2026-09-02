@@ -10,7 +10,7 @@ from tqdm import tqdm
 from pymopsmap.exceptions import DatasetSourceNotConfiguredError, DownloadError
 from pymopsmap.utils import DATASET_SOURCE, get_logger
 
-from .optical import OpticalDatasetCache
+from .cache import OpticalDatasetCache
 
 logger = get_logger(__name__)
 

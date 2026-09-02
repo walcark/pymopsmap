@@ -26,10 +26,10 @@ def run_point(
     files are present, write the launch file, run the binary, parse the
     outputs, store the result.
     """
-    from pymopsmap.cache.downloader import DatasetDownloader
-    from pymopsmap.cache.optical import OpticalDatasetCache
-    from pymopsmap.cache.resolver import NCFileResolver
-    from pymopsmap.cache.results import ResultCache
+    from pymopsmap.scatlib.cache import OpticalDatasetCache
+    from pymopsmap.scatlib.downloader import DatasetDownloader
+    from pymopsmap.scatlib.resolver import NCFileResolver
+    from pymopsmap.scatlib.results import ResultCache
     from pymopsmap.utils import DATASET_CACHE_DIR
 
     from .coverage import clip_modes_to_coverage, reindex_to_full_grid

@@ -44,9 +44,9 @@ class TestSingleSphere:
         assert (kext.values > 0).all()
 
     def test_result_cache_hit(self, tmp_path):
-        from pymopsmap.cache.results import ResultCache
         from pymopsmap.engine import run_point
         from pymopsmap.models.output_request import DEFAULT_OUTPUT
+        from pymopsmap.scatlib.results import ResultCache
 
         mp = _sphere_mp()
         run_point([mp], DEFAULT_OUTPUT, quiet=True)

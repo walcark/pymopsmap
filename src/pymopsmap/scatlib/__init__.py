@@ -1,7 +1,11 @@
-"""Disk cache: optical dataset NC files and computed results."""
+"""The MOPSMAP optical dataset: resolve, download, cache.
 
+Named after the scatlib command of the launch file, which is what MOPSMAP
+itself calls this data.
+"""
+
+from .cache import OpticalDatasetCache
 from .downloader import DatasetDownloader
-from .optical import OpticalDatasetCache
 from .resolver import NCFileResolver
 from .results import ResultCache
 
