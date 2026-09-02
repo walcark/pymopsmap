@@ -45,3 +45,7 @@ class DomainError(ValueError):
         self.requested = requested
         self.available = available
         self.context = context
+
+
+class SchemaError(ValueError):
+    """Raised when a species file does not follow the canonical schema."""
