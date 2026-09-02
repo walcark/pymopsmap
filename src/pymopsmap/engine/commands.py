@@ -39,7 +39,12 @@ def _single_microparams_command(mp: MicroParameters, num: int = 1) -> str:
         + psd_command(mp.psd)
         + "\n"
         + mode
-        + refr_command(wl=mp.wavelength, nr=mp.n_real, ni=mp.n_imag)  # type: ignore[arg-type]
+        + refr_command(
+            wl=mp.wavelength,
+            nr=mp.n_real,  # type: ignore[arg-type]
+            ni=mp.n_imag,  # type: ignore[arg-type]
+            mode_index=num,
+        )
     )
     if mp.kappa is not None:
         string += "\n" + mode + f"kappa {mp.kappa}"
@@ -57,13 +62,20 @@ def wl_command(wavelengths: SortedPosFloat64List | None = None) -> str:
 
 
 def write_refr_file(
-    wl: SortedPosFloat64List, nr: PosFloat64List, ni: PosFloat64List
+    wl: SortedPosFloat64List,
+    nr: PosFloat64List,
+    ni: PosFloat64List,
+    mode_index: int = 1,
 ) -> Path:
     """
     Write refractive index and wavelenth in a file. Returns
     the file location.
+
+    The file name carries the mode index: every mode of a mixture needs its
+    own file, otherwise the modes overwrite each other and MOPSMAP reads the
+    same refractive index for all of them.
     """
-    filename = get_tempfile(filename="ri.txt")
+    filename = get_tempfile(filename=f"ri_{mode_index}.txt")
 
     with open(filename, "w") as f:
         for w, r, i in zip(wl, nr, ni):
@@ -73,14 +85,17 @@ def write_refr_file(
 
 
 def refr_command(
-    wl: SortedPosFloat64List, nr: PosFloat64List, ni: PosFloat64List
+    wl: SortedPosFloat64List,
+    nr: PosFloat64List,
+    ni: PosFloat64List,
+    mode_index: int = 1,
 ) -> str:
     # MOPSMAP bug: interpolate_linear returns weight_upper=weight_lower=1.0 for
     # single-element arrays, doubling the refractive index and causing an
     # out-of-range error. Use constant refrac command to bypass the file path.
     if len(wl) == 1:
         return f"refrac {nr[0]:.6f} {ni[0]:.6f}"
-    filename = str(write_refr_file(wl=wl, nr=nr, ni=ni))
+    filename = str(write_refr_file(wl=wl, nr=nr, ni=ni, mode_index=mode_index))
     return f"refrac file '{filename}'"
 
 
