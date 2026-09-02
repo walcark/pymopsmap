@@ -6,6 +6,7 @@ from pathlib import Path
 from .logging import get_logger
 from .temp import get_tempdir, get_tempfile
 from .types import Float64List, PosFloat64List, SortedPosFloat64List
+from .validation import check_within_grid
 
 ROOT_PATH = Path(__file__).resolve().parent.parent.parent.parent
 DATA_PATH = Path(os.getenv("DATA_PATH", ROOT_PATH / "data"))
@@ -24,6 +25,7 @@ __all__ = [
     "Float64List",
     "PosFloat64List",
     "SortedPosFloat64List",
+    "check_within_grid",
     "DATA_PATH",
     "MOPSMAP_PATH",
     "CACHE_DIR",

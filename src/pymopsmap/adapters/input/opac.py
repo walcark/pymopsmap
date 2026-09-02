@@ -16,7 +16,7 @@ from pymopsmap.models import (
     Sphere,
 )
 from pymopsmap.models.output_request import DEFAULT_OUTPUT, OutputRequest
-from pymopsmap.utils import DATA_PATH, MOPSMAP_PATH
+from pymopsmap.utils import DATA_PATH, MOPSMAP_PATH, check_within_grid
 
 from .opac_download import download_opac_microparams
 
@@ -117,6 +117,14 @@ class OpacMix:
         datasets = {}
         for sp in self.components:
             datasets[sp] = xr.open_dataset(DATA_PATH / f"opac/{sp}.nc")
+
+        for sp, ds in datasets.items():
+            where = f"OPAC {sp}"
+            check_within_grid(
+                "wavelength", wavelengths, ds["wavelength"], where
+            )
+            if mode == OpacHumidityMode.GEISA:
+                check_within_grid("rh", rhs, ds["rh"], where)
 
         sweep = ParametricSweep()
         for rh in rhs:

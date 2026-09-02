@@ -14,7 +14,11 @@ from pymopsmap.models import (
     ParticleMixture,
     Sphere,
 )
-from pymopsmap.utils import DATA_PATH, SortedPosFloat64List
+from pymopsmap.utils import (
+    DATA_PATH,
+    SortedPosFloat64List,
+    check_within_grid,
+)
 
 
 class CamsAerosol(StrEnum):
@@ -58,6 +62,14 @@ def read_aerosol_microphysical_parameters(
 
     rh_vals: list[float] = (
         [rh] if isinstance(rh, float) else list(rh)  # type: ignore[arg-type, union-attr]
+    )
+
+    where = f"CAMS {ver} {aer}"
+    check_within_grid(
+        "relative_humidity", rh_vals, xrds["relative_humidity"], where
+    )
+    check_within_grid(
+        "wavelength", np.asarray(wl_microns) * 1e3, xrds["wavelength"], where
     )
 
     sweep = ParametricSweep()
