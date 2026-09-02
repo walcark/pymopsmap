@@ -2,13 +2,14 @@
 
 from . import catalog, schema
 from .catalog import CamsSpecie
-from .mix import Mix
+from .mix import Currency, Mix
 from .specie import Point, Specie, load
 
 __all__ = [
     "catalog",
     "schema",
     "CamsSpecie",
+    "Currency",
     "Mix",
     "Point",
     "Specie",
