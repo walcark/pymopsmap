@@ -9,6 +9,9 @@ from typing import NamedTuple
 import xarray as xr
 
 from pymopsmap.models.microparams import MicroParameters
+from pymopsmap.models.optiprops import OptiProps
+from pymopsmap.models.output_request import DEFAULT_OUTPUT, OutputRequest
+from pymopsmap.sweep import as_space
 from pymopsmap.utils import check_within_grid
 
 from .catalog import CamsSpecie, path_for
@@ -110,6 +113,60 @@ class Specie:
             modes=[self._mode(name, selectors, kappa) for name in self.modes],
             engine_rh=engine_rh,
         )
+
+    def compute(
+        self,
+        wl: list[float],
+        rh: float | list[float] | None = None,
+        kappa: float | None = None,
+        outputs: OutputRequest = DEFAULT_OUTPUT,
+        quiet: bool = False,
+    ) -> OptiProps:
+        """
+        Compute the optical properties of the species.
+
+        Parameters
+        ----------
+        wl : list of float
+            Wavelengths in micrometres. MOPSMAP takes the whole grid in one
+            run, so this is never a swept axis.
+        rh : float or list of float, optional
+            Relative humidity in percent. A list adds an ``rh`` dimension to
+            the result, one MOPSMAP run per value.
+        kappa : float, optional
+            Overrides the hygroscopicity stored in the file.
+        outputs : OutputRequest
+            Which families of optical properties to compute.
+        quiet : bool
+            Silence the dataset download progress bars.
+
+        Returns
+        -------
+        OptiProps
+        """
+        from pymopsmap import engine
+        from pymopsmap.models import extend_optiprops
+
+        points, dims = as_space(rh=rh)
+        # Materialise every point first: an invalid request must fail before
+        # any MOPSMAP run rather than halfway through a sweep.
+        materialised = [
+            self.at(wl=wl, rh=point["rh"], kappa=kappa) for point in points
+        ]
+        results = [
+            engine.run_point(
+                point.modes,
+                output_types=outputs,
+                rh=point.engine_rh,
+                quiet=quiet,
+            )
+            for point in materialised
+        ]
+
+        if not dims:
+            return results[0]
+        index = [{dim: point[dim] for dim in dims} for point in points]
+        return extend_optiprops(index=index, optiprops_li=results)
 
     @property
     def _where(self) -> str:

@@ -41,7 +41,7 @@ def compute_optical_properties(
         return extend_optiprops(
             index=target.params,
             optiprops_li=[
-                _compute_single(
+                run_point(
                     mixture.modes,
                     output_types=output_types,
                     rh=rh,
@@ -51,12 +51,12 @@ def compute_optical_properties(
             ],
         )
 
-    return _compute_single(
+    return run_point(
         target.modes, output_types=output_types, rh=rh, quiet=quiet
     )
 
 
-def _compute_single(
+def run_point(
     modes: Modes,
     output_types: OutputRequest,
     rh: float | None,
@@ -124,4 +124,4 @@ def _compute_single(
     return result
 
 
-__all__ = ["compute_optical_properties"]
+__all__ = ["compute_optical_properties", "run_point"]
