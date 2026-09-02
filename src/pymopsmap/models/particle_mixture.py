@@ -14,11 +14,16 @@ if TYPE_CHECKING:
 
 @dataclass
 class ParticleMixture:
-    """A particle population described by one or more scattering modes."""
+    """A particle population described by one or more set of micro-parameters.
+
+    For instance, the Sea Salt CAMS specie is modelled as a bi-modal particle
+    size distribution, each mode being a log-normal Particle Size Distribution.
+    """
 
     modes: list[MicroParameters]
 
     def __post_init__(self):
+        """Ensure broadcasting of micro-parameters modes into a list."""
         if isinstance(self.modes, MicroParameters):
             self.modes = [self.modes]
 
@@ -28,10 +33,14 @@ class ParticleMixture:
         rh: float | None = None,
         quiet: bool = False,
     ) -> OptiProps:
+        """Compute the optical properties of the mixture."""
         from pymopsmap.engine import compute_optical_properties
 
         return compute_optical_properties(
-            self, output_types=output_types, rh=rh, quiet=quiet
+            self,
+            output_types=output_types,
+            rh=rh,
+            quiet=quiet,
         )
 
 

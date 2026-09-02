@@ -38,8 +38,6 @@ platforms = ["linux-64"]
 pymopsmap = { path = ".", editable = true }
 
 [tool.pixi.tasks]
-run = "python -m pymopsmap.core.opticalprops"
-run-debug = "PYMOPSMAP_KEEP_TEMP=1 pixi run python -m pymopsmap.core.opticalprops"
 
 [tool.pixi.dependencies]
 python = "3.12.*"
