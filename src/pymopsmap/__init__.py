@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 import xarray as xr
 
+from pymopsmap import species
 from pymopsmap.engine import compute_optical_properties
 from pymopsmap.exceptions import (
     DatasetSourceNotConfiguredError,
@@ -41,6 +42,8 @@ from pymopsmap.models.output_request import (
     OutputRequest,
     OutputType,
 )
+from pymopsmap.species import CamsSpecie as CAMS
+from pymopsmap.species import Specie, load
 
 # ---------------------------------------------------------------------------
 # Cache status
@@ -190,6 +193,11 @@ def _flatten_modes(
 # ---------------------------------------------------------------------------
 
 __all__ = [
+    # Species
+    "CAMS",
+    "Specie",
+    "load",
+    "species",
     # Main entry points
     "compute",
     "cache_status",
