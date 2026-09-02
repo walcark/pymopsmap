@@ -95,6 +95,18 @@ PSD_MODELS: dict[str, type[BaseModel]] = _by_discriminator(PSD)
 SHAPE_MODELS: dict[str, type[BaseModel]] = _by_discriminator(Shape)
 
 
+# The variable carrying the amplitude of each size distribution. Scaling a
+# species multiplies it, which preserves the ratio between its modes. None
+# means the amplitude lives in an external file.
+AMPLITUDE_FIELD: dict[str, str | None] = {
+    "fixed": "n",
+    "lognormal": "n",
+    "mod-gamma": "A",
+    "distr-list": "concentrations",
+    "bin-file": None,
+}
+
+
 def expected_psd_variables(psd_type: str) -> frozenset[str]:
     """Variables a mode must carry for the given size distribution type."""
     model = PSD_MODELS[psd_type]

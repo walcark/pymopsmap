@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import NamedTuple
 
+import numpy as np
 import xarray as xr
 
 from pymopsmap.models.microparams import MicroParameters
@@ -15,6 +16,7 @@ from pymopsmap.utils import check_within_grid
 
 from .catalog import CamsSpecie, path_for
 from .schema import (
+    AMPLITUDE_FIELD,
     Growth,
     expected_psd_variables,
     expected_shape_variables,
@@ -43,7 +45,9 @@ class Point(NamedTuple):
     engine_rh: float | None
 
 
-@dataclass(frozen=True)
+# eq=False keeps identity semantics, so a Specie can key a mixture: its tree
+# is not hashable and two loads of the same file are two descriptions.
+@dataclass(frozen=True, eq=False)
 class Specie:
     """An aerosol species, backed by one group of a catalogue file."""
 
@@ -59,6 +63,27 @@ class Specie:
     @property
     def modes(self) -> list[str]:
         return list(self.tree.children)
+
+    @property
+    def amplitude(self) -> float:
+        """
+        Total stored amplitude, summed over the modes.
+
+        It is the reference a mixture scales against: dividing by it and
+        multiplying by a requested concentration preserves the ratio between
+        the modes, which a plain override could not express.
+        """
+        total = 0.0
+        for name in self.modes:
+            ds = self.tree[name].to_dataset()
+            field = AMPLITUDE_FIELD[ds.attrs["psd_type"]]
+            if field is None:
+                raise ValueError(
+                    f"{self._where}: mode '{name}' keeps its amplitude in an "
+                    "external file, so it cannot be scaled."
+                )
+            total += float(np.sum(ds[field].values))
+        return total
 
     @property
     def rh_range(self) -> tuple[float, float] | None:
