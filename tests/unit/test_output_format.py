@@ -95,6 +95,38 @@ class TestFormatStdout:
             format_stdout("no integrated blocks here")
 
 
+class TestScatteringCoefficient:
+    """MOPSMAP reports kext and ssa; ksca is derived once, at parse time."""
+
+    def test_it_is_part_of_the_integrated_output(self):
+        assert "ksca" in format_stdout(STDOUT_SAMPLE).data_vars
+
+    def test_it_is_the_product_of_kext_and_ssa(self):
+        ds = format_stdout(STDOUT_SAMPLE)
+
+        np.testing.assert_allclose(
+            ds["ksca"].values, ds["kext"].values * ds["ssa"].values, rtol=1e-6
+        )
+
+    def test_it_shares_the_wavelength_axis(self):
+        assert format_stdout(STDOUT_SAMPLE)["ksca"].dims == ("wl",)
+
+    def test_the_ascii_file_path_agrees_with_stdout(self):
+        from pymopsmap.engine.output_format import _parse_integrated_file
+
+        # The ascii file holds the same columns without the leading token.
+        columns = "\n".join(
+            line.split(maxsplit=1)[1]
+            for line in STDOUT_SAMPLE.splitlines()
+            if line.startswith("integrated")
+        )
+
+        np.testing.assert_allclose(
+            _parse_integrated_file(columns)["ksca"].values,
+            format_stdout(STDOUT_SAMPLE)["ksca"].values,
+        )
+
+
 # ---------------------------------------------------------------------------
 # parse_phase_function
 # ---------------------------------------------------------------------------

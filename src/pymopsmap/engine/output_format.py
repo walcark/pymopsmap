@@ -93,6 +93,34 @@ def format_mopsmap_outputs(
 # ---------------------------------------------------------------------------
 
 
+def _integrated_dataset(arr: np.ndarray) -> xr.Dataset:
+    """
+    Build the integrated dataset from the twelve MOPSMAP columns.
+
+    ksca is not one of them. It is derived here, once, rather than in every
+    consumer that needs a scattering weight, and it is a quantity users want
+    in its own right.
+    """
+    kext, ssa = arr[:, 1], arr[:, 2]
+    return xr.Dataset(
+        data_vars={
+            "kext": (("wl",), kext),
+            "ssa": (("wl",), ssa),
+            "ksca": (("wl",), kext * ssa),
+            "g": (("wl",), arr[:, 3]),
+            "reff": (("wl",), arr[:, 4]),
+            "n": (("wl",), arr[:, 5]),
+            "cross_dens": (("wl",), arr[:, 6]),
+            "vol_dens": (("wl",), arr[:, 7]),
+            "mass_conc": (("wl",), arr[:, 8]),
+            "angstrom_ext": (("wl",), arr[:, 9]),
+            "angstrom_sca": (("wl",), arr[:, 10]),
+            "angstrom_abs": (("wl",), arr[:, 11]),
+        },
+        coords={"wl": arr[:, 0].astype(np.float32)},
+    )
+
+
 def format_stdout(stdout: str) -> xr.Dataset:
     """
     Parse MOPSMAP stdout blocks split by "integrated".
@@ -117,25 +145,7 @@ def format_stdout(stdout: str) -> xr.Dataset:
             "No numeric data found in stdout (split by 'integrated')."
         )
 
-    arr = np.stack(rows, axis=0)
-    wl = arr[:, 0].astype(np.float32)
-
-    return xr.Dataset(
-        data_vars={
-            "kext": (("wl",), arr[:, 1]),
-            "ssa": (("wl",), arr[:, 2]),
-            "g": (("wl",), arr[:, 3]),
-            "reff": (("wl",), arr[:, 4]),
-            "n": (("wl",), arr[:, 5]),
-            "cross_dens": (("wl",), arr[:, 6]),
-            "vol_dens": (("wl",), arr[:, 7]),
-            "mass_conc": (("wl",), arr[:, 8]),
-            "angstrom_ext": (("wl",), arr[:, 9]),
-            "angstrom_sca": (("wl",), arr[:, 10]),
-            "angstrom_abs": (("wl",), arr[:, 11]),
-        },
-        coords={"wl": wl},
-    )
+    return _integrated_dataset(np.stack(rows, axis=0))
 
 
 def _parse_integrated_file(text: str) -> xr.Dataset:
@@ -143,24 +153,7 @@ def _parse_integrated_file(text: str) -> xr.Dataset:
     Parse {ascii_base}.integrated written when ascii_file output is active.
     Same 12 columns as stdout but without the leading 'integrated' token.
     """
-    arr = _read_numeric(text)
-    wl = arr[:, 0].astype(np.float32)
-    return xr.Dataset(
-        data_vars={
-            "kext": (("wl",), arr[:, 1]),
-            "ssa": (("wl",), arr[:, 2]),
-            "g": (("wl",), arr[:, 3]),
-            "reff": (("wl",), arr[:, 4]),
-            "n": (("wl",), arr[:, 5]),
-            "cross_dens": (("wl",), arr[:, 6]),
-            "vol_dens": (("wl",), arr[:, 7]),
-            "mass_conc": (("wl",), arr[:, 8]),
-            "angstrom_ext": (("wl",), arr[:, 9]),
-            "angstrom_sca": (("wl",), arr[:, 10]),
-            "angstrom_abs": (("wl",), arr[:, 11]),
-        },
-        coords={"wl": wl},
-    )
+    return _integrated_dataset(_read_numeric(text))
 
 
 # ---------------------------------------------------------------------------
