@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import pytest
+
 from pymopsmap.engine.commands import microparams_command
 from pymopsmap.models import LognormalPSD, MicroParameters, Sphere
 
@@ -25,8 +27,8 @@ def _refr_paths(command: str) -> list[Path]:
     return [Path(m) for m in re.findall(r"refrac file '([^']+)'", command)]
 
 
-def _n_real_column(path: Path) -> list[str]:
-    return [line.split()[1] for line in path.read_text().splitlines()]
+def _n_real_column(path: Path) -> list[float]:
+    return [float(line.split()[1]) for line in path.read_text().splitlines()]
 
 
 class TestMultiModeRefractiveIndexFiles:
@@ -45,8 +47,8 @@ class TestMultiModeRefractiveIndexFiles:
             microparams_command([fine, coarse])
         )
 
-        assert _n_real_column(fine_path) == ["1.400000"] * len(WL)
-        assert _n_real_column(coarse_path) == ["1.600000"] * len(WL)
+        assert _n_real_column(fine_path) == pytest.approx([1.40] * len(WL))
+        assert _n_real_column(coarse_path) == pytest.approx([1.60] * len(WL))
 
     def test_single_mode_writes_one_file(self):
         paths = _refr_paths(microparams_command(_mode(1.45, 1e-4, 0.1)))

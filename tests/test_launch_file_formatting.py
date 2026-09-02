@@ -83,7 +83,9 @@ def test_single_wavelength_uses_wavelength_value_command(single_wl_mp):
     """Single wl: use 'wavelength <val>' (MOPSMAP interpolate_linear bug)."""
     paths = write_launching_file(single_wl_mp)
     content = paths["mopsmap"].read_text()
-    assert "wavelength 0.550000" in content
+    match = re.search(r"^wavelength (\S+)$", content, re.MULTILINE)
+    assert match is not None
+    assert float(match.group(1)) == pytest.approx(0.55, rel=1e-9)
     assert "from_refrac_file" not in content
 
 
@@ -91,7 +93,10 @@ def test_single_wavelength_uses_constant_refrac_command(single_wl_mp):
     """Single wl must use 'refrac nr ni' (MOPSMAP interpolate_linear bug)."""
     paths = write_launching_file(single_wl_mp)
     content = paths["mopsmap"].read_text()
-    assert "refrac 1.450000 0.000100" in content
+    match = re.search(r"refrac ([\d.eE+-]+) ([\d.eE+-]+)", content)
+    assert match is not None
+    assert float(match.group(1)) == pytest.approx(1.45, rel=1e-9)
+    assert float(match.group(2)) == pytest.approx(1e-4, rel=1e-9)
     assert "refrac file" not in content
 
 

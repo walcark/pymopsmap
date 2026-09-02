@@ -10,12 +10,19 @@ from pydantic import AfterValidator, BeforeValidator
 # --------------------------------------------------------------------------
 # Type validators
 # --------------------------------------------------------------------------
-def coerce_as_list_with_10_decimals(
+def coerce_as_float_list(
     value: float | list[float] | np.ndarray,
 ) -> list[float]:
-    value_arr = np.atleast_1d(np.asarray(value))
-    value_arr = np.round(value_arr, decimals=10)
-    return value_arr.tolist()
+    """
+    Bring a scalar or array onto a plain list of floats, unrounded.
+
+    Values are kept at full double precision. Rounding here would be absolute,
+    while the only tolerance MOPSMAP applies is relative (1e-6, in
+    interpolate_linear when a single grid point is loaded), so an absolute
+    round is coarser than that tolerance for small imaginary indices rather
+    than protective of it.
+    """
+    return np.atleast_1d(np.asarray(value)).tolist()
 
 
 def assert_finite(value: list[float]) -> list[float]:
@@ -45,7 +52,7 @@ def assert_sorted(value: list[float]) -> list[float]:
 # where it silently selects an arbitrary refractive index grid point.
 Float64List: TypeAlias = Annotated[
     list[float],
-    BeforeValidator(coerce_as_list_with_10_decimals),
+    BeforeValidator(coerce_as_float_list),
     AfterValidator(assert_finite),
 ]
 

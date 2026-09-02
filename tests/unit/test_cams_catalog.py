@@ -107,17 +107,7 @@ class TestConventions:
 
 
 class TestAgreementWithTheLegacyAdapter:
-    """
-    The catalogue must carry the same physics as the adapter it replaces.
-
-    Comparisons are made at ten decimal places, the precision the legacy path
-    can represent: MicroParameters coerces every float list through
-    ``np.round(x, decimals=10)``, which leaves an imaginary index of 1.8e-7
-    with four significant digits and one of 8.8e-9 with two. The catalogue
-    stores the source values untouched.
-    """
-
-    ROUNDING = 10
+    """The catalogue must carry the same physics as the adapter it replaces."""
 
     @pytest.mark.parametrize("specie", ["sulphate", "sea_salt", "dust"])
     @pytest.mark.parametrize("rh", [0.0, 50.0, 90.0])
@@ -148,10 +138,8 @@ class TestAgreementWithTheLegacyAdapter:
             )
             assert float(node["n"]) == pytest.approx(legacy_mode.psd.n)
             np.testing.assert_allclose(
-                np.round(node["n_real"].values, self.ROUNDING),
-                legacy_mode.n_real,
+                node["n_real"].values, legacy_mode.n_real, rtol=1e-12
             )
             np.testing.assert_allclose(
-                np.round(node["n_imag"].values, self.ROUNDING),
-                legacy_mode.n_imag,
+                node["n_imag"].values, legacy_mode.n_imag, rtol=1e-12
             )

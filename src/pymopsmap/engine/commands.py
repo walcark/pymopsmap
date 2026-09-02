@@ -11,6 +11,12 @@ from pymopsmap.utils import PosFloat64List, SortedPosFloat64List, get_tempfile
 if TYPE_CHECKING:
     from pymopsmap.models.output_request import OutputRequest
 
+# Scientific notation, matching the format MOPSMAP uses in its own data files
+# and reads with list-directed input. Fixed point with six decimals wrote every
+# imaginary index below 5e-7 as zero, and collapsed nearby wavelengths onto the
+# same value, which MOPSMAP rejects as a non-ascending grid.
+_FLOAT = ".10e"
+
 
 def microparams_command(
     mp: MicroParameters | list[MicroParameters],
@@ -57,7 +63,7 @@ def _single_microparams_command(mp: MicroParameters, num: int = 1) -> str:
 
 def wl_command(wavelengths: SortedPosFloat64List | None = None) -> str:
     if wavelengths is not None and len(wavelengths) == 1:
-        return f"wavelength {wavelengths[0]:.6f}"
+        return f"wavelength {wavelengths[0]:{_FLOAT}}"
     return "wavelength from_refrac_file"
 
 
@@ -79,7 +85,7 @@ def write_refr_file(
 
     with open(filename, "w") as f:
         for w, r, i in zip(wl, nr, ni):
-            f.write(f"{w:.6f} {r:.6f} {i:.6f}\n")
+            f.write(f"{w:{_FLOAT}} {r:{_FLOAT}} {i:{_FLOAT}}\n")
 
     return filename
 
@@ -94,7 +100,7 @@ def refr_command(
     # single-element arrays, doubling the refractive index and causing an
     # out-of-range error. Use constant refrac command to bypass the file path.
     if len(wl) == 1:
-        return f"refrac {nr[0]:.6f} {ni[0]:.6f}"
+        return f"refrac {nr[0]:{_FLOAT}} {ni[0]:{_FLOAT}}"
     filename = str(write_refr_file(wl=wl, nr=nr, ni=ni, mode_index=mode_index))
     return f"refrac file '{filename}'"
 
