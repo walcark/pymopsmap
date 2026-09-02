@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 if TYPE_CHECKING:
+    import xarray as xr
+
     from pymopsmap.models.microparams import MicroParameters
 
 # Hard limits from Gasteiger & Wiegner (2018, GMD 11:2739–2762), Tables 1 & 2.
@@ -137,3 +139,37 @@ def clip_modes_to_coverage(
     clipped = [_clip_mp(mp, combined) for mp in mp_list]
     result = clipped[0] if single else clipped
     return result, combined
+
+
+def reindex_to_full_grid(
+    ds: xr.Dataset,
+    original_wl: list[float],
+    valid_mask: np.ndarray,
+) -> xr.Dataset:
+    """
+    Restore the clipped wavelengths, filling the dropped ones with NaN.
+
+    The kept wavelengths are reassigned from the original grid before
+    reindexing: MOPSMAP echoes wavelengths as float32 strings that do not
+    always round-trip, so the result cannot be matched on its own values.
+    Reindexing on the coordinate, rather than assigning by position, keeps
+    variables that carry extra dimensions such as theta, l or element.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        Result over the kept wavelengths only.
+    original_wl : list[float]
+        The full wavelength grid the caller requested.
+    valid_mask : np.ndarray
+        Boolean over ``original_wl``, True where the wavelength was kept.
+
+    Returns
+    -------
+    xr.Dataset
+        Result over the full grid, NaN at the clipped positions.
+    """
+    wl_full = np.asarray(original_wl, dtype=np.float32)
+    if valid_mask.all():
+        return ds
+    return ds.assign_coords(wl=wl_full[valid_mask]).reindex(wl=wl_full)

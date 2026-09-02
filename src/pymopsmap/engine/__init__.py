@@ -62,9 +62,6 @@ def _compute_single(
     rh: float | None,
     quiet: bool,
 ) -> OptiProps:
-    import numpy as np
-    import xarray as xr
-
     from pymopsmap.cache.downloader import DatasetDownloader
     from pymopsmap.cache.optical import OpticalDatasetCache
     from pymopsmap.cache.resolver import NCFileResolver
@@ -72,7 +69,7 @@ def _compute_single(
     from pymopsmap.models import OptiProps
     from pymopsmap.utils import DATASET_CACHE_DIR
 
-    from .coverage import clip_modes_to_coverage
+    from .coverage import clip_modes_to_coverage, reindex_to_full_grid
     from .launch_file import write_launching_file
     from .launcher import launch_mopsmap
     from .output_format import format_mopsmap_outputs
@@ -117,18 +114,11 @@ def _compute_single(
 
     result = format_mopsmap_outputs(out_mopsmap, output_types=output_types)
 
-    # Reindex to original wavelength grid; clipped positions become NaN.
-    # Insert by position (valid_mask), not by float value: MOPSMAP echoes
-    # wavelengths as float32 strings that may not round-trip exactly.
+    # Reindex to the original wavelength grid; clipped positions become NaN.
     if not valid_mask.all():
-        wl_full = np.asarray(original_wl, dtype=np.float32)
-        new_vars = {}
-        for name, da in result.ds.data_vars.items():
-            full = np.full(len(wl_full), np.nan, dtype=np.float32)
-            full[valid_mask] = da.values
-            new_vars[name] = (("wl",), full)
-        ds_full = xr.Dataset(new_vars, coords={"wl": wl_full})
-        result = OptiProps(ds=ds_full)
+        result = OptiProps(
+            ds=reindex_to_full_grid(result.ds, original_wl, valid_mask)
+        )
 
     result_cache.put(key, result)
     return result
