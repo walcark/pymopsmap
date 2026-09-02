@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import warnings
+from collections.abc import Callable, Iterable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -325,3 +327,219 @@ def format_netcdf_file(filename: Path, wl: np.ndarray) -> xr.Dataset:
         data_vars={"phase": (("wl", "mueller_idx", "theta"), phase)},
         coords={"wl": wl, "mueller_idx": mueller_idx, "theta": theta},
     )
+
+
+# ---------------------------------------------------------------------------
+# Combination of several species into one external mixture
+# ---------------------------------------------------------------------------
+#
+# External mixing is additive on the coefficients, so a mixture is the sum of
+# its species rather than a separate MOPSMAP run. What is additive, and what
+# has to be rebuilt from the additive quantities, is settled by reading how
+# MOPSMAP forms each output. Line references are to bin/mopsmap/src.
+#
+# The rules live here, beside the parsers that produce the variables, so a new
+# output cannot be added without one: combine() raises on any variable it does
+# not know.
+
+CombineRule = Callable[[str, list[xr.Dataset]], xr.DataArray]
+
+
+def _total(items: Iterable[xr.DataArray]) -> xr.DataArray:
+    """Sum data arrays without starting from a scalar zero."""
+    total, *rest = items
+    for item in rest:
+        total = total + item
+    return total
+
+
+def _additive(name: str, parts: list[xr.Dataset]) -> xr.DataArray:
+    """Densities per unit volume of air; they simply add."""
+    return _total(part[name] for part in parts)
+
+
+def _weighted_mean(weight: str) -> CombineRule:
+    """
+    Intensive quantities, averaged over what they are intensive against.
+
+    An asymmetry parameter is the mean of cos(theta) over scattered photons,
+    so it is weighted by scattering. A ratio of two additive quantities is the
+    ratio of their sums, which is the same thing: for X = num/den, the sum of
+    the numerators over the sum of the denominators is the den-weighted mean
+    of X. That covers lidar_ratio (kext/backscatter,
+    write_output_ascii.f90:305), ext_to_mass (mass/cext, line 309) and
+    back_to_mass (backscatter/mass, line 310) with no constant to carry.
+    """
+
+    def rule(name: str, parts: list[xr.Dataset]) -> xr.DataArray:
+        return _total(part[name] * part[weight] for part in parts) / _total(
+            part[weight] for part in parts
+        )
+
+    return rule
+
+
+def _single_scattering_albedo(
+    name: str, parts: list[xr.Dataset]
+) -> xr.DataArray:
+    """A ratio of sums, never the mean of the individual albedos."""
+    return _additive("ksca", parts) / _additive("kext", parts)
+
+
+def _angstrom(source: Callable[[xr.Dataset], xr.DataArray]) -> CombineRule:
+    """
+    Rebuild a spectral log-derivative from the combined spectrum.
+
+    The exponent of a sum is not the sum of the exponents. MOPSMAP computes it
+    per interval and leaves the first wavelength undefined
+    (write_output_ascii.f90:183 writes sqrt(-1), that is NaN, then line 188
+    uses the previous wavelength).
+    """
+
+    def rule(name: str, parts: list[xr.Dataset]) -> xr.DataArray:
+        total = _total(source(part) for part in parts)
+        wl = parts[0]["wl"]
+        values = np.asarray(total)
+        exponent = np.full(values.shape, np.nan, dtype=float)
+        # A non-absorbing mixture has kext == ksca, so the absorption
+        # exponent is a 0/0: NaN is the answer, the warning is not.
+        with np.errstate(divide="ignore", invalid="ignore"):
+            exponent[1:] = -np.log(values[1:] / values[:-1]) / np.log(
+                wl.values[1:] / wl.values[:-1]
+            )
+        return xr.DataArray(exponent, coords={"wl": wl}, dims=("wl",))
+
+    return rule
+
+
+def _depolarisation(name: str, parts: list[xr.Dataset]) -> xr.DataArray:
+    """
+    Split the backscatter into its two components, add, and re-form the ratio.
+
+    MOPSMAP reports the total backscatter (write_output_ascii.f90:304) and
+    delta = (1 - a2/a1)/(1 + a2/a1) at 180 degrees (line 306). Both a1 and a2
+    are scattering-weighted sums over the modes, so the parallel and
+    perpendicular components are additive even though their ratio is not.
+    """
+    parallel = _total(
+        part["backscatter"] / (1.0 + part[name]) for part in parts
+    )
+    perpendicular = _total(
+        part["backscatter"] * part[name] / (1.0 + part[name]) for part in parts
+    )
+    return perpendicular / parallel
+
+
+def _effective_radius(name: str, parts: list[xr.Dataset]) -> xr.DataArray:
+    """
+    Rebuild the effective radius from the summed moments, for spheres only.
+
+    MOPSMAP defines reff as r3_n_sum/r2_n_sum (mix_contributions.f90:64), two
+    raw moments it does not output. What it does output carries the geometric
+    constants and, for non-spherical shapes, different powers of the aspect
+    ratio: cs_sum gets pi times r2_n_sum, or rat**-2 or rat**-6 times that,
+    and vol_sum gets 4/3 pi times r3_n_sum, or rat**3 or rat**-6 times it
+    (add_contribution.f90:269-289). The moments are therefore recoverable only
+    when every mode is a sphere, where the ratio reduces to 0.75 vol/cs.
+    """
+    shapes = {
+        shape for part in parts for shape in part.attrs.get("shape_types", [])
+    }
+    volume = _additive("vol_dens", parts)
+    if shapes != {"sphere"}:
+        warnings.warn(
+            "pymopsmap: 'reff' is only defined for spherical modes when "
+            f"combining species; got shapes {sorted(shapes)}. The mixed "
+            "effective radius is NaN.",
+            UserWarning,
+            stacklevel=3,
+        )
+        return xr.full_like(volume, np.nan)
+    return 0.75 * volume / _additive("cross_dens", parts)
+
+
+COMBINE: dict[str, CombineRule] = {
+    # Densities per unit volume of air
+    "kext": _additive,
+    "ksca": _additive,
+    "backscatter": _additive,
+    "n": _additive,
+    "mass_conc": _additive,
+    "vol_dens": _additive,
+    "cross_dens": _additive,
+    # Scattering-weighted
+    "g": _weighted_mean("ksca"),
+    "phase": _weighted_mean("ksca"),
+    "scattering_matrix": _weighted_mean("ksca"),
+    "vol_sca_func": _weighted_mean("ksca"),
+    "coeff": _weighted_mean("ksca"),
+    # Ratios of additive quantities
+    "ssa": _single_scattering_albedo,
+    "lidar_ratio": _weighted_mean("backscatter"),
+    "ext_to_mass": _weighted_mean("kext"),
+    "back_to_mass": _weighted_mean("mass_conc"),
+    "depol_ratio": _depolarisation,
+    # Rebuilt from the additive quantities
+    "reff": _effective_radius,
+    "angstrom_ext": _angstrom(lambda ds: ds["kext"]),
+    "angstrom_sca": _angstrom(lambda ds: ds["ksca"]),
+    "angstrom_abs": _angstrom(lambda ds: ds["kext"] - ds["ksca"]),
+    "angstrom_back": _angstrom(lambda ds: ds["backscatter"]),
+}
+
+
+def combine(parts: list[xr.Dataset], weights: list[float]) -> xr.Dataset:
+    """
+    Combine per-species results into one external mixture.
+
+    Parameters
+    ----------
+    parts : list of xr.Dataset
+        One result per species, all over the same wavelength grid.
+    weights : list of float
+        A scale factor per species. Optical properties are linear in the
+        number concentration, so scaling here is exact and needs no rerun.
+
+    Returns
+    -------
+    xr.Dataset
+        The mixture, carrying the same variables as its parts.
+
+    Raises
+    ------
+    KeyError
+        If a variable has no combination rule.
+    """
+    if len(parts) != len(weights):
+        raise ValueError(
+            f"parts and weights must have the same length, got "
+            f"{len(parts)} and {len(weights)}."
+        )
+
+    scaled = [
+        part.assign(
+            {
+                str(name): part[name] * weight
+                for name in part.data_vars
+                if COMBINE.get(str(name)) is _additive
+            }
+        )
+        for part, weight in zip(parts, weights)
+    ]
+
+    names = sorted(str(name) for name in scaled[0].data_vars)
+    unknown = [name for name in names if name not in COMBINE]
+    if unknown:
+        raise KeyError(
+            f"No combination rule for {unknown}. Declare one in COMBINE, "
+            "beside the parser that produces the variable."
+        )
+
+    out = xr.Dataset(
+        {name: COMBINE[name](name, scaled) for name in names},
+        coords=scaled[0].coords,
+    )
+    out.attrs["shape_types"] = sorted(
+        {s for part in parts for s in part.attrs.get("shape_types", [])}
+    )
+    return out
