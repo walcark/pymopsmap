@@ -8,22 +8,24 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from pymopsmap.scatlib.limits import SizeParameterLimits
+
 if TYPE_CHECKING:
     import xarray as xr
 
     from pymopsmap.microparams import MicroParameters
 
-# Hard limits from Gasteiger & Wiegner (2018, GMD 11:2739–2762), Tables 1 & 2.
-# x = 2π r / λ  (volume-equivalent size parameter for irregular shapes).
-# Keys match Shape.type discriminator values.
-_X_LIMITS: dict[str, tuple[float, float]] = {
-    "sphere": (1e-6, 1005.0),
-    "spheroid": (1e-6, 1005.0),
-    "spheroid-lognormal": (1e-6, 1005.0),
-    "spheroid-distr-file": (1e-6, 1005.0),
-    "irregular": (1e-3, 30.2),
-    "irregular-distr-file": (1e-3, 30.2),
-    "irregular-overlay": (1e-3, 30.2),
+# Smallest size parameter each shape family covers (Gasteiger and Wiegner
+# 2018, Tables 1 and 2). The upper limit is not a constant: it depends on the
+# refractive index, and comes from the dataset index.
+_X_MINIMUM: dict[str, float] = {
+    "sphere": 1e-6,
+    "spheroid": 1e-6,
+    "spheroid-lognormal": 1e-6,
+    "spheroid-distr-file": 1e-6,
+    "irregular": 1e-3,
+    "irregular-distr-file": 1e-3,
+    "irregular-overlay": 1e-3,
 }
 
 
@@ -45,7 +47,9 @@ def _max_radius(psd) -> float | None:
     return None  # FileDefinedPSD: cannot determine without reading the file
 
 
-def _valid_mask(mp: MicroParameters, rh: float | None) -> np.ndarray:
+def _valid_mask(
+    mp: MicroParameters, rh: float | None, limits: SizeParameterLimits
+) -> np.ndarray:
     """
     Boolean mask: True where the size parameter is within dataset limits.
 
@@ -56,17 +60,21 @@ def _valid_mask(mp: MicroParameters, rh: float | None) -> np.ndarray:
     """
     from pymopsmap.scatlib.growth import growth_factor_cubed
 
-    x_min, x_max = _X_LIMITS.get(mp.shape.type, (0.0, float("inf")))
     r_max = _max_radius(mp.psd)
-
     if r_max is None:
         return np.ones(len(mp.wavelength), dtype=bool)
 
     if mp.kappa and rh:
         r_max *= growth_factor_cubed(mp.kappa, rh) ** (1.0 / 3.0)
 
-    wl = np.asarray(mp.wavelength, dtype=float)
-    x = 2.0 * math.pi * r_max / wl
+    x = 2.0 * math.pi * r_max / np.asarray(mp.wavelength, dtype=float)
+    x_min = _X_MINIMUM.get(mp.shape.type, 0.0)
+    x_max = np.array(
+        [
+            limits.maximum(mp.shape, real, imag)
+            for real, imag in zip(mp.n_real, mp.n_imag)  # type: ignore[arg-type]
+        ]
+    )
     return (x >= x_min) & (x <= x_max)
 
 
@@ -87,6 +95,7 @@ def _clip_mp(mp: MicroParameters, mask: np.ndarray) -> MicroParameters:
 def clip_modes_to_coverage(
     modes: MicroParameters | list[MicroParameters],
     rh: float | None = None,
+    limits: SizeParameterLimits | None = None,
 ) -> tuple[MicroParameters | list[MicroParameters], np.ndarray]:
     """
     Clip wavelengths outside the Gasteiger & Wiegner (2018) coverage.
@@ -98,6 +107,7 @@ def clip_modes_to_coverage(
     Args:
         modes: the modes of the run.
         rh: the humidity handed to MOPSMAP, when it applies the growth itself.
+        limits: the dataset limits; the published table is used without them.
 
     Returns:
         clipped_modes — same type as input, out-of-range wavelengths dropped.
@@ -113,7 +123,8 @@ def clip_modes_to_coverage(
         assert isinstance(modes, list)
         mp_list = list(modes)
 
-    per_mask = [_valid_mask(mp, rh) for mp in mp_list]
+    limits = limits or SizeParameterLimits(None)
+    per_mask = [_valid_mask(mp, rh, limits) for mp in mp_list]
     combined: np.ndarray = np.ones(len(mp_list[0].wavelength), dtype=bool)
     for m in per_mask:
         combined &= m
@@ -131,7 +142,8 @@ def clip_modes_to_coverage(
         if mask.all():
             continue
         r_max = _max_radius(mp.psd)
-        x_min, x_max = _X_LIMITS.get(mp.shape.type, (0.0, float("inf")))
+        x_min = _X_MINIMUM.get(mp.shape.type, 0.0)
+        x_max = limits.maximum(mp.shape, mp.n_real[0], mp.n_imag[0])  # type: ignore[index]
         if r_max is not None:
             x_clip = 2.0 * math.pi * r_max / clipped_wl
             parts.append(

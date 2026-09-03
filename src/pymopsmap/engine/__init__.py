@@ -30,6 +30,7 @@ def run_point(
     from pymopsmap.scatlib.cache import OpticalDatasetCache
     from pymopsmap.scatlib.coverage import require_available
     from pymopsmap.scatlib.downloader import DatasetDownloader
+    from pymopsmap.scatlib.limits import SizeParameterLimits
     from pymopsmap.scatlib.resolver import NCFileResolver
     from pymopsmap.scatlib.results import ResultCache
     from pymopsmap.utils import DATASET_CACHE_DIR
@@ -50,16 +51,19 @@ def run_point(
     if cached is not None:
         return cached
 
+    # The index carries the size-parameter limits, so it comes before the
+    # clipping that uses them.
+    index_path = dataset_cache.full_path("index.nc")
+    if not dataset_cache.is_cached("index.nc"):
+        downloader.download("index.nc")
+
     # Clip wavelengths that exceed dataset size-parameter coverage.
     # original_wl is used to reindex the result back to the full grid.
     mp_ref = modes if not isinstance(modes, list) else modes[0]
     original_wl = list(mp_ref.wavelength)
-    modes_run, valid_mask = clip_modes_to_coverage(modes, rh=rh)
-
-    # Ensure index.nc is present first
-    index_path = dataset_cache.full_path("index.nc")
-    if not dataset_cache.is_cached("index.nc"):
-        downloader.download("index.nc")
+    modes_run, valid_mask = clip_modes_to_coverage(
+        modes, rh=rh, limits=SizeParameterLimits(index_path)
+    )
 
     # Resolve required dataset files and download missing ones. A file the
     # source does not ship is a coverage gap, not a download failure.
