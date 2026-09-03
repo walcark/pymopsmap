@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from pymopsmap import species
+from pymopsmap import accessors, species  # noqa: F401  registers .mopsmap
 from pymopsmap.engine.outputs import DEFAULT_OUTPUT, OutputRequest, OutputType
 from pymopsmap.exceptions import (
     CoverageError,
