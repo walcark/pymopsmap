@@ -13,6 +13,12 @@ from pymopsmap.utils import MOPSMAP_PATH, get_logger
 
 logger = get_logger(__name__)
 
+# MOPSMAP reports several failures on stdout and still exits zero: a dataset
+# file it cannot open, and every Fortran `stop` that prints its reason first.
+# The exit code alone therefore says nothing, and a partially failed run
+# otherwise returns a mixture of correct values and silent gaps.
+_FAILURE_MARKERS = ("Error opening", "Error:")
+
 
 def _runtime_env() -> dict[str, str]:
     """
@@ -69,5 +75,22 @@ def launch_mopsmap(input_filename: Path) -> dict[str, Any]:
             stderr=stderr,
         )
 
+    reported = _reported_failures(stdout)
+    if reported:
+        raise MopsmapError(
+            "MOPSMAP exited with code 0 but reported: " + " | ".join(reported),
+            returncode=0,
+            stderr=stderr,
+        )
+
     logger.debug("MOPSMAP finished.")
     return {"stdout": stdout}
+
+
+def _reported_failures(stdout: str) -> list[str]:
+    """Lines on which MOPSMAP announced a failure without saying so in code."""
+    return [
+        line.strip()
+        for line in stdout.splitlines()
+        if any(marker in line for marker in _FAILURE_MARKERS)
+    ]
