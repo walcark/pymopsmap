@@ -181,8 +181,8 @@ class Mix:
         if self.wl_ref is not None:
             return self.wl_ref
         # Mass is wavelength independent, so any covered wavelength works.
-        low, high = specie.wl_range
-        return 0.5 * (low + high)
+        span = specie.wl_range
+        return 0.55 if span is None else 0.5 * (span[0] + span[1])
 
     def compute(
         self,

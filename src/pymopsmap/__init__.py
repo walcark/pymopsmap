@@ -25,7 +25,7 @@ from pymopsmap.exceptions import (
 )
 from pymopsmap.microparams import MicroParameters
 from pymopsmap.species import CamsSpecie as CAMS
-from pymopsmap.species import Mix, Specie, load, opac_mix
+from pymopsmap.species import Mix, Mode, Specie, load, opac_mix
 from pymopsmap.species import OpacSpecie as OPAC
 
 __all__ = [
@@ -33,6 +33,7 @@ __all__ = [
     "load",
     "Specie",
     "Mix",
+    "Mode",
     "CAMS",
     "OPAC",
     "opac_mix",

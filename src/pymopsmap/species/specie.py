@@ -15,6 +15,7 @@ from pymopsmap.sweep import as_space, assemble
 from pymopsmap.utils import check_within_grid
 
 from .catalog import CamsSpecie, CatalogSpecie, OpacSpecie, path_for
+from .mode import Mode
 from .schema import (
     AMPLITUDE_FIELD,
     Growth,
@@ -98,10 +99,13 @@ class Specie:
         return self._range("rh")
 
     @property
-    def wl_range(self) -> tuple[float, float]:
-        span = self._range("wl")
-        assert span is not None  # every mode carries a wavelength axis
-        return span
+    def wl_range(self) -> tuple[float, float] | None:
+        """
+        Wavelengths the tabulated refractive index covers.
+
+        None when the index is a scalar, which covers every wavelength.
+        """
+        return self._range("wl")
 
     def _range(self, axis: str) -> tuple[float, float] | None:
         first = self.tree[self.modes[0]].to_dataset()
@@ -110,11 +114,77 @@ class Specie:
         values = first[axis].values
         return float(values.min()), float(values.max())
 
+    @classmethod
+    def custom(
+        cls,
+        modes: Mode | list[Mode],
+        name: str = "custom",
+        wl: list[float] | None = None,
+    ) -> Specie:
+        """
+        Build a species in Python rather than reading one from a file.
+
+        Parameters
+        ----------
+        modes : Mode or list of Mode
+            The modes, in order. Their names default to ``only`` for a single
+            mode, and to ``mode_1``, ``mode_2``, ... for several.
+        name : str
+            Name of the species, used in error messages and when saving.
+        wl : list of float, optional
+            Wavelengths the refractive index is given on. Omit it when the
+            index is a scalar.
+
+        Returns
+        -------
+        Specie
+        """
+        listed = [modes] if isinstance(modes, Mode) else list(modes)
+        tree = xr.DataTree()
+        tree.attrs["source"] = "custom"
+        for index, mode in enumerate(listed, start=1):
+            label = mode.name if len(listed) == 1 else f"mode_{index}"
+            tree[label] = xr.DataTree(mode.to_dataset(wl))
+        growth = (
+            Growth.KAPPA
+            if any(mode.kappa is not None for mode in listed)
+            else Growth.NONE
+        )
+        tree.attrs["growth"] = growth.value
+        return cls(name=name, tree=tree, source="custom", version=None)
+
+    @property
+    def swept(self) -> dict[str, int]:
+        """Dimensions a parameter of this species varies over, and sizes."""
+        sizes: dict[str, int] = {}
+        for mode in self.modes:
+            for dim, size in self.tree[mode].to_dataset().sizes.items():
+                if dim != "wl":
+                    sizes[str(dim)] = size
+        return sizes
+
+    def to_netcdf(self, path: str | Path) -> None:
+        """
+        Write the species in the catalogue format.
+
+        A hand-built species and a catalogue one serialise identically, which
+        is what makes the format one thing rather than two.
+        """
+        from .schema import write
+
+        tree = xr.DataTree()
+        tree.attrs["source"] = self.source
+        if self.version is not None:
+            tree.attrs["version"] = self.version
+        tree[self.name] = self.tree.copy()
+        write(tree, path)
+
     def at(
         self,
         wl: list[float],
         rh: float | None = None,
         kappa: float | None = None,
+        **swept: int,
     ) -> Point:
         """
         Materialise the species at one point of its parameter space.
@@ -129,19 +199,26 @@ class Specie:
         kappa : float, optional
             Overrides the hygroscopicity stored in the file. Only meaningful
             for a species whose growth is driven by kappa.
+        **swept : int
+            One index per swept dimension of the species, naming the point to
+            materialise. See ``Specie.swept``.
 
         Returns
         -------
         Point
             The materialised modes, and the humidity left to the engine.
         """
-        check_within_grid("wl", wl, self.wl_range, self._where)
+        if self.wl_range is not None:
+            check_within_grid("wl", wl, self.wl_range, self._where)
         engine_rh = self._resolve_humidity(rh)
         selectors = {"wl": wl} | (
             {"rh": rh} if self.growth is Growth.TABULATED else {}
         )
         return Point(
-            modes=[self._mode(name, selectors, kappa) for name in self.modes],
+            modes=[
+                self._mode(name, selectors, kappa, swept)
+                for name in self.modes
+            ],
             engine_rh=engine_rh,
         )
 
@@ -309,9 +386,16 @@ class Specie:
         return rh
 
     def _mode(
-        self, name: str, selectors: dict, kappa: float | None
+        self,
+        name: str,
+        selectors: dict,
+        kappa: float | None,
+        swept: dict[str, int] | None = None,
     ) -> MicroParameters:
-        ds = self.tree[name].to_dataset().interp(**selectors)
+        ds = self.tree[name].to_dataset()
+        if swept:
+            ds = ds.isel({k: v for k, v in swept.items() if k in ds.dims})
+        ds = ds.interp(**{k: v for k, v in selectors.items() if k in ds.dims})
         psd_type = ds.attrs["psd_type"]
         shape_type = ds.attrs["shape_type"]
 
@@ -320,8 +404,8 @@ class Specie:
         return MicroParameters.model_validate(
             {
                 "wavelength": list(selectors["wl"]),
-                "n_real": ds["n_real"].values.tolist(),
-                "n_imag": ds["n_imag"].values.tolist(),
+                "n_real": _spectrum(ds["n_real"], len(selectors["wl"])),
+                "n_imag": _spectrum(ds["n_imag"], len(selectors["wl"])),
                 "shape": {"type": shape_type}
                 | _fields(ds, expected_shape_variables(shape_type)),
                 "psd": {"type": psd_type}
@@ -330,6 +414,13 @@ class Specie:
                 "density": _optional(ds, "density_dry", None),
             }
         )
+
+
+def _spectrum(values: xr.DataArray, count: int) -> list[float]:
+    """A refractive index given as a scalar covers every wavelength."""
+    if values.dims:
+        return values.values.tolist()
+    return [float(values)] * count
 
 
 def _fields(ds: xr.Dataset, names: frozenset[str]) -> dict:

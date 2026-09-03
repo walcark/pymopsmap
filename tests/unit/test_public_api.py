@@ -12,6 +12,7 @@ EXPECTED = {
     "load",
     "Specie",
     "Mix",
+    "Mode",
     "CAMS",
     "OPAC",
     "opac_mix",
