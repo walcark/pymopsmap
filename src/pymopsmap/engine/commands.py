@@ -113,23 +113,3 @@ def shape_command(shape: Shape) -> str:
 
 def psd_command(psd: PSD) -> str:
     return psd.command
-
-
-if __name__ == "__main__":
-    from .microparams import FixedPSD, Sphere, Spheroid
-
-    mp: MicroParameters = MicroParameters(
-        wavelength=[1.5],
-        n_real=[1.0],
-        n_imag=[1e-4],
-        shape=Sphere(),
-        psd=FixedPSD(radius=1.0, n=1.0),
-    )
-    print(microparams_command(mp))
-    print(
-        refr_command(
-            wl=[1.0, 3.0, 5.0], nr=[1.0, 1.0, 1.0], ni=[0.0001, 0.0001, 0.0001]
-        )
-    )
-    print(shape_command(Sphere()))
-    print(shape_command(Spheroid(aspect_ratio=1.1, mode="oblate")))

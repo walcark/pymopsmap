@@ -38,7 +38,7 @@ def run_point(
     from .coverage import clip_modes_to_coverage, reindex_to_full_grid
     from .launch_file import write_launching_file
     from .launcher import launch_mopsmap
-    from .output_format import format_mopsmap_outputs, shape_types
+    from .outputs import format_mopsmap_outputs, shape_types
 
     result_cache = ResultCache()
     dataset_cache = OpticalDatasetCache()
