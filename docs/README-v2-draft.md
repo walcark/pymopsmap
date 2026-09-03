@@ -1,3 +1,6 @@
+> **Draft.** This is the README as it would read after the v2 migration
+> described in `docs/api-v2-spec.md`. Nothing here is implemented yet.
+
 # PyMopsmap
 
 <p align="center">
@@ -70,8 +73,9 @@ op = sulphate.compute(
 )                                                          # (rh_nominal, wl)
 ```
 
-Results are cached on disk, keyed on the parameters that produced them, so
-re-running a grid you have already computed does not call MOPSMAP again.
+Results are memoised in a [xsweep](https://github.com/walcark/xsweep) store, so
+an interrupted sweep resumes from the points it is missing, and re-running an
+already computed grid calls MOPSMAP zero times.
 
 ## Custom species
 
@@ -83,34 +87,29 @@ dimensions multiply, a shared dimension varies together.
 aer = pm.Specie.custom(
     pm.Mode(
         shape=pm.shapes.Sphere(),
-        psd=pm.psd.LognormalPSD(
-            rm=0.05, sigma=1.5, n=1e9, rmin=0.01, rmax=10.0
+        psd=pm.psd.Lognormal(
+            rm=xr.DataArray(np.linspace(0.05, 0.5, 20), dims="rm"),
+            sigma=1.5, rmin=0.01, rmax=10.0,
         ),
         n_real=1.45,
-        n_imag=xr.DataArray([1e-4, 1e-3, 1e-2], dims="absorption"),
+        n_imag=xr.DataArray([1e-4, 1e-3, 1e-2], dims="k"),
         density_dry=1.8,
-        sweep={"rm": xr.DataArray(np.linspace(0.05, 0.5, 20), dims="rm")},
     )
 )
 
-aer.swept                        # {"rm": 20, "absorption": 3}
-aer.at(wl=wl, rm=7, absorption=0)
+op = aer.compute(wl=wl)          # (rm, k, wl): a 20 x 3 grid
 ```
 
-Size distribution and shape parameters are swept through `sweep` rather than
-inside the `psd` itself, whose fields stay typed as floats. That is deliberate:
-every materialised point is validated, and a `MicroParameters` never holds an
-array where a number belongs.
-
-Put two parameters on the **same** dimension to walk a trajectory rather than a
+Put two parameters on the **same** dimension to walk a trajectory instead of a
 grid:
 
 ```python
-aging = np.linspace(0.05, 0.5, 20)
-sweep = {
-    "rm": xr.DataArray(aging, dims="aging"),
-    "sigma": xr.DataArray(np.linspace(1.4, 2.1, 20), dims="aging"),
-}                                # 20 points, not 400
+aging = "aging"
+psd = pm.psd.Lognormal(
+    rm=xr.DataArray(np.linspace(0.05, 0.5, 20), dims=aging),
+    sigma=xr.DataArray(np.linspace(1.4, 2.1, 20), dims=aging),
+    rmin=0.01, rmax=10.0,
+)                                 # 20 points, not 400
 ```
 
 A custom species saves and reloads through the same format as the built-in
@@ -177,11 +176,8 @@ equals `rh` and you type the number twice.
 ### OPAC climatology
 
 ```python
-op = pm.opac_mix("continental_average").compute(rh=[0, 50, 80], wl=wl)
+op = pm.OPAC.CONTINENTAL_AVERAGE.mix().compute(rh=[0, 50, 80], wl=wl)
 ```
-
-The ten climatologies of Hess et al. (1998) ship with the package, as does the
-dry state of their ten components under `pm.OPAC`.
 
 ## Humidity
 
@@ -240,25 +236,15 @@ list(pm.CAMS)                # SULPHATE, SEA_SALT, DUST, BLACK_CARBON, ...
 pm.CAMS.SULPHATE.versions    # ('47r1', '48r1', '49r1')
 
 pm.load(pm.CAMS.SULPHATE, version="48r1")
-pm.load(pm.OPAC.WASO)        # OPAC components keep their published codes
+pm.load(pm.OPAC.WASO)
 ```
-
-A species absent from a version is absent from its file, so loading it fails
-clearly rather than yielding NaN: `secondary_organic` did not exist in CAMS
-47r1.
 
 Dataset files needed for a computation can be inspected and pre-fetched:
 
 ```python
-sulphate.cache_status(wl=wl, rh=50)     # cached vs missing
-sulphate.prefetch(wl=wl, rh=50)         # download without computing
+sulphate.cache_status(rh=50, wl=wl)     # cached vs missing
+sulphate.prefetch(rh=50, wl=wl)         # download without computing
 ```
-
-Two errors say what a computation cannot do. `DomainError` when a wavelength or
-a humidity falls outside what the species tabulates, and `CoverageError` when
-the optical dataset at hand does not ship a file the refractive index needs.
-The MOPSMAP dataset comes in two archives, and the main one covers refractive
-indices from 1.28 to 1.64: soot and mineral dust reach past it.
 
 ## How it works
 
@@ -275,20 +261,20 @@ size distribution parameters as variables, the distribution and shape types as
 attributes. Reading a species and writing one are the same code path, which is
 why a hand-built aerosol round-trips through the catalogue format.
 
-`compute` walks the points of that space, materialises one `MicroParameters`
-per point, runs MOPSMAP, and assembles the results back onto your dimensions.
+`compute` hands the space to [xsweep](https://github.com/walcark/xsweep), which
+walks the points, materialises one `MicroParameters` per point, runs MOPSMAP in
+an isolated workspace, and assembles the results back onto your dimensions.
 
 ```
 src/pymopsmap/
-├── species/      # Specie, Mode, Mix, the NetCDF schema, the catalogue
-├── shapes.py     # Sphere, Spheroid, Irregular, ...
-├── psd.py        # LognormalPSD, ModifiedGammaPSD, ...
-├── microparams.py# one validated point
-├── engine/       # one point, one MOPSMAP run, and the output rules
-├── sweep.py      # parameter space to points, and back
-├── scatlib/      # the MOPSMAP optical dataset: resolve, download, cache
-├── accessors.py  # .mopsmap accessor on the result
-└── data/         # the built-in catalogue
+├── species/     # Specie, Mix, the NetCDF schema, the catalogue
+├── shapes.py    # Sphere, Spheroid, Irregular, ...
+├── psd.py       # Lognormal, ModifiedGamma, ...
+├── engine/      # one point, one MOPSMAP run
+├── sweep.py     # xsweep binding
+├── scatlib/     # the MOPSMAP optical dataset: resolve, download, cache
+├── accessors.py # .mopsmap accessor on the result
+└── data/        # the built-in catalogue
 ```
 
 ## Adding a species
@@ -305,17 +291,11 @@ source to the built-in catalogue, add an ingestion script under
 
 ## Roadmap
 
-- **Resumable sweeps**: hand the parameter space to
-  [xsweep](https://github.com/walcark/xsweep) so an interrupted sweep restarts
-  from the points it is missing.
-- **Transparent remote dataset**: automatic download of the optical dataset
+- **Transparent remote dataset**: automatic download of the full optical dataset
   when `PYMOPSMAP_DATASET_SOURCE` is not set, removing the manual setup step.
-- **Article validation**: `scripts/validation/` reproduces Figure 5 of
-  [Gasteiger & Wiegner (2018)](https://doi.org/10.5194/gmd-11-2739-2018); the
-  other figures are next.
-- **Tabulated OPAC**: the wet state published by GEISA, alongside the kappa
-  flavour that ships today. The GEISA file host was decommissioned during the
-  migration of the database, so the links on its pages no longer resolve.
+- **Article validation**: reproduce the figures of
+  [Gasteiger & Wiegner (2018)](https://doi.org/10.5194/gmd-11-2739-2018) as a
+  test suite, covering all shape types and size parameters.
 
 ## Development
 
