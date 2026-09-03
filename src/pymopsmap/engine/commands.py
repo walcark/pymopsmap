@@ -9,7 +9,7 @@ from pymopsmap.models import PSD, MicroParameters, Shape
 from pymopsmap.utils import PosFloat64List, SortedPosFloat64List, get_tempfile
 
 if TYPE_CHECKING:
-    from pymopsmap.models.output_request import OutputRequest
+    pass
 
 # Scientific notation, matching the format MOPSMAP uses in its own data files
 # and reads with list-directed input. Fixed point with six decimals wrote every
@@ -111,36 +111,6 @@ def shape_command(shape: Shape) -> str:
 
 def psd_command(psd: PSD) -> str:
     return psd.command
-
-
-def output_request_commands(
-    output_types: OutputRequest,
-    ascii_base: Path,
-    nc_path: Path,
-    n_angles: int = 2000,
-    rh: float | None = None,
-) -> str:
-    """Build the output section of a MOPSMAP launch file."""
-    from pymopsmap.models.output_request import OutputType
-
-    _ASCII_TYPES = {
-        OutputType.PHASE_FUNCTION,
-        OutputType.SCATTERING_MATRIX,
-        OutputType.VOLUME_SCATTERING_FUNCTION,
-        OutputType.LIDAR,
-        OutputType.COEFF,
-    }
-    lines = [f"output num_theta {n_angles}", wl_command()]
-    if rh is not None:
-        lines.append(f"rH {rh}")
-    lines.append("output integrated")
-    lines.append(f"output netcdf '{nc_path}'")
-    ascii_needed = output_types & _ASCII_TYPES
-    if ascii_needed:
-        lines.append(f"output ascii_file '{ascii_base}'")
-        for otype in sorted(ascii_needed, key=lambda x: x.value):
-            lines.append(f"output {otype.value}")
-    return "\n".join(lines)
 
 
 if __name__ == "__main__":

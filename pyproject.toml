@@ -41,6 +41,8 @@ pymopsmap = { path = ".", editable = true }
 
 [tool.pixi.dependencies]
 python = "3.12.*"
+# The MOPSMAP binary is linked against the NetCDF Fortran bindings.
+netcdf-fortran = ">=4.6,<5"
 xarray = ">=2025.11.0,<2026"
 numpy = ">=2.3.5,<3"
 black = ">=25.1.0,<26"

@@ -42,7 +42,6 @@ def write_launching_file(
 
     Returns a dict with:
       - mopsmap   : path to the launch .txt file
-      - netcdf    : path to the expected NetCDF output
       - ascii_base: base path for ASCII output files
     """
     logger.debug("Writing MOPSMAP input file.")
@@ -57,7 +56,6 @@ def write_launching_file(
     file_prefix = f"scatlib '{dataset_path}'\nwater_refrac_file '{water_refr}'"
     file_content = microparams_command(mp)
     file_suffix = _file_suffix(
-        nc_path=paths["netcdf"],
         ascii_base=paths.get("ascii_base"),
         output_types=output_types,
         n_angles=n_angles,
@@ -75,16 +73,12 @@ def write_launching_file(
 
 
 def _generate_paths() -> dict[str, Path]:
-    paths: dict[str, Path] = {
-        "netcdf": get_tempfile("output.nc"),
-        "mopsmap": get_tempfile("mopsmap.txt"),
-    }
+    paths: dict[str, Path] = {"mopsmap": get_tempfile("mopsmap.txt")}
     paths["ascii_base"] = get_tempfile("mopsmap_out")
     return paths
 
 
 def _file_suffix(
-    nc_path: Path,
     ascii_base: Path | None,
     output_types: OutputRequest,
     n_angles: int,
@@ -95,8 +89,11 @@ def _file_suffix(
     if rh is not None:
         lines.append(f"rH {rh}")
 
+    # No netcdf output is requested: nothing parses it, the results are read
+    # from stdout and the ascii files. Asking for it also segfaults a binary
+    # built against a different netcdf-fortran, after the computation has
+    # already succeeded.
     lines.append("output integrated")
-    lines.append(f"output netcdf '{nc_path}'")
 
     ascii_needed = output_types & _ASCII_TYPES
     if ascii_needed and ascii_base is not None:
