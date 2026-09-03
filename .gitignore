@@ -11,6 +11,7 @@ dist/
 *.tmp
 .pytest_cache/
 data/**
+!data/cams/**
 scripts/probe*
 *.log
 *.png
