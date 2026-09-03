@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from pymopsmap.engine.output_format import COMBINE, combine
+from pymopsmap.engine.outputs import COMBINE, combine
 
 WL = np.array([0.44, 0.55, 0.67])
 

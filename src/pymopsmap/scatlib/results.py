@@ -12,8 +12,8 @@ from pymopsmap.utils.caching import cache_key
 if TYPE_CHECKING:
     import xarray as xr
 
-    from pymopsmap.models import MicroParameters
-    from pymopsmap.models.output_request import OutputRequest
+    from pymopsmap.engine.outputs import OutputRequest
+    from pymopsmap.microparams import MicroParameters
 
 
 class ResultCache:

@@ -9,13 +9,10 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from pymopsmap.models.microparams import (
-    Irregular,
-    LognormalPSD,
-    MicroParameters,
-    Sphere,
-)
+from pymopsmap.microparams import MicroParameters
+from pymopsmap.psd import LognormalPSD
 from pymopsmap.scatlib.resolver import NCFileResolver
+from pymopsmap.shapes import Irregular, Sphere
 
 
 def _make_index(mreal_vals, mimag_vals, eps_vals=None, tmp_path=None) -> Path:

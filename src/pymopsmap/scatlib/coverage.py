@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from pymopsmap.exceptions import CoverageError
 
 if TYPE_CHECKING:
-    from pymopsmap.models import MicroParameters
+    from pymopsmap.microparams import MicroParameters
 
 # The MOPSMAP dataset is published in two archives: a mandatory one covering
 # refractive indices from 1.28 to 1.64, and an extended one covering the rest

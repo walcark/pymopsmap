@@ -9,8 +9,8 @@ from typing import NamedTuple
 import numpy as np
 import xarray as xr
 
-from pymopsmap.models.microparams import MicroParameters
-from pymopsmap.models.output_request import DEFAULT_OUTPUT, OutputRequest
+from pymopsmap.engine.outputs import DEFAULT_OUTPUT, OutputRequest
+from pymopsmap.microparams import MicroParameters
 from pymopsmap.sweep import as_space, assemble
 from pymopsmap.utils import check_within_grid
 

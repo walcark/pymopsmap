@@ -11,7 +11,7 @@ import numpy as np
 if TYPE_CHECKING:
     import xarray as xr
 
-    from pymopsmap.models.microparams import MicroParameters
+    from pymopsmap.microparams import MicroParameters
 
 # Hard limits from Gasteiger & Wiegner (2018, GMD 11:2739–2762), Tables 1 & 2.
 # x = 2π r / λ  (volume-equivalent size parameter for irregular shapes).
@@ -29,7 +29,7 @@ _X_LIMITS: dict[str, tuple[float, float]] = {
 
 def _max_radius(psd) -> float | None:
     """Return the maximum relevant radius (µm) for a coverage check."""
-    from pymopsmap.models.microparams import (
+    from pymopsmap.psd import (
         DistrListPSD,
         FixedPSD,
         LognormalPSD,
@@ -71,7 +71,7 @@ def _valid_mask(mp: MicroParameters, rh: float | None) -> np.ndarray:
 
 
 def _clip_mp(mp: MicroParameters, mask: np.ndarray) -> MicroParameters:
-    from pymopsmap.models.microparams import MicroParameters
+    from pymopsmap.microparams import MicroParameters
 
     return MicroParameters(
         wavelength=[w for w, v in zip(mp.wavelength, mask) if v],
@@ -103,7 +103,7 @@ def clip_modes_to_coverage(
         clipped_modes — same type as input, out-of-range wavelengths dropped.
         valid_mask    — boolean over the *original* wl axis (True = kept).
     """
-    from pymopsmap.models.microparams import MicroParameters as MP
+    from pymopsmap.microparams import MicroParameters as MP
 
     single = isinstance(modes, MP)
     if single:

@@ -5,7 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from pymopsmap.models import PSD, MicroParameters, Shape
+from pymopsmap.microparams import MicroParameters
+from pymopsmap.psd import PSD
+from pymopsmap.shapes import Shape
 from pymopsmap.utils import PosFloat64List, SortedPosFloat64List, get_tempfile
 
 if TYPE_CHECKING:

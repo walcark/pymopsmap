@@ -13,8 +13,8 @@ from pymopsmap.exceptions import IndexFileError
 from pymopsmap.utils import check_within_grid
 
 if TYPE_CHECKING:
-    from pymopsmap.models import MicroParameters
-    from pymopsmap.models.microparams import Shape
+    from pymopsmap.microparams import MicroParameters
+    from pymopsmap.shapes import Shape
 
 
 def _fmt_mreal(v: float) -> str:
@@ -89,7 +89,7 @@ class NCFileResolver:
             particles itself and uses a refractive index the dry values do not
             point at, so the files are resolved on the grown one.
         """
-        from pymopsmap.models import MicroParameters as MP
+        from pymopsmap.microparams import MicroParameters as MP
 
         from .growth import grown_refractive_index
 
@@ -121,7 +121,7 @@ class NCFileResolver:
     def _files_for_params(
         self, shape: Shape, mreal: float, mimag: float
     ) -> list[str]:
-        from pymopsmap.models.microparams import (
+        from pymopsmap.shapes import (
             Irregular,
             IrregularDistrFile,
             IrregularOverlay,
@@ -160,7 +160,7 @@ class NCFileResolver:
         return []
 
     def _eps_for_shape(self, shape: Shape) -> list[float]:
-        from pymopsmap.models.microparams import Spheroid, SpheroidLognormal
+        from pymopsmap.shapes import Spheroid, SpheroidLognormal
 
         if len(self.avail_eps) == 0:
             return []
@@ -189,9 +189,7 @@ class NCFileResolver:
 
     @staticmethod
     def _irregular_id(shape: Shape) -> str:
-        from pymopsmap.models.microparams import (
-            Irregular,
-        )
+        from pymopsmap.shapes import Irregular
 
         if isinstance(shape, Irregular):
             return shape.shape_id

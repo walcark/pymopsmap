@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING, TypeAlias
 if TYPE_CHECKING:
     import xarray as xr
 
-    from pymopsmap.models import MicroParameters
-    from pymopsmap.models.output_request import OutputRequest
+    from pymopsmap.engine.outputs import OutputRequest
+    from pymopsmap.microparams import MicroParameters
 
     Modes: TypeAlias = MicroParameters | list[MicroParameters]
 

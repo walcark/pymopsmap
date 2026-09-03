@@ -7,7 +7,9 @@ import math
 import pytest
 
 from pymopsmap.engine.commands import refr_command, write_refr_file
-from pymopsmap.models import LognormalPSD, MicroParameters, Sphere
+from pymopsmap.microparams import MicroParameters
+from pymopsmap.psd import LognormalPSD
+from pymopsmap.shapes import Sphere
 
 WL = [0.44, 0.55, 0.67]
 # Weakly absorbing species reach these magnitudes: CAMS sulphate goes down to

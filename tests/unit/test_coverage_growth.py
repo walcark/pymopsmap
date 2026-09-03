@@ -7,7 +7,9 @@ import pytest
 import xarray as xr
 
 from pymopsmap.engine.coverage import clip_modes_to_coverage
-from pymopsmap.models.microparams import LognormalPSD, MicroParameters, Sphere
+from pymopsmap.microparams import MicroParameters
+from pymopsmap.psd import LognormalPSD
+from pymopsmap.shapes import Sphere
 
 # A coarse sea-salt-like mode, kappa 0.916. Dry it fits the coverage at every
 # wavelength; at 90 percent humidity the growth factor is 2.10 and it does not.
@@ -56,13 +58,13 @@ class TestGrownRadii:
 
 class TestShapeProvenance:
     def test_a_result_records_the_shapes_it_came_from(self):
-        from pymopsmap.engine.output_format import shape_types
+        from pymopsmap.engine.outputs import shape_types
 
         assert shape_types([_sscm()]) == ["sphere"]
 
     def test_a_mixed_result_records_every_shape(self):
-        from pymopsmap.engine.output_format import shape_types
-        from pymopsmap.models.microparams import Spheroid
+        from pymopsmap.engine.outputs import shape_types
+        from pymopsmap.shapes import Spheroid
 
         spheroid = _sscm().model_copy(
             update={"shape": Spheroid(mode="oblate", aspect_ratio=1.5)}
@@ -72,7 +74,7 @@ class TestShapeProvenance:
 
     def test_the_effective_radius_survives_a_spherical_mixture(self):
         """It was always NaN: the provenance was never recorded."""
-        from pymopsmap.engine.output_format import combine
+        from pymopsmap.engine.outputs import combine
 
         one = xr.Dataset(
             {

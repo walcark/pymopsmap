@@ -35,7 +35,8 @@ import xarray as xr
 from pydantic import BaseModel
 
 from pymopsmap.exceptions import SchemaError
-from pymopsmap.models.microparams import PSD, Shape
+from pymopsmap.psd import PSD
+from pymopsmap.shapes import Shape
 
 # Bumped on any breaking layout change. It feeds the sweep store version key.
 SCHEMA_REV = 1

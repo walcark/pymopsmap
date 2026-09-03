@@ -8,7 +8,7 @@ from pathlib import Path
 
 import xarray as xr
 
-from pymopsmap.models.output_request import DEFAULT_OUTPUT, OutputRequest
+from pymopsmap.engine.outputs import DEFAULT_OUTPUT, OutputRequest
 
 from .catalog import CatalogSpecie
 from .specie import Specie, load
@@ -209,7 +209,7 @@ class Mix:
         -------
         xr.Dataset
         """
-        from pymopsmap.engine.output_format import combine
+        from pymopsmap.engine.outputs import combine
 
         scales = self._scales(quiet)
         results = [

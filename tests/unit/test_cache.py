@@ -3,10 +3,12 @@
 import numpy as np
 import xarray as xr
 
-from pymopsmap.models.microparams import FixedPSD, MicroParameters, Sphere
-from pymopsmap.models.output_request import DEFAULT_OUTPUT, OutputType
+from pymopsmap.engine.outputs import DEFAULT_OUTPUT, OutputType
+from pymopsmap.microparams import MicroParameters
+from pymopsmap.psd import FixedPSD
 from pymopsmap.scatlib.cache import OpticalDatasetCache
 from pymopsmap.scatlib.results import ResultCache
+from pymopsmap.shapes import Sphere
 from pymopsmap.utils.caching import cache_key
 
 # ---------------------------------------------------------------------------

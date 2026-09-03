@@ -5,8 +5,10 @@ from __future__ import annotations
 import pytest
 
 from pymopsmap.engine.launch_file import write_launching_file
-from pymopsmap.models import FixedPSD, MicroParameters, Sphere
-from pymopsmap.models.output_request import OutputType
+from pymopsmap.engine.outputs import OutputType
+from pymopsmap.microparams import MicroParameters
+from pymopsmap.psd import FixedPSD
+from pymopsmap.shapes import Sphere
 
 
 def _mp() -> MicroParameters:

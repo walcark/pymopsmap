@@ -1,19 +1,32 @@
-"""MOPSMAP output parsers — stdout integrated block and ASCII output files."""
+"""MOPSMAP outputs: what to ask for, how it is parsed, how it combines."""
 
 from __future__ import annotations
 
 import warnings
 from collections.abc import Callable, Iterable
+from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import xarray as xr
 
-from pymopsmap.models.output_request import OutputRequest, OutputType
-
 if TYPE_CHECKING:
     pass
+
+
+# The enum value is the extension MOPSMAP writes, so they live together.
+class OutputType(StrEnum):
+    INTEGRATED = "integrated"
+    LIDAR = "lidar"
+    PHASE_FUNCTION = "phase_function"
+    SCATTERING_MATRIX = "scattering_matrix"
+    VOLUME_SCATTERING_FUNCTION = "volume_scattering_function"
+    COEFF = "coeff"
+
+
+OutputRequest = frozenset[OutputType]
+DEFAULT_OUTPUT: OutputRequest = frozenset({OutputType.INTEGRATED})
 
 
 # ---------------------------------------------------------------------------
@@ -34,7 +47,6 @@ def format_mopsmap_outputs(
       - ascii_base  : Path prefix for ASCII output files (present when any
                        non-integrated type was requested)
     """
-    from pymopsmap.models.output_request import DEFAULT_OUTPUT
 
     if output_types is None:
         output_types = DEFAULT_OUTPUT

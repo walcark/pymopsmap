@@ -8,8 +8,10 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from pymopsmap.models.microparams import LognormalPSD, MicroParameters, Sphere
+from pymopsmap.microparams import MicroParameters
+from pymopsmap.psd import LognormalPSD
 from pymopsmap.scatlib.resolver import NCFileResolver
+from pymopsmap.shapes import Sphere
 
 GRID_REAL = [1.36, 1.40, 1.44, 1.48, 1.52, 1.56, 1.60]
 GRID_IMAG = [

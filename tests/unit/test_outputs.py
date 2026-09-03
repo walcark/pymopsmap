@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from pymopsmap.engine.output_format import (
+from pymopsmap.engine.outputs import (
     format_stdout,
     parse_coeff,
     parse_lidar,
@@ -112,7 +112,7 @@ class TestScatteringCoefficient:
         assert format_stdout(STDOUT_SAMPLE)["ksca"].dims == ("wl",)
 
     def test_the_ascii_file_path_agrees_with_stdout(self):
-        from pymopsmap.engine.output_format import _parse_integrated_file
+        from pymopsmap.engine.outputs import _parse_integrated_file
 
         # The ascii file holds the same columns without the leading token.
         columns = "\n".join(

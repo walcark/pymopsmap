@@ -8,7 +8,9 @@ from pathlib import Path
 import pytest
 
 from pymopsmap.engine.commands import microparams_command
-from pymopsmap.models import LognormalPSD, MicroParameters, Sphere
+from pymopsmap.microparams import MicroParameters
+from pymopsmap.psd import LognormalPSD
+from pymopsmap.shapes import Sphere
 
 WL = [0.44, 0.55, 0.67]
 

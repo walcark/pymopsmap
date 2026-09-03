@@ -1,15 +1,14 @@
 import pytest
 from pydantic import ValidationError
 
-from pymopsmap.models import (
+from pymopsmap.microparams import MicroParameters
+from pymopsmap.psd import (
     FileDefinedPSD,
     FixedPSD,
     LognormalPSD,
-    MicroParameters,
     ModifiedGammaPSD,
-    Sphere,
-    Spheroid,
 )
+from pymopsmap.shapes import Sphere, Spheroid
 
 
 # =======================================================================

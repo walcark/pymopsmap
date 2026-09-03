@@ -7,7 +7,9 @@ import math
 import pytest
 from pydantic import ValidationError
 
-from pymopsmap.models import LognormalPSD, MicroParameters, Sphere
+from pymopsmap.microparams import MicroParameters
+from pymopsmap.psd import LognormalPSD
+from pymopsmap.shapes import Sphere
 
 
 def _micro(n_real, n_imag) -> MicroParameters:

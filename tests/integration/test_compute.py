@@ -35,7 +35,7 @@ def _sphere_mp(wl_count=3):
 class TestSingleSphere:
     def test_basic_run_returns_optiprops(self):
         from pymopsmap.engine import run_point
-        from pymopsmap.models.output_request import DEFAULT_OUTPUT
+        from pymopsmap.engine.outputs import DEFAULT_OUTPUT
 
         op = run_point([_sphere_mp()], DEFAULT_OUTPUT, quiet=True)
         kext = op["kext"]
@@ -45,7 +45,7 @@ class TestSingleSphere:
 
     def test_result_cache_hit(self, tmp_path):
         from pymopsmap.engine import run_point
-        from pymopsmap.models.output_request import DEFAULT_OUTPUT
+        from pymopsmap.engine.outputs import DEFAULT_OUTPUT
         from pymopsmap.scatlib.results import ResultCache
 
         mp = _sphere_mp()
@@ -57,11 +57,9 @@ class TestSingleSphere:
     def test_invalid_params_raises_before_io(self):
         from pydantic import ValidationError
 
-        from pymopsmap.models.microparams import (
-            LognormalPSD,
-            MicroParameters,
-            Sphere,
-        )
+        from pymopsmap.microparams import MicroParameters
+        from pymopsmap.psd import LognormalPSD
+        from pymopsmap.shapes import Sphere
 
         with pytest.raises(ValidationError):
             MicroParameters(

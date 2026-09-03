@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from pymopsmap import species
+from pymopsmap.engine.outputs import DEFAULT_OUTPUT, OutputRequest, OutputType
 from pymopsmap.exceptions import (
     CoverageError,
     DatasetSourceNotConfiguredError,
@@ -13,28 +14,25 @@ from pymopsmap.exceptions import (
     IndexFileError,
     MopsmapError,
 )
-from pymopsmap.models import MicroParameters
+from pymopsmap.microparams import MicroParameters
 
 # Re-export shapes and PSDs for convenience
-from pymopsmap.models.microparams import (
+from pymopsmap.psd import (
     DistrListPSD,
     DistrType,
     FileDefinedPSD,
     FixedPSD,
+    LognormalPSD,
+    ModifiedGammaPSD,
+)
+from pymopsmap.shapes import (
     Irregular,
     IrregularDistrFile,
     IrregularOverlay,
-    LognormalPSD,
-    ModifiedGammaPSD,
     Sphere,
     Spheroid,
     SpheroidDistrFile,
     SpheroidLognormal,
-)
-from pymopsmap.models.output_request import (
-    DEFAULT_OUTPUT,
-    OutputRequest,
-    OutputType,
 )
 from pymopsmap.species import OPAC_COMPOSITIONS, Mix, Specie, load, opac_mix
 from pymopsmap.species import CamsSpecie as CAMS

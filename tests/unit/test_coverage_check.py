@@ -9,8 +9,10 @@ import pytest
 import xarray as xr
 
 from pymopsmap.exceptions import CoverageError, DomainError
-from pymopsmap.models.microparams import LognormalPSD, MicroParameters, Sphere
+from pymopsmap.microparams import MicroParameters
+from pymopsmap.psd import LognormalPSD
 from pymopsmap.scatlib.resolver import NCFileResolver
+from pymopsmap.shapes import Sphere
 
 GRID_REAL = [1.28, 1.32, 1.60, 1.64]
 GRID_IMAG = [0.0, 0.000538, 0.00152, 0.147]

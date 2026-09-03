@@ -1,15 +1,14 @@
 import pytest
 
 from pymopsmap.engine.commands import psd_command, shape_command
-from pymopsmap.models import (
+from pymopsmap.microparams import MicroParameters
+from pymopsmap.psd import (
     FileDefinedPSD,
     FixedPSD,
     LognormalPSD,
-    MicroParameters,
     ModifiedGammaPSD,
-    Sphere,
-    Spheroid,
 )
+from pymopsmap.shapes import Sphere, Spheroid
 
 
 def test_FixedPSD_command():
