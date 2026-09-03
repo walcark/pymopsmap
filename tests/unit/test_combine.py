@@ -121,6 +121,37 @@ class TestTwoSpecies:
         )
 
 
+class TestSweptDimensions:
+    """A swept humidity puts the wavelength axis last, not first."""
+
+    @pytest.fixture
+    def swept(self):
+        one = _species(1e-4, 0.9)
+        return xr.concat(
+            [one, _species(2e-4, 0.8)],
+            dim=xr.DataArray([0.0, 90.0], dims="rh", name="rh"),
+        )
+
+    def test_it_combines_without_broadcasting_on_the_wrong_axis(self, swept):
+        out = combine([swept, swept], weights=[1.0, 1.0])
+
+        assert out["kext"].dims == ("rh", "wl")
+
+    def test_the_angstrom_follows_the_wavelength_axis(self, swept):
+        out = combine([swept, swept], weights=[1.0, 1.0])
+
+        expected = _angstrom(out["kext"].sel(rh=90.0).values)
+        np.testing.assert_allclose(
+            out["angstrom_ext"].sel(rh=90.0).values, expected, equal_nan=True
+        )
+
+    def test_each_swept_point_gets_its_own_exponent(self, swept):
+        out = combine([swept, swept], weights=[1.0, 1.0])
+
+        assert out["angstrom_ext"].dims == ("rh", "wl")
+        assert np.isnan(out["angstrom_ext"].isel(wl=0)).all()
+
+
 class TestWeights:
     def test_a_weight_scales_the_additive_variables(self):
         one = _species(1e-4, 0.9)

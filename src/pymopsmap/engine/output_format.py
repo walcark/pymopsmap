@@ -398,16 +398,15 @@ def _angstrom(source: Callable[[xr.Dataset], xr.DataArray]) -> CombineRule:
 
     def rule(name: str, parts: list[xr.Dataset]) -> xr.DataArray:
         total = _total(source(part) for part in parts)
-        wl = parts[0]["wl"]
-        values = np.asarray(total)
-        exponent = np.full(values.shape, np.nan, dtype=float)
-        # A non-absorbing mixture has kext == ksca, so the absorption
-        # exponent is a 0/0: NaN is the answer, the warning is not.
+        # Shift along the wavelength axis by name: a swept parameter puts
+        # other dimensions in front of it.
+        ratio = total / total.shift(wl=1)
+        span = parts[0]["wl"] / parts[0]["wl"].shift(wl=1)
+        # A non-absorbing mixture gives a 0/0 here; NaN is the answer.
         with np.errstate(divide="ignore", invalid="ignore"):
-            exponent[1:] = -np.log(values[1:] / values[:-1]) / np.log(
-                wl.values[1:] / wl.values[:-1]
+            return -xr.apply_ufunc(np.log, ratio) / xr.apply_ufunc(
+                np.log, span
             )
-        return xr.DataArray(exponent, coords={"wl": wl}, dims=("wl",))
 
     return rule
 
