@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from pymopsmap import species
 from pymopsmap.exceptions import (
+    CoverageError,
     DatasetSourceNotConfiguredError,
     DomainError,
     DownloadError,
@@ -124,6 +125,7 @@ __all__ = [
     "DistrType",
     # Exceptions
     "DatasetSourceNotConfiguredError",
+    "CoverageError",
     "DomainError",
     "DownloadError",
     "IndexFileError",

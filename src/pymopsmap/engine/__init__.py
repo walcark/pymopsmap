@@ -26,7 +26,9 @@ def run_point(
     files are present, write the launch file, run the binary, parse the
     outputs, store the result.
     """
+    from pymopsmap.exceptions import DownloadError
     from pymopsmap.scatlib.cache import OpticalDatasetCache
+    from pymopsmap.scatlib.coverage import require_available
     from pymopsmap.scatlib.downloader import DatasetDownloader
     from pymopsmap.scatlib.resolver import NCFileResolver
     from pymopsmap.scatlib.results import ResultCache
@@ -59,11 +61,18 @@ def run_point(
     if not dataset_cache.is_cached("index.nc"):
         downloader.download("index.nc")
 
-    # Resolve required dataset files and download missing ones
+    # Resolve required dataset files and download missing ones. A file the
+    # source does not ship is a coverage gap, not a download failure.
     resolver = NCFileResolver(index_path)
     mp_list = [modes_run] if not isinstance(modes_run, list) else modes_run
     required = resolver.resolve(mp_list)
-    downloader.download_missing(required)
+    try:
+        downloader.download_missing(required)
+    except DownloadError as exc:
+        require_available(
+            missing=[exc.file_path], modes=mp_list, source=exc.source
+        )
+        raise
 
     # Run MOPSMAP on the (possibly clipped) wavelength grid
     paths = write_launching_file(

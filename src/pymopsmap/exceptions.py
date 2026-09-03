@@ -49,3 +49,12 @@ class DomainError(ValueError):
 
 class SchemaError(ValueError):
     """Raised when a species file does not follow the canonical schema."""
+
+
+class CoverageError(Exception):
+    """Raised when the optical dataset at hand lacks a required file."""
+
+    def __init__(self, message: str, missing: list[str], source: str):
+        super().__init__(message)
+        self.missing = missing
+        self.source = source

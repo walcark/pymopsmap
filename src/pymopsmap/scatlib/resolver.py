@@ -10,6 +10,7 @@ import numpy as np
 import xarray as xr
 
 from pymopsmap.exceptions import IndexFileError
+from pymopsmap.utils import check_within_grid
 
 if TYPE_CHECKING:
     from pymopsmap.models import MicroParameters
@@ -77,6 +78,13 @@ class NCFileResolver:
         from pymopsmap.models import MicroParameters as MP
 
         modes = [mp] if isinstance(mp, MP) else mp
+
+        # MOPSMAP stops on a value outside the grid it loaded
+        # (interpolate_linear.f90), so refuse it here, with the axis named.
+        for index, mode in enumerate(modes, start=1):
+            where = f"mode {index}"
+            check_within_grid("n_real", mode.n_real, self.avail_mreal, where)
+            check_within_grid("n_imag", mode.n_imag, self.avail_mimag, where)
 
         files: set[str] = {"index.nc"}
         for mode in modes:
