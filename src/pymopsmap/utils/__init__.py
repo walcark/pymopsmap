@@ -9,7 +9,6 @@ from .types import Float64List, PosFloat64List, SortedPosFloat64List
 from .validation import check_within_grid
 
 ROOT_PATH = Path(__file__).resolve().parent.parent.parent.parent
-DATA_PATH = Path(os.getenv("DATA_PATH", ROOT_PATH / "data"))
 MOPSMAP_PATH = ROOT_PATH / "bin/mopsmap/mopsmap"
 
 _default_cache = Path.home() / ".cache" / "pymopsmap"
@@ -26,7 +25,6 @@ __all__ = [
     "PosFloat64List",
     "SortedPosFloat64List",
     "check_within_grid",
-    "DATA_PATH",
     "MOPSMAP_PATH",
     "CACHE_DIR",
     "DATASET_CACHE_DIR",

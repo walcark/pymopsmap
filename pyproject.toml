@@ -30,6 +30,10 @@ Issues = "https://github.com/walcark/pymopsmap/issues"
 build-backend = "hatchling.build"
 requires = ["hatchling"]
 
+# The species catalogue lives inside the package, so it ships in the wheel.
+[tool.hatch.build.targets.wheel]
+packages = ["src/pymopsmap"]
+
 [tool.pixi.workspace]
 channels = ["conda-forge"]
 platforms = ["linux-64"]
@@ -71,7 +75,7 @@ pytest-cov = ">=6.0"
 fmt = { cmd = "ruff format ." }
 lint = { cmd = "ruff check ." }
 type-check = { cmd = "mypy src/pymopsmap" }
-test = { cmd = "python -m pytest tests --cov=src/pymopsmap --cov-report=xml", env = { DATA_PATH = "tests/data", PYMOPSMAP_CACHE_DIR = "tests/data/cache" } }
+test = { cmd = "python -m pytest tests --cov=src/pymopsmap --cov-report=xml", env = { PYMOPSMAP_CACHE_DIR = "tests/data/cache" } }
 all = { depends-on = ["fmt", "lint", "type-check", "test"] }
 
 [tool.pixi.feature.builder.dependencies]

@@ -32,7 +32,6 @@ jobs:
 
     - name: Test
       env:
-        DATA_PATH: tests/data
         PYMOPSMAP_CACHE_DIR: tests/data/cache
       run: pixi run -e dev test
 
