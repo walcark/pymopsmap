@@ -7,6 +7,7 @@ import pytest
 import xarray as xr
 
 import pymopsmap as pm
+from tests.conftest import integrated_result
 
 WL = [0.44, 0.55, 0.67]
 
@@ -22,15 +23,10 @@ def engine(monkeypatch):
         wl = np.asarray(modes[0].wavelength, dtype=float)
         area = sum(mode.psd.n * mode.psd.rm**2 for mode in modes)
         volume = sum(mode.psd.n * mode.psd.rm**3 for mode in modes)
-        kext = np.full(len(wl), area * 1e-6)
-        ds = xr.Dataset(
-            {
-                "kext": (("wl",), kext),
-                "ssa": (("wl",), np.full(len(wl), 0.9)),
-                "ksca": (("wl",), kext * 0.9),
-                "mass_conc": volume * 1e-3,
-            },
-            coords={"wl": wl},
+        ds = integrated_result(
+            wl,
+            kext=area * 1e-6,
+            mass_conc=np.full(len(wl), volume * 1e-3),
         )
         ds.attrs["shape_types"] = sorted({m.shape.type for m in modes})
         return ds
@@ -113,7 +109,9 @@ class TestMassConcentrations:
 
         op = mix.compute(wl=WL, rh=0.0)
 
-        assert float(op["mass_conc"]) == pytest.approx(4.1e-9 + 2.2e-8)
+        assert float(op["mass_conc"].isel(wl=0)) == pytest.approx(
+            4.1e-9 + 2.2e-8
+        )
 
     def test_the_reference_humidity_is_required(self):
         with pytest.raises(TypeError):

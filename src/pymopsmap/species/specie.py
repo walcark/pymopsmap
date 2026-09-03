@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 import numpy as np
 import xarray as xr
 
 from pymopsmap.engine.outputs import DEFAULT_OUTPUT, OutputRequest
 from pymopsmap.microparams import MicroParameters
-from pymopsmap.sweep import as_space, assemble
+from pymopsmap.sweep import build_space, run_sweep
 from pymopsmap.utils import check_within_grid
 
 from .catalog import CamsSpecie, CatalogSpecie, OpacSpecie, path_for
@@ -254,27 +254,55 @@ class Specie:
             One variable per optical property, with a dimension per swept axis.
         """
         from pymopsmap import engine
+        from pymopsmap.engine.outputs import variables_for
 
-        points, dims = as_space(rh=rh)
-        # Materialise every point first: an invalid request must fail before
-        # any MOPSMAP run rather than halfway through a sweep.
-        materialised = [
-            self.at(wl=wl, rh=point["rh"], kappa=kappa) for point in points
-        ]
-        results = [
-            engine.run_point(
-                point.modes,
+        space, fixed = build_space(wl, rh=rh)
+        # Materialise every point first: an invalid request must fail up
+        # front, with its own error, rather than midway through a sweep
+        # wrapped in the engine's.
+        for humidity in rh if isinstance(rh, (list, tuple)) else [rh]:
+            self.at(wl=wl, rh=humidity, kappa=kappa)
+
+        def point(**at: Any) -> xr.Dataset:
+            materialised = self.at(wl=list(at.pop("wl")), kappa=kappa, **at)
+            return engine.run_point(
+                materialised.modes,
                 output_types=outputs,
-                rh=point.engine_rh,
+                rh=materialised.engine_rh,
                 quiet=quiet,
             )
-            for point in materialised
-        ]
 
-        if not dims:
-            return results[0]
-        index = [{dim: point[dim] for dim in dims} for point in points]
-        return assemble(index, results)
+        return run_sweep(
+            point,
+            space,
+            outputs=variables_for(outputs),
+            version=self._sweep_version(outputs),
+            fixed=fixed,
+            quiet=quiet,
+        )
+
+    def _sweep_version(self, outputs: OutputRequest) -> str:
+        """
+        What makes this computation different from another one.
+
+        It keys the store, so it has to name the species and everything the
+        stored numbers depend on but the swept point: leave one out and two
+        species share an entry.
+        """
+        from .schema import SCHEMA_REV
+
+        requested = "-".join(sorted(o.value for o in outputs))
+        return "-".join(
+            part
+            for part in (
+                self.source,
+                self.version,
+                self.name,
+                f"schema{SCHEMA_REV}",
+                requested,
+            )
+            if part
+        )
 
     def cache_status(
         self,
@@ -343,10 +371,10 @@ class Specie:
             )
         resolver = resolver_module.NCFileResolver(index)
 
-        points, _ = as_space(rh=rh)
+        humidities = rh if isinstance(rh, (list, tuple)) else [rh]
         required: set[str] = set()
-        for point in points:
-            materialised = self.at(wl=wl, rh=point["rh"], kappa=kappa)
+        for value in humidities:
+            materialised = self.at(wl=wl, rh=value, kappa=kappa)
             required.update(
                 resolver.resolve(materialised.modes, rh=materialised.engine_rh)
             )

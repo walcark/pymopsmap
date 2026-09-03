@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-import xarray as xr
 
 import pymopsmap as pm
+from tests.conftest import integrated_result
 
 WL = [0.44, 0.55, 0.67]
 
@@ -21,16 +21,7 @@ def engine(monkeypatch):
         wl = np.asarray(modes[0].wavelength, dtype=float)
         # kext proportional to the total number, so scaling is observable.
         total = sum(mode.psd.n for mode in modes)
-        kext = np.full(len(wl), 1e-6) * max(total, 1.0)
-        ds = xr.Dataset(
-            {
-                "kext": (("wl",), kext),
-                "ssa": (("wl",), np.full(len(wl), 0.9)),
-                "ksca": (("wl",), kext * 0.9),
-                "g": (("wl",), np.full(len(wl), 0.7)),
-            },
-            coords={"wl": wl},
-        )
+        ds = integrated_result(wl, kext=1e-6 * max(total, 1.0))
         ds.attrs["shape_types"] = sorted({m.shape.type for m in modes})
         return ds
 

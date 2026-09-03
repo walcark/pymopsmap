@@ -32,7 +32,6 @@ def run_point(
     from pymopsmap.scatlib.downloader import DatasetDownloader
     from pymopsmap.scatlib.limits import SizeParameterLimits
     from pymopsmap.scatlib.resolver import NCFileResolver
-    from pymopsmap.scatlib.results import ResultCache
     from pymopsmap.utils import DATASET_CACHE_DIR
 
     from .coverage import clip_modes_to_coverage, reindex_to_full_grid
@@ -41,16 +40,8 @@ def run_point(
     from .outputs import format_mopsmap_outputs, shape_types
     from .workspace import Workspace
 
-    result_cache = ResultCache()
     dataset_cache = OpticalDatasetCache()
     downloader = DatasetDownloader(cache=dataset_cache, quiet=quiet)
-
-    # Cache key is based on the original (unclipped) request so the full masked
-    # result is stored and returned on subsequent calls.
-    key = result_cache.key(modes, output_types, rh=rh)
-    cached = result_cache.get(key)
-    if cached is not None:
-        return cached
 
     # The index carries the size-parameter limits, so it comes before the
     # clipping that uses them.
@@ -99,7 +90,6 @@ def run_point(
     if not valid_mask.all():
         result = reindex_to_full_grid(result, original_wl, valid_mask)
 
-    result_cache.put(key, result)
     return result
 
 

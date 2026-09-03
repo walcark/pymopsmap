@@ -1,18 +1,25 @@
 """
-Normalisation of a parameter space into the points to compute.
+The parameter space of a computation, and the engine that walks it.
 
-Kept apart from the iteration and the assembly on purpose: those two are what a
-sweep engine replaces, while this normalisation stays as it is and only grows
-the input forms it accepts.
+Space normalisation turns the arguments of ``compute`` into the points to
+visit; xsweep then runs them, stores each result, and assembles them back onto
+the dimensions that were asked for. Re-running a grid already computed calls
+MOPSMAP for nothing, and an interrupted sweep resumes from what it is missing.
 """
 
 from __future__ import annotations
 
+import hashlib
+import os
+from collections.abc import Callable, Iterable
 from itertools import product
+from pathlib import Path
 from typing import Any
 
 import numpy as np
 import xarray as xr
+
+from pymopsmap.utils import CACHE_DIR
 
 
 def as_space(**axes: Any) -> tuple[list[dict[str, Any]], list[str]]:
@@ -63,39 +70,161 @@ def _scalar(value: Any) -> Any:
     return value.item() if isinstance(value, np.generic) else value
 
 
-def assemble(
-    index: list[dict[str, Any]], results: list[xr.Dataset]
+# Where the sweep store lives. One directory per store, keyed on what makes
+# two computations different, so unrelated species never share an entry.
+SWEEP_STORE_ENV = "PYMOPSMAP_SWEEP_STORE"
+
+
+def store_root() -> Path:
+    """Directory holding the sweep stores."""
+    override = os.environ.get(SWEEP_STORE_ENV)
+    if override:
+        return Path(override)
+    return CACHE_DIR / "sweeps"
+
+
+def run_sweep(
+    point: Callable[..., xr.Dataset],
+    space: xr.Dataset,
+    outputs: Iterable[str],
+    version: str,
+    fixed: list[str] | None = None,
+    quiet: bool = False,
 ) -> xr.Dataset:
     """
-    Stack per-point results onto the dimensions that were swept.
+    Walk a parameter space, one MOPSMAP run per point.
 
     Parameters
     ----------
-    index : list of dict
-        One entry per result, holding the swept axes and their values.
-    results : list of xr.Dataset
-        The per-point results, in the same order.
+    point : callable
+        Computes one point. It receives the swept variables by name plus
+        ``wl``, and returns a dataset over the wavelengths.
+    space : xr.Dataset
+        The points to visit. ``wl`` is a vector consumed whole, since MOPSMAP
+        takes the entire spectral grid in one run; every other variable loops.
+    fixed : list of str, optional
+        Parameters of the space held constant, declared ``const`` so they add
+        no dimension to the result.
+    outputs : iterable of str
+        The variables the point function produces.
+    version : str
+        Everything that makes this computation different from another one:
+        the species, its source version, the schema revision, the requested
+        outputs. It enters the store key, so two species cannot collide.
+    quiet : bool
+        Unused for now; kept so callers do not special-case it.
 
     Returns
     -------
     xr.Dataset
-        A single dataset carrying one dimension per swept axis.
+        One variable per output, carrying a dimension per swept axis.
     """
-    if not results:
-        raise ValueError("Cannot assemble an empty sweep.")
-    if len(index) != len(results):
-        raise ValueError(
-            f"index and results must have the same length, got "
-            f"{len(index)} and {len(results)}."
-        )
+    import xsweep
 
-    axes = list(index[0])
-    ds = xr.concat(results, dim="run")
-    for axis in axes:
-        ds = ds.assign_coords(
-            {axis: ("run", np.asarray([point[axis] for point in index]))}
-        )
+    fixed = fixed or []
+    # A swept axis is named after its dimension; xarray promotes such a
+    # variable to a coordinate, so the dimensions are what to read.
+    looped = [str(d) for d in space.sizes if str(d) != "wl"]
+    contract = _contract(looped, sorted(fixed), outputs)
+    sweeper = xsweep.Sweeper(
+        contract,
+        point,
+        xsweep.SweepPolicy(
+            store=str(_store_path(version, space)),
+            # A failed point would otherwise become NaN, which is the silent
+            # gap this pipeline already refuses at the MOPSMAP level.
+            on_error="raise",
+        ),
+        version=version,
+    )
+    try:
+        result = sweeper(space)
+    except xsweep.PointFailed as failure:
+        # The cause is what the caller can act on; the wrapper is bookkeeping.
+        raise failure.__cause__ or failure from None
+    # The status variable belongs to the store, not to the optical properties.
+    return result.drop_vars("status", errors="ignore")
 
-    if len(axes) == 1:
-        return ds.swap_dims({"run": axes[0]})
-    return ds.set_index(run=axes).unstack("run")
+
+def _contract(
+    looped: list[str], fixed: list[str], outputs: Iterable[str]
+) -> str:
+    """
+    Build the call contract.
+
+    Wavelength is a vector because MOPSMAP computes the whole grid in one run;
+    everything else is a loop. Output dimensions beyond ``wl`` are discovered
+    from the first call rather than declared, since the number of angles is a
+    run parameter.
+    """
+    clauses = " ".join(
+        filter(
+            None,
+            [
+                f"loop({', '.join(looped)})" if looped else "",
+                "vec(wl)",
+                f"const({', '.join(fixed)})" if fixed else "",
+            ],
+        )
+    )
+    produced = ", ".join(f"{name}(wl)" for name in outputs)
+    return f"{clauses} -> {produced}"
+
+
+def _store_path(version: str, space: xr.Dataset) -> Path:
+    """
+    Where the results of one sweep live.
+
+    A store holds one grid: its axes are fixed when it is created, so asking
+    for a different grid is a different store rather than an extension of the
+    first. The path therefore carries a fingerprint of the axes alongside the
+    version, and resuming means restarting the same request, not widening it.
+    """
+    axes = "|".join(
+        f"{name}={np.asarray(values.values).tobytes().hex()}"
+        for name, values in sorted(space.coords.items())
+    )
+    digest = hashlib.blake2b(axes.encode(), digest_size=8).hexdigest()
+    return store_root() / f"{_slug(version)}-{digest}"
+
+
+def _slug(version: str) -> str:
+    """A directory name that survives a version string."""
+    return "".join(c if c.isalnum() or c in "-_." else "-" for c in version)
+
+
+def build_space(wl: list[float], **axes: Any) -> tuple[xr.Dataset, list[str]]:
+    """
+    Turn the arguments of a computation into the space to sweep.
+
+    Parameters
+    ----------
+    wl : list of float
+        Wavelengths, always a vector: MOPSMAP takes the whole grid in one run.
+    **axes : Any
+        One entry per parameter. A sequence sweeps it and becomes a dimension
+        of the result; a scalar fixes it and adds no dimension.
+
+    Returns
+    -------
+    space : xr.Dataset
+        Every parameter, swept ones carrying their own dimension and fixed
+        ones stored without dimensions.
+    fixed : list of str
+        Names of the parameters held constant, which the contract declares
+        as ``const`` so they add no dimension to the result.
+    """
+    variables: dict[str, Any] = {}
+    fixed: list[str] = []
+    for name, value in axes.items():
+        if value is None:
+            continue
+        if _is_sequence(value):
+            variables[name] = (name, np.asarray([_scalar(v) for v in value]))
+        else:
+            variables[name] = _scalar(value)
+            fixed.append(name)
+    space = xr.Dataset(
+        variables, coords={"wl": ("wl", np.asarray(wl, dtype=float))}
+    )
+    return space, fixed

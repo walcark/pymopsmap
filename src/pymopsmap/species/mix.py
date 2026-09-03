@@ -166,7 +166,7 @@ class Mix:
 
         if self.currency is Currency.MASS:
             return [
-                value / float(reference["mass_conc"])
+                value / float(reference["mass_conc"].isel(wl=0))
                 for value, reference in zip(requested, references)
             ]
 

@@ -357,6 +357,47 @@ def format_netcdf_file(filename: Path, wl: np.ndarray) -> xr.Dataset:
 CombineRule = Callable[[str, list[xr.Dataset]], xr.DataArray]
 
 
+# The variables each output family produces, in the order they are parsed.
+OUTPUT_VARIABLES: dict[OutputType, tuple[str, ...]] = {
+    OutputType.INTEGRATED: (
+        "kext",
+        "ssa",
+        "ksca",
+        "g",
+        "reff",
+        "n",
+        "cross_dens",
+        "vol_dens",
+        "mass_conc",
+        "angstrom_ext",
+        "angstrom_sca",
+        "angstrom_abs",
+    ),
+    OutputType.LIDAR: (
+        "backscatter",
+        "lidar_ratio",
+        "depol_ratio",
+        "angstrom_back",
+        "ext_to_mass",
+        "back_to_mass",
+    ),
+    OutputType.PHASE_FUNCTION: ("phase",),
+    OutputType.SCATTERING_MATRIX: ("scattering_matrix",),
+    OutputType.VOLUME_SCATTERING_FUNCTION: ("vol_sca_func",),
+    OutputType.COEFF: ("coeff",),
+}
+
+
+def variables_for(outputs: OutputRequest) -> list[str]:
+    """Every variable a request produces, integrated always included."""
+    families = set(outputs) | {OutputType.INTEGRATED}
+    names: list[str] = []
+    for family in OutputType:
+        if family in families:
+            names.extend(OUTPUT_VARIABLES[family])
+    return names
+
+
 def shape_types(modes: list) -> list[str]:
     """The distinct particle shapes a result was computed from."""
     return sorted({mode.shape.type for mode in modes})

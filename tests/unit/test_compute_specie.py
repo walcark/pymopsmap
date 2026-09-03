@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-import xarray as xr
 
 import pymopsmap as pm
 from pymopsmap.sweep import as_space
+from tests.conftest import integrated_result
 
 WL = [0.44, 0.55, 0.67]
 
@@ -20,10 +20,7 @@ def engine(monkeypatch):
     def fake_run_point(modes, output_types, rh, quiet):
         calls.append({"modes": modes, "rh": rh, "outputs": output_types})
         wl = np.asarray(modes[0].wavelength, dtype=np.float32)
-        return xr.Dataset(
-            {"kext": (("wl",), np.arange(len(wl), dtype=np.float32))},
-            coords={"wl": wl},
-        )
+        return integrated_result(wl, kext=1e-6)
 
     monkeypatch.setattr("pymopsmap.engine.run_point", fake_run_point)
     return calls
