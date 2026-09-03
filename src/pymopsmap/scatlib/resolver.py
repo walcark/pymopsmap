@@ -73,22 +73,48 @@ class NCFileResolver:
         ds.close()
 
     def resolve(
-        self, mp: MicroParameters | list[MicroParameters]
+        self,
+        mp: MicroParameters | list[MicroParameters],
+        rh: float | None = None,
     ) -> list[str]:
+        """
+        List the dataset files a run needs.
+
+        Parameters
+        ----------
+        mp : MicroParameters or list of MicroParameters
+            The modes of the run.
+        rh : float, optional
+            The humidity handed to MOPSMAP. When set, the engine grows the
+            particles itself and uses a refractive index the dry values do not
+            point at, so the files are resolved on the grown one.
+        """
         from pymopsmap.models import MicroParameters as MP
 
+        from .growth import grown_refractive_index
+
         modes = [mp] if isinstance(mp, MP) else mp
+        indices = [
+            grown_refractive_index(
+                mode.wavelength,
+                mode.n_real,  # type: ignore[arg-type]
+                mode.n_imag,  # type: ignore[arg-type]
+                mode.kappa or 0.0,
+                rh or 0.0,
+            )
+            for mode in modes
+        ]
 
         # MOPSMAP stops on a value outside the grid it loaded
         # (interpolate_linear.f90), so refuse it here, with the axis named.
-        for index, mode in enumerate(modes, start=1):
+        for index, (n_real, n_imag) in enumerate(indices, start=1):
             where = f"mode {index}"
-            check_within_grid("n_real", mode.n_real, self.avail_mreal, where)
-            check_within_grid("n_imag", mode.n_imag, self.avail_mimag, where)
+            check_within_grid("n_real", n_real, self.avail_mreal, where)
+            check_within_grid("n_imag", n_imag, self.avail_mimag, where)
 
         files: set[str] = {"index.nc"}
-        for mode in modes:
-            for mr, mi in zip(mode.n_real, mode.n_imag):  # type: ignore[arg-type]
+        for mode, (n_real, n_imag) in zip(modes, indices):
+            for mr, mi in zip(n_real, n_imag):
                 files.update(self._files_for_params(mode.shape, mr, mi))
         return sorted(files)
 

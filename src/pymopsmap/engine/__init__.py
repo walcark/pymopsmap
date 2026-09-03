@@ -65,7 +65,7 @@ def run_point(
     # source does not ship is a coverage gap, not a download failure.
     resolver = NCFileResolver(index_path)
     mp_list = [modes_run] if not isinstance(modes_run, list) else modes_run
-    required = resolver.resolve(mp_list)
+    required = resolver.resolve(mp_list, rh=rh)
     try:
         downloader.download_missing(required)
     except DownloadError as exc:
