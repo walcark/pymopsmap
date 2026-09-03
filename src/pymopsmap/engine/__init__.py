@@ -37,7 +37,7 @@ def run_point(
     from .coverage import clip_modes_to_coverage, reindex_to_full_grid
     from .launch_file import write_launching_file
     from .launcher import launch_mopsmap
-    from .output_format import format_mopsmap_outputs
+    from .output_format import format_mopsmap_outputs, shape_types
 
     result_cache = ResultCache()
     dataset_cache = OpticalDatasetCache()
@@ -54,7 +54,7 @@ def run_point(
     # original_wl is used to reindex the result back to the full grid.
     mp_ref = modes if not isinstance(modes, list) else modes[0]
     original_wl = list(mp_ref.wavelength)
-    modes_run, valid_mask = clip_modes_to_coverage(modes)
+    modes_run, valid_mask = clip_modes_to_coverage(modes, rh=rh)
 
     # Ensure index.nc is present first
     index_path = dataset_cache.full_path("index.nc")
@@ -85,6 +85,9 @@ def run_point(
     out_mopsmap["ascii_base"] = paths.get("ascii_base")
 
     result = format_mopsmap_outputs(out_mopsmap, output_types=output_types)
+    # Some combination rules need to know what produced the result: an
+    # effective radius cannot be rebuilt from non-spherical modes.
+    result.attrs["shape_types"] = shape_types(mp_list)
 
     # Reindex to the original wavelength grid; clipped positions become NaN.
     if not valid_mask.all():

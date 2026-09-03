@@ -345,6 +345,11 @@ def format_netcdf_file(filename: Path, wl: np.ndarray) -> xr.Dataset:
 CombineRule = Callable[[str, list[xr.Dataset]], xr.DataArray]
 
 
+def shape_types(modes: list) -> list[str]:
+    """The distinct particle shapes a result was computed from."""
+    return sorted({mode.shape.type for mode in modes})
+
+
 def _total(items: Iterable[xr.DataArray]) -> xr.DataArray:
     """Sum data arrays without starting from a scalar zero."""
     total, *rest = items

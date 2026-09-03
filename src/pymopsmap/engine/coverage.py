@@ -45,13 +45,25 @@ def _max_radius(psd) -> float | None:
     return None  # FileDefinedPSD: cannot determine without reading the file
 
 
-def _valid_mask(mp: MicroParameters) -> np.ndarray:
-    """Boolean mask: True where size parameter is within dataset limits."""
+def _valid_mask(mp: MicroParameters, rh: float | None) -> np.ndarray:
+    """
+    Boolean mask: True where the size parameter is within dataset limits.
+
+    The radius checked is the one MOPSMAP will work on. When growth is
+    delegated to the engine it scales every radius by the growth factor
+    (calc_hygroscopic_growth.f90), so a mode that fits dry can leave the
+    coverage once it takes up water.
+    """
+    from pymopsmap.scatlib.growth import growth_factor_cubed
+
     x_min, x_max = _X_LIMITS.get(mp.shape.type, (0.0, float("inf")))
     r_max = _max_radius(mp.psd)
 
     if r_max is None:
         return np.ones(len(mp.wavelength), dtype=bool)
+
+    if mp.kappa and rh:
+        r_max *= growth_factor_cubed(mp.kappa, rh) ** (1.0 / 3.0)
 
     wl = np.asarray(mp.wavelength, dtype=float)
     x = 2.0 * math.pi * r_max / wl
@@ -74,6 +86,7 @@ def _clip_mp(mp: MicroParameters, mask: np.ndarray) -> MicroParameters:
 
 def clip_modes_to_coverage(
     modes: MicroParameters | list[MicroParameters],
+    rh: float | None = None,
 ) -> tuple[MicroParameters | list[MicroParameters], np.ndarray]:
     """
     Clip wavelengths outside the Gasteiger & Wiegner (2018) coverage.
@@ -81,6 +94,10 @@ def clip_modes_to_coverage(
     Wavelengths outside the valid size-parameter range emit a UserWarning
     and are dropped before the MOPSMAP run. The caller must reindex the
     result back to the original grid (clipped positions become NaN).
+
+    Args:
+        modes: the modes of the run.
+        rh: the humidity handed to MOPSMAP, when it applies the growth itself.
 
     Returns:
         clipped_modes — same type as input, out-of-range wavelengths dropped.
@@ -96,7 +113,7 @@ def clip_modes_to_coverage(
         assert isinstance(modes, list)
         mp_list = list(modes)
 
-    per_mask = [_valid_mask(mp) for mp in mp_list]
+    per_mask = [_valid_mask(mp, rh) for mp in mp_list]
     combined: np.ndarray = np.ones(len(mp_list[0].wavelength), dtype=bool)
     for m in per_mask:
         combined &= m
