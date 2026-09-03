@@ -28,6 +28,13 @@ from .schema import (
 MAX_ENGINE_RH = 99.0
 
 
+class CacheStatusReport(NamedTuple):
+    """Which optical dataset files are already here, and which are not."""
+
+    cached: list[str]
+    missing: list[str]
+
+
 class Point(NamedTuple):
     """One species evaluated at one point of its parameter space.
 
@@ -191,6 +198,82 @@ class Specie:
             return results[0]
         index = [{dim: point[dim] for dim in dims} for point in points]
         return assemble(index, results)
+
+    def cache_status(
+        self,
+        wl: list[float],
+        rh: float | list[float] | None = None,
+        kappa: float | None = None,
+    ) -> CacheStatusReport:
+        """
+        Which optical dataset files this computation needs, and which are here.
+
+        Parameters
+        ----------
+        wl : list of float
+            Wavelengths in micrometres.
+        rh : float or list of float, optional
+            Relative humidity in percent.
+        kappa : float, optional
+            Overrides the hygroscopicity stored in the file.
+
+        Returns
+        -------
+        CacheStatusReport
+        """
+        from pymopsmap.scatlib import cache as cache_module
+
+        dataset_cache = cache_module.OpticalDatasetCache()
+        required = self._required_files(wl, rh, kappa)
+        return CacheStatusReport(
+            cached=[p for p in required if dataset_cache.is_cached(p)],
+            missing=[p for p in required if not dataset_cache.is_cached(p)],
+        )
+
+    def prefetch(
+        self,
+        wl: list[float],
+        rh: float | list[float] | None = None,
+        kappa: float | None = None,
+        quiet: bool = False,
+    ) -> None:
+        """Download every dataset file this needs, without running."""
+        from pymopsmap.scatlib import cache as cache_module
+        from pymopsmap.scatlib import downloader as downloader_module
+
+        dataset_cache = cache_module.OpticalDatasetCache()
+        downloader = downloader_module.DatasetDownloader(
+            cache=dataset_cache, quiet=quiet
+        )
+        downloader.download_missing(self._required_files(wl, rh, kappa))
+
+    def _required_files(
+        self,
+        wl: list[float],
+        rh: float | list[float] | None,
+        kappa: float | None,
+    ) -> list[str]:
+        """Union of the dataset files needed over every point of the sweep."""
+        from pymopsmap.scatlib import cache as cache_module
+        from pymopsmap.scatlib import downloader as downloader_module
+        from pymopsmap.scatlib import resolver as resolver_module
+
+        dataset_cache = cache_module.OpticalDatasetCache()
+        index = dataset_cache.full_path("index.nc")
+        if not dataset_cache.is_cached("index.nc"):
+            downloader_module.DatasetDownloader(cache=dataset_cache).download(
+                "index.nc"
+            )
+        resolver = resolver_module.NCFileResolver(index)
+
+        points, _ = as_space(rh=rh)
+        required: set[str] = set()
+        for point in points:
+            materialised = self.at(wl=wl, rh=point["rh"], kappa=kappa)
+            required.update(
+                resolver.resolve(materialised.modes, rh=materialised.engine_rh)
+            )
+        return sorted(required)
 
     @property
     def _where(self) -> str:
