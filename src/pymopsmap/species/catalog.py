@@ -8,6 +8,18 @@ from pathlib import Path
 
 DATA_PACKAGE = "pymopsmap"
 
+# Sorting version names is not an ordering: it happens to work for CAMS
+# (47r1 < 48r1 < 49r1) and would pick 'kappa' over 'geisa' for OPAC. The
+# default is therefore stated, not derived.
+DEFAULT_VERSION: dict[str, str] = {"cams": "49r1", "opac": "kappa"}
+
+
+class Source(StrEnum):
+    """A catalogue source, one directory of version files."""
+
+    CAMS = "cams"
+    OPAC = "opac"
+
 
 class CamsSpecie(StrEnum):
     """CAMS aerosol species, named as in the catalogue files."""
@@ -24,12 +36,46 @@ class CamsSpecie(StrEnum):
 
     @property
     def source(self) -> str:
-        return "cams"
+        return Source.CAMS.value
 
     @property
     def versions(self) -> tuple[str, ...]:
-        """Every version shipped for this source, oldest first."""
-        return versions_for("cams")
+        """Every version shipped for this source."""
+        return versions_for(self.source)
+
+
+class OpacSpecie(StrEnum):
+    """
+    OPAC aerosol components, under the codes Hess et al. (1998) gave them.
+
+    INSO insoluble, WASO water soluble, SOOT soot, SSAM and SSCM the
+    accumulation and coarse sea salt modes, SUSO sulfate droplets, MINM MIAM
+    MICM the nucleation, accumulation and coarse mineral modes, MITR
+    transported mineral.
+    """
+
+    INSO = "inso"
+    WASO = "waso"
+    SOOT = "soot"
+    SSAM = "ssam"
+    SSCM = "sscm"
+    SUSO = "suso"
+    MINM = "minm"
+    MIAM = "miam"
+    MICM = "micm"
+    MITR = "mitr"
+
+    @property
+    def source(self) -> str:
+        return Source.OPAC.value
+
+    @property
+    def versions(self) -> tuple[str, ...]:
+        """Every version shipped for this source."""
+        return versions_for(self.source)
+
+
+CatalogSpecie = CamsSpecie | OpacSpecie
 
 
 def _source_dir(source: str) -> Path:
@@ -41,13 +87,13 @@ def versions_for(source: str) -> tuple[str, ...]:
     return tuple(sorted(p.stem for p in _source_dir(source).glob("*.nc")))
 
 
-def path_for(specie: CamsSpecie, version: str | None = None) -> Path:
+def path_for(specie: CatalogSpecie, version: str | None = None) -> Path:
     """
     Locate the catalogue file holding a species.
 
     Parameters
     ----------
-    specie : CamsSpecie
+    specie : CamsSpecie or OpacSpecie
         The species to locate.
     version : str, optional
         Source version. Defaults to the most recent one shipped.
@@ -59,7 +105,7 @@ def path_for(specie: CamsSpecie, version: str | None = None) -> Path:
     """
     available = versions_for(specie.source)
     if version is None:
-        return _source_dir(specie.source) / f"{available[-1]}.nc"
+        version = DEFAULT_VERSION[specie.source]
     if version not in available:
         raise ValueError(
             f"Unknown {specie.source} version '{version}'. "

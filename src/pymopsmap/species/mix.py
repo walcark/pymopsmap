@@ -10,10 +10,10 @@ import xarray as xr
 
 from pymopsmap.models.output_request import DEFAULT_OUTPUT, OutputRequest
 
-from .catalog import CamsSpecie
+from .catalog import CatalogSpecie
 from .specie import Specie, load
 
-Entry = CamsSpecie | Specie | str | Path
+Entry = CatalogSpecie | Specie | str | Path
 
 
 class Currency(StrEnum):

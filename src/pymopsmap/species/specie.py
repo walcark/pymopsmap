@@ -14,7 +14,7 @@ from pymopsmap.models.output_request import DEFAULT_OUTPUT, OutputRequest
 from pymopsmap.sweep import as_space, assemble
 from pymopsmap.utils import check_within_grid
 
-from .catalog import CamsSpecie, path_for
+from .catalog import CamsSpecie, CatalogSpecie, OpacSpecie, path_for
 from .schema import (
     AMPLITUDE_FIELD,
     Growth,
@@ -266,14 +266,14 @@ def _optional(
 
 
 def load(
-    specie: CamsSpecie | str | Path, version: str | None = None
+    specie: CatalogSpecie | str | Path, version: str | None = None
 ) -> Specie:
     """
     Load a species from the built-in catalogue or from a file.
 
     Parameters
     ----------
-    specie : CamsSpecie or str or Path
+    specie : CamsSpecie or OpacSpecie or str or Path
         A catalogue entry, or the path to a species file holding exactly one
         species.
     version : str, optional
@@ -284,7 +284,7 @@ def load(
     -------
     Specie
     """
-    if isinstance(specie, CamsSpecie):
+    if isinstance(specie, (CamsSpecie, OpacSpecie)):
         path = path_for(specie, version)
         tree = read(path)
         if specie.value not in tree.children:

@@ -35,8 +35,9 @@ from pymopsmap.models.output_request import (
     OutputRequest,
     OutputType,
 )
+from pymopsmap.species import OPAC_COMPOSITIONS, Mix, Specie, load, opac_mix
 from pymopsmap.species import CamsSpecie as CAMS
-from pymopsmap.species import Mix, Specie, load
+from pymopsmap.species import OpacSpecie as OPAC
 
 # ---------------------------------------------------------------------------
 # Dataset cache
@@ -89,6 +90,9 @@ def prefetch(modes: list[MicroParameters], quiet: bool = False) -> None:
 __all__ = [
     # Species
     "CAMS",
+    "OPAC",
+    "OPAC_COMPOSITIONS",
+    "opac_mix",
     "Mix",
     "Specie",
     "load",
