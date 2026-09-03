@@ -4,7 +4,6 @@ import os
 from pathlib import Path
 
 from .logging import get_logger
-from .temp import get_tempdir, get_tempfile
 from .types import Float64List, PosFloat64List, SortedPosFloat64List
 from .validation import check_within_grid
 
@@ -19,8 +18,6 @@ DATASET_SOURCE: str | None = os.getenv("PYMOPSMAP_DATASET_SOURCE", None)
 
 __all__ = [
     "get_logger",
-    "get_tempdir",
-    "get_tempfile",
     "Float64List",
     "PosFloat64List",
     "SortedPosFloat64List",

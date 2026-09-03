@@ -7,6 +7,7 @@ import math
 import pytest
 
 from pymopsmap.engine.commands import refr_command, write_refr_file
+from pymopsmap.engine.workspace import Workspace
 from pymopsmap.microparams import MicroParameters
 from pymopsmap.psd import LognormalPSD
 from pymopsmap.shapes import Sphere
@@ -18,6 +19,14 @@ NI = [1.8461538e-07, 8.83360462e-09, 3.21e-05]
 NR = [1.4529, 1.4312, 1.4204]
 
 
+_SHARED = Workspace()
+
+
+def _workspace() -> Workspace:
+    """One workspace for the module: these tests only read what was written."""
+    return _SHARED
+
+
 def _columns(path) -> list[list[float]]:
     return [
         [float(token) for token in line.split()]
@@ -27,19 +36,19 @@ def _columns(path) -> list[list[float]]:
 
 class TestRefractiveIndexFile:
     def test_small_imaginary_parts_survive(self):
-        path = write_refr_file(wl=WL, nr=NR, ni=NI, mode_index=1)
+        path = write_refr_file(_workspace(), wl=WL, nr=NR, ni=NI, mode_index=1)
 
         written = _columns(path)
         for row, expected in zip(written, NI):
             assert row[2] == pytest.approx(expected, rel=1e-9)
 
     def test_no_value_is_flushed_to_zero(self):
-        path = write_refr_file(wl=WL, nr=NR, ni=NI, mode_index=2)
+        path = write_refr_file(_workspace(), wl=WL, nr=NR, ni=NI, mode_index=2)
 
         assert all(row[2] > 0 for row in _columns(path))
 
     def test_real_parts_and_wavelengths_survive(self):
-        path = write_refr_file(wl=WL, nr=NR, ni=NI, mode_index=3)
+        path = write_refr_file(_workspace(), wl=WL, nr=NR, ni=NI, mode_index=3)
 
         written = _columns(path)
         for row, wl, nr in zip(written, WL, NR):
@@ -50,7 +59,7 @@ class TestRefractiveIndexFile:
         """MOPSMAP refuses a refractive index file that is not ascending."""
         close = [0.5500000, 0.5500001, 0.5500002]
         path = write_refr_file(
-            wl=close, nr=[1.45] * 3, ni=[1e-4] * 3, mode_index=4
+            _workspace(), wl=close, nr=[1.45] * 3, ni=[1e-4] * 3, mode_index=4
         )
 
         column = [row[0] for row in _columns(path)]
@@ -60,7 +69,9 @@ class TestRefractiveIndexFile:
 
 class TestConstantRefracCommand:
     def test_single_wavelength_keeps_its_imaginary_part(self):
-        command = refr_command(wl=[0.55], nr=[1.4312], ni=[8.8e-09])
+        command = refr_command(
+            _workspace(), wl=[0.55], nr=[1.4312], ni=[8.8e-09]
+        )
 
         assert float(command.split()[2]) == pytest.approx(8.8e-09, rel=1e-9)
 

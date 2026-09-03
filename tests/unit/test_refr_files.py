@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from pymopsmap.engine.commands import microparams_command
+from pymopsmap.engine.workspace import Workspace
 from pymopsmap.microparams import MicroParameters
 from pymopsmap.psd import LognormalPSD
 from pymopsmap.shapes import Sphere
@@ -37,7 +38,7 @@ class TestMultiModeRefractiveIndexFiles:
     def test_each_mode_gets_its_own_file(self):
         fine, coarse = _mode(1.40, 1e-3, 0.05), _mode(1.60, 5e-2, 1.0)
 
-        paths = _refr_paths(microparams_command([fine, coarse]))
+        paths = _refr_paths(microparams_command([fine, coarse], Workspace()))
 
         assert len(paths) == 2
         assert paths[0] != paths[1]
@@ -46,14 +47,16 @@ class TestMultiModeRefractiveIndexFiles:
         fine, coarse = _mode(1.40, 1e-3, 0.05), _mode(1.60, 5e-2, 1.0)
 
         fine_path, coarse_path = _refr_paths(
-            microparams_command([fine, coarse])
+            microparams_command([fine, coarse], Workspace())
         )
 
         assert _n_real_column(fine_path) == pytest.approx([1.40] * len(WL))
         assert _n_real_column(coarse_path) == pytest.approx([1.60] * len(WL))
 
     def test_single_mode_writes_one_file(self):
-        paths = _refr_paths(microparams_command(_mode(1.45, 1e-4, 0.1)))
+        paths = _refr_paths(
+            microparams_command(_mode(1.45, 1e-4, 0.1), Workspace())
+        )
 
         assert len(paths) == 1
         assert paths[0].exists()

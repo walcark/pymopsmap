@@ -39,6 +39,7 @@ def run_point(
     from .launch_file import write_launching_file
     from .launcher import launch_mopsmap
     from .outputs import format_mopsmap_outputs, shape_types
+    from .workspace import Workspace
 
     result_cache = ResultCache()
     dataset_cache = OpticalDatasetCache()
@@ -79,16 +80,17 @@ def run_point(
         raise
 
     # Run MOPSMAP on the (possibly clipped) wavelength grid
-    paths = write_launching_file(
-        mp=modes_run,
-        output_types=output_types,
-        rh=rh,
-        mopsmap_data_path=DATASET_CACHE_DIR,
-    )
-    out_mopsmap = launch_mopsmap(input_filename=paths["mopsmap"])
-    out_mopsmap["ascii_base"] = paths.get("ascii_base")
-
-    result = format_mopsmap_outputs(out_mopsmap, output_types=output_types)
+    with Workspace() as workspace:
+        paths = write_launching_file(
+            mp=modes_run,
+            workspace=workspace,
+            output_types=output_types,
+            rh=rh,
+            mopsmap_data_path=DATASET_CACHE_DIR,
+        )
+        out_mopsmap = launch_mopsmap(input_filename=paths["mopsmap"])
+        out_mopsmap["ascii_base"] = paths.get("ascii_base")
+        result = format_mopsmap_outputs(out_mopsmap, output_types=output_types)
     # Some combination rules need to know what produced the result: an
     # effective radius cannot be rebuilt from non-spherical modes.
     result.attrs["shape_types"] = shape_types(mp_list)

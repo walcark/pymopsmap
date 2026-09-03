@@ -6,14 +6,10 @@ from pathlib import Path
 
 from pymopsmap.engine.outputs import DEFAULT_OUTPUT, OutputRequest, OutputType
 from pymopsmap.microparams import MicroParameters
-from pymopsmap.utils import (
-    DATASET_CACHE_DIR,
-    MOPSMAP_PATH,
-    get_logger,
-    get_tempfile,
-)
+from pymopsmap.utils import DATASET_CACHE_DIR, MOPSMAP_PATH, get_logger
 
 from .commands import microparams_command, wl_command
+from .workspace import Workspace
 
 logger = get_logger(__name__)
 
@@ -28,6 +24,7 @@ _ASCII_TYPES = {
 
 def write_launching_file(
     mp: MicroParameters | list[MicroParameters],
+    workspace: Workspace | None = None,
     output_types: OutputRequest = DEFAULT_OUTPUT,
     n_angles: int = 2000,
     rh: float | None = None,
@@ -42,7 +39,8 @@ def write_launching_file(
     """
     logger.debug("Writing MOPSMAP input file.")
 
-    paths = _generate_paths()
+    workspace = workspace or Workspace()
+    paths = _generate_paths(workspace)
 
     dataset_path = mopsmap_data_path or DATASET_CACHE_DIR
 
@@ -50,7 +48,7 @@ def write_launching_file(
 
     water_refr = MOPSMAP_PATH.parent / "data" / "refr_water_segelstein"
     file_prefix = f"scatlib '{dataset_path}'\nwater_refrac_file '{water_refr}'"
-    file_content = microparams_command(mp)
+    file_content = microparams_command(mp, workspace)
     file_suffix = _file_suffix(
         ascii_base=paths.get("ascii_base"),
         output_types=output_types,
@@ -68,10 +66,11 @@ def write_launching_file(
     return paths
 
 
-def _generate_paths() -> dict[str, Path]:
-    paths: dict[str, Path] = {"mopsmap": get_tempfile("mopsmap.txt")}
-    paths["ascii_base"] = get_tempfile("mopsmap_out")
-    return paths
+def _generate_paths(workspace: Workspace) -> dict[str, Path]:
+    return {
+        "mopsmap": workspace.file("mopsmap.txt"),
+        "ascii_base": workspace.file("mopsmap_out"),
+    }
 
 
 def _file_suffix(
