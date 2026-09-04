@@ -13,7 +13,6 @@ MOPSMAP_PATH = ROOT_PATH / "bin/mopsmap/mopsmap"
 _default_cache = Path.home() / ".cache" / "pymopsmap"
 CACHE_DIR = Path(os.getenv("PYMOPSMAP_CACHE_DIR", _default_cache))
 DATASET_CACHE_DIR = CACHE_DIR / "dataset"
-RESULT_CACHE_DIR = CACHE_DIR / "results"
 DATASET_SOURCE: str | None = os.getenv("PYMOPSMAP_DATASET_SOURCE", None)
 
 __all__ = [
@@ -25,6 +24,5 @@ __all__ = [
     "MOPSMAP_PATH",
     "CACHE_DIR",
     "DATASET_CACHE_DIR",
-    "RESULT_CACHE_DIR",
     "DATASET_SOURCE",
 ]

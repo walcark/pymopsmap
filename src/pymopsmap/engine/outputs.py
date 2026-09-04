@@ -303,45 +303,6 @@ def parse_coeff(text: str) -> xr.Dataset:
 
 
 # ---------------------------------------------------------------------------
-# Legacy helper kept for compatibility (not used in new pipeline)
-# ---------------------------------------------------------------------------
-
-
-def format_netcdf_file(filename: Path, wl: np.ndarray) -> xr.Dataset:
-    """Parse output.nc — kept for backward compatibility."""
-    xrds = xr.open_dataset(filename)
-    if "nreff" in xrds.dims:
-        xrds = xrds.isel(nreff=0)
-
-    if "phase" not in xrds:
-        raise KeyError("Variable 'phase' not found in netCDF file.")
-
-    theta = np.linspace(
-        0.0, 180.0, len(xrds.nthetamax.data), dtype=np.float32
-    )[::-1]
-    wl = np.asarray(wl, dtype=np.float32)
-    phase = np.asarray(xrds["phase"].data, dtype=np.float32)
-
-    if phase.ndim != 3:
-        raise ValueError(f"'phase' must be 3D, got shape {phase.shape}.")
-    if phase.shape[0] == wl.size:
-        pass
-    elif phase.shape[1] == wl.size:
-        phase = phase.transpose(1, 0, 2)
-    else:
-        raise ValueError(
-            f"Cannot align phase with wl: "
-            f"wl.size={wl.size}, phase.shape={phase.shape}."
-        )
-
-    mueller_idx = np.arange(phase.shape[1], dtype=np.int32)
-    return xr.Dataset(
-        data_vars={"phase": (("wl", "mueller_idx", "theta"), phase)},
-        coords={"wl": wl, "mueller_idx": mueller_idx, "theta": theta},
-    )
-
-
-# ---------------------------------------------------------------------------
 # Combination of several species into one external mixture
 # ---------------------------------------------------------------------------
 #
