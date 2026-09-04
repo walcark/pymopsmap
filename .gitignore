@@ -14,4 +14,6 @@ data/**
 !data/cams/**
 scripts/probe*
 *.log
+.coverage
+coverage.xml
 *.png

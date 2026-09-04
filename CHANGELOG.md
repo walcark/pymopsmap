@@ -29,6 +29,10 @@ and five correctness fixes found on the way.
 - The scattering coefficient `ksca`, derived once at parse time.
 - `DomainError` and `CoverageError`, which say what a computation cannot do
   and why.
+- Sweeps run through [xsweep](https://github.com/walcark/xsweep): results are
+  memoised in a store, an interrupted sweep resumes, and the hand-written
+  result cache is gone. Each run owns its directory, so points can run in
+  parallel.
 
 ### Fixed
 
@@ -46,3 +50,6 @@ and five correctness fixes found on the way.
   refractive index, while MOPSMAP grows the particles itself.
 - Clipping a wavelength rebuilt the result as one-dimensional, which broke
   every output carrying an angle.
+- The size-parameter limit was one hardcoded value per shape family, while the
+  merged spheroid limit spans three orders of magnitude across the refractive
+  index grid.

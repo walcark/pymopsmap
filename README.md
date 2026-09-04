@@ -70,8 +70,9 @@ op = sulphate.compute(
 )                                                          # (rh_nominal, wl)
 ```
 
-Results are cached on disk, keyed on the parameters that produced them, so
-re-running a grid you have already computed does not call MOPSMAP again.
+Results are stored on disk by [xsweep](https://github.com/walcark/xsweep), so
+re-running a grid you have already computed calls MOPSMAP for nothing, and a
+sweep interrupted halfway resumes from the points it is missing.
 
 ## Custom species
 
@@ -275,8 +276,10 @@ size distribution parameters as variables, the distribution and shape types as
 attributes. Reading a species and writing one are the same code path, which is
 why a hand-built aerosol round-trips through the catalogue format.
 
-`compute` walks the points of that space, materialises one `MicroParameters`
-per point, runs MOPSMAP, and assembles the results back onto your dimensions.
+`compute` hands that space to [xsweep](https://github.com/walcark/xsweep),
+which walks the points; each one materialises a `MicroParameters`, runs MOPSMAP
+in its own directory, and the results are assembled back onto your dimensions.
+A point that fails raises rather than becoming a silent NaN.
 
 ```
 src/pymopsmap/
@@ -285,7 +288,7 @@ src/pymopsmap/
 ├── psd.py        # LognormalPSD, ModifiedGammaPSD, ...
 ├── microparams.py# one validated point
 ├── engine/       # one point, one MOPSMAP run, and the output rules
-├── sweep.py      # parameter space to points, and back
+├── sweep.py      # parameter space to points, and the xsweep binding
 ├── scatlib/      # the MOPSMAP optical dataset: resolve, download, cache
 ├── accessors.py  # .mopsmap accessor on the result
 └── data/         # the built-in catalogue
@@ -305,9 +308,8 @@ source to the built-in catalogue, add an ingestion script under
 
 ## Roadmap
 
-- **Resumable sweeps**: hand the parameter space to
-  [xsweep](https://github.com/walcark/xsweep) so an interrupted sweep restarts
-  from the points it is missing.
+- **Growable sweeps**: a store holds one grid, so widening a request today
+  recomputes it rather than extending what is already there.
 - **Transparent remote dataset**: automatic download of the optical dataset
   when `PYMOPSMAP_DATASET_SOURCE` is not set, removing the manual setup step.
 - **Article validation**: `scripts/validation/` reproduces Figure 5 of
