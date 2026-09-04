@@ -107,3 +107,45 @@ class TestValues:
         op = mix.compute(wl=WL, rh=[0.0, 50.0])
 
         assert op["kext"].dims == ("rh", "wl")
+
+
+class TestStoreIdentity:
+    """Two computations that differ must not land in the same store."""
+
+    def test_a_different_output_set_is_a_different_store(self, engine):
+        import xarray as xr
+
+        from pymopsmap.sweep import _store_path
+
+        space = xr.Dataset(coords={"wl": ("wl", WL)})
+        one = _store_path("v", space, "loop(rh) vec(wl) -> kext(wl)")
+        other = _store_path(
+            "v", space, "loop(rh) vec(wl) -> kext(wl), ssa(wl)"
+        )
+
+        assert one != other
+
+    def test_a_different_loop_clause_is_a_different_store(self, engine):
+        """The contract changed when a field's coordinates stopped being
+        read as parameters; the old store was incompatible."""
+        import xarray as xr
+
+        from pymopsmap.sweep import _store_path
+
+        space = xr.Dataset(coords={"wl": ("wl", WL)})
+        one = _store_path("v", space, "loop(rh) vec(wl) -> kext(wl)")
+        other = _store_path("v", space, "loop(rh, y) vec(wl) -> kext(wl)")
+
+        assert one != other
+
+    def test_the_same_request_lands_in_the_same_store(self, engine):
+        import xarray as xr
+
+        from pymopsmap.sweep import _store_path
+
+        space = xr.Dataset(coords={"wl": ("wl", WL)})
+        contract = "loop(rh) vec(wl) -> kext(wl)"
+
+        assert _store_path("v", space, contract) == _store_path(
+            "v", space, contract
+        )

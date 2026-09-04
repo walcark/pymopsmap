@@ -105,7 +105,7 @@ def run_sweep(
         contract,
         point,
         xsweep.SweepPolicy(
-            store=str(_store_path(version, space)),
+            store=str(_store_path(version, space, contract)),
             # A field repeats its values between pixels, and a MOPSMAP run
             # costs seconds: compute each distinct point once.
             dedup=True,
@@ -149,20 +149,23 @@ def _contract(
     return f"{clauses} -> {produced}"
 
 
-def _store_path(version: str, space: xr.Dataset) -> Path:
+def _store_path(version: str, space: xr.Dataset, contract: str) -> Path:
     """
     Where the results of one sweep live.
 
-    A store holds one grid: its axes are fixed when it is created, so asking
-    for a different grid is a different store rather than an extension of the
-    first. The path therefore carries a fingerprint of the axes alongside the
+    A store holds one grid and one call shape: both are fixed when it is
+    created, so asking for a different grid, or expressing the same sweep
+    differently, is a different store rather than an extension of the first.
+    The path therefore fingerprints the axes and the contract alongside the
     version, and resuming means restarting the same request, not widening it.
     """
     axes = "|".join(
         f"{name}={np.asarray(values.values).tobytes().hex()}"
         for name, values in sorted(space.coords.items())
     )
-    digest = hashlib.blake2b(axes.encode(), digest_size=8).hexdigest()
+    digest = hashlib.blake2b(
+        f"{contract}|{axes}".encode(), digest_size=8
+    ).hexdigest()
     return store_root() / f"{_slug(version)}-{digest}"
 
 
