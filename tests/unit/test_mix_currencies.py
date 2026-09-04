@@ -119,7 +119,7 @@ class TestMassConcentrations:
 
 
 class TestResolvedConcentrations:
-    def test_they_travel_with_the_result(self, engine):
+    def test_they_travel_as_a_variable(self, engine):
         mix = pm.Mix.from_optical_depth(
             {pm.CAMS.SULPHATE: 0.30, pm.CAMS.DUST: 0.70},
             wl_ref=0.55,
@@ -128,16 +128,15 @@ class TestResolvedConcentrations:
 
         op = mix.compute(wl=WL, rh=50.0)
 
-        assert op.attrs["species"] == ["sulphate", "dust"]
-        assert len(op.attrs["concentrations"]) == 2
-        assert all(c > 0 for c in op.attrs["concentrations"])
+        assert list(op["specie"].values) == ["sulphate", "dust"]
+        assert (op["concentration"] > 0).all()
 
     def test_a_number_mixture_reports_what_was_asked(self, engine):
         mix = pm.Mix({pm.CAMS.SULPHATE: 3.2e9})
 
         op = mix.compute(wl=WL, rh=50.0)
 
-        assert op.attrs["concentrations"] == pytest.approx([3.2e9])
+        assert float(op["concentration"].squeeze()) == pytest.approx(3.2e9)
 
     def test_weights_report_the_request_in_its_own_currency(self, engine):
         mix = pm.Mix.from_optical_depth(

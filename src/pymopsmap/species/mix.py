@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
+from typing import Any
 
 import xarray as xr
 
@@ -126,7 +127,11 @@ class Mix:
         """
         wl = self.wl_ref if self.wl_ref is not None else float(result["wl"][0])
         total = float(result["kext"].sel(wl=wl, method="nearest"))
-        scales = result.attrs["scales"]
+        scales = [
+            float(result["concentration"].sel(specie=specie.name))
+            / specie.amplitude
+            for specie in self.species
+        ]
         return {
             specie.name: scale
             * float(specie.compute(wl=[wl], rh=self.rh_ref)["kext"].isel(wl=0))
@@ -217,10 +222,30 @@ class Mix:
             for specie in self.species
         ]
         mixed = combine(results, weights=scales)
-        mixed.attrs["species"] = [specie.name for specie in self.species]
-        mixed.attrs["concentrations"] = [
+        return mixed.assign(concentration=self._concentrations(scales))
+
+    def _concentrations(self, scales: list[Any]) -> xr.DataArray:
+        """
+        What each species ends up contributing, in m-3.
+
+        A variable rather than an attribute: a composition that varies per
+        pixel is an array, and NetCDF attributes hold no arrays. It also gives
+        the inversion of a mass or an optical depth somewhere to be read back.
+        """
+        resolved = [
             scale * specie.amplitude
             for scale, specie in zip(scales, self.species)
         ]
-        mixed.attrs["scales"] = scales
-        return mixed
+        names = xr.DataArray(
+            [specie.name for specie in self.species],
+            dims="specie",
+            name="specie",
+        )
+        stacked = xr.concat(
+            [xr.DataArray(value) for value in resolved], dim=names
+        )
+        stacked.attrs.update(
+            units="m-3",
+            long_name="number concentration resolved for the mixture",
+        )
+        return stacked

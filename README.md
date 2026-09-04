@@ -9,23 +9,41 @@
   <img src="https://img.shields.io/badge/python-3.11%2B-blue">
 </p>
 
-Aerosol optical properties from microphysics, on the grid you ask for.
+A Python wrapper for [MOPSMAP](https://mopsmap.net). Compute aerosol optical properties with Mie, T-matrix and DDA single-particle scattering. See [Gasteiger & Wiegner 2018,
+GMD](https://doi.org/10.5194/gmd-11-2739-2018)) for further details. 
 
-PyMopsmap wraps [MOPSMAP](https://mopsmap.net) (Mie, T-matrix and DDA
-single-particle scattering, [Gasteiger & Wiegner 2018,
-GMD](https://doi.org/10.5194/gmd-11-2739-2018)) behind two calls: load an
-aerosol, compute its optical properties over any set of parameters.
+
+## Simple Python API
+
+PyMOPSMAP allows you to compute optical properties of known aerosol types (CAMS, OPAC) or custom aerosols, in just a few lines of code.
 
 ```python
 import numpy as np
 import pymopsmap as pm
 
+# Load an aerosol and compute its optical properties
 sulphate = pm.load(pm.CAMS.SULPHATE)
-op = sulphate.compute(rh=50, wl=np.linspace(0.4, 2.0, 100))
+op = sulphate.compute(rh=[50, 90], wl=np.linspace(0.4, 2.0, 100))
 
-op.kext        # <xarray.DataArray (wl: 100)>
+# Extract any optical properties
+op.kext        # <xarray.DataArray (rh: 2, wl: 100)>
 op.ssa
 ```
+
+## Sweeps
+
+`compute` returns an `xarray.Dataset` whose dimensions are the ones you asked for. Pass a scalar and you get a scalar axis. Pass a `DataArray` and you get your own dimension name.
+
+```python
+op = sulphate.compute(rh=50, wl=wl)                       # (wl,)
+op = sulphate.compute(rh=[50, 70, 90], wl=wl)             # (rh, wl)
+
+op = sulphate.compute(
+    rh=xr.DataArray([50, 70, 90], dims="rh_nominal"),
+    wl=wl,
+)                                                          # (rh_nominal, wl)
+```
+
 
 ## Installation
 
@@ -142,6 +160,23 @@ polluted = pm.Mix({pm.CAMS.SULPHATE: 9.6e9, pm.CAMS.SEA_SALT: 1.1e8})
 polluted.compute(rh=[50, 80], wl=wl)      # no MOPSMAP run, reuses the store
 ```
 
+### A composition that varies from pixel to pixel
+
+Weights accept a `DataArray` just as humidity does, so a scene whose aerosol
+mix changes across the image costs no extra MOPSMAP run: each species is
+computed over the distinct humidities, and the weights are applied afterwards.
+
+```python
+mix = pm.Mix({
+    pm.CAMS.SULPHATE: sulphate_field,   # DataArray over (y, x)
+    pm.CAMS.SEA_SALT: sea_salt_field,
+})
+op = mix.compute(wl=[0.55], rh=humidity_field)
+
+op["kext"]            # (y, x, wl)
+op["concentration"]   # (specie, y, x)
+```
+
 ### Weighting by mass or by optical depth
 
 Number concentration is rarely what you have. Two other currencies express the
@@ -161,7 +196,7 @@ op = mix.compute(rh=50, wl=wl)
 op.kext            # normalised extinction, sums to 1 at wl_ref
 op.kext * 0.25     # for a total AOD of 0.25
 
-mix.weights        # {CAMS.SULPHATE: 2.9e9, CAMS.DUST: 4.1e7}  in m-3
+op["concentration"]   # what the inversion produced, in m-3, per species
 ```
 
 `rh_ref` is required, and it is the humidity **at which your fractions were

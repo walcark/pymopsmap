@@ -29,6 +29,11 @@ and five correctness fixes found on the way.
 - The scattering coefficient `ksca`, derived once at parse time.
 - `DomainError` and `CoverageError`, which say what a computation cannot do
   and why.
+- Swept parameters and mixture weights accept a `DataArray`, so a scene whose
+  humidity and composition vary per pixel yields a result of that shape.
+  Repeated values cost one run. A mixture reports its resolved concentrations
+  as a `concentration(specie, ...)` variable rather than an attribute, which an
+  array could not be.
 - Sweeps run through [xsweep](https://github.com/walcark/xsweep): results are
   memoised in a store, an interrupted sweep resumes, and the hand-written
   result cache is gone. Each run owns its directory, so points can run in
