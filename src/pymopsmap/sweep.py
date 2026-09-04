@@ -63,6 +63,7 @@ def run_sweep(
     space: xr.Dataset,
     outputs: Iterable[str],
     version: str,
+    swept: list[str] | None = None,
     fixed: list[str] | None = None,
     quiet: bool = False,
 ) -> xr.Dataset:
@@ -77,6 +78,9 @@ def run_sweep(
     space : xr.Dataset
         The points to visit. ``wl`` is a vector consumed whole, since MOPSMAP
         takes the entire spectral grid in one run; every other variable loops.
+    swept : list of str, optional
+        Parameters that vary. Not read from the space: a field brings its own
+        coordinates, and those describe the values rather than index them.
     fixed : list of str, optional
         Parameters of the space held constant, declared ``const`` so they add
         no dimension to the result.
@@ -96,14 +100,7 @@ def run_sweep(
     """
     import xsweep
 
-    fixed = fixed or []
-    # Every variable of the space is a swept parameter but the fixed ones;
-    # a one-dimensional axis named after itself is promoted to a coordinate
-    # by xarray, so both places have to be read.
-    looped = sorted(
-        {str(n) for n in space.variables if str(n) != "wl"} - set(fixed)
-    )
-    contract = _contract(looped, sorted(fixed), outputs)
+    contract = _contract(sorted(swept or []), sorted(fixed or []), outputs)
     sweeper = xsweep.Sweeper(
         contract,
         point,
@@ -174,7 +171,9 @@ def _slug(version: str) -> str:
     return "".join(c if c.isalnum() or c in "-_." else "-" for c in version)
 
 
-def build_space(wl: list[float], **axes: Any) -> tuple[xr.Dataset, list[str]]:
+def build_space(
+    wl: list[float], **axes: Any
+) -> tuple[xr.Dataset, list[str], list[str]]:
     """
     Turn the arguments of a computation into the space to sweep.
 
@@ -193,11 +192,17 @@ def build_space(wl: list[float], **axes: Any) -> tuple[xr.Dataset, list[str]]:
     space : xr.Dataset
         Every parameter, swept ones carrying their own dimension and fixed
         ones stored without dimensions.
+    swept : list of str
+        Names of the parameters that vary. Only these: a field carries
+        coordinates describing where its values sit, and taking those for
+        parameters would make every pixel a distinct point, so nothing could
+        be shared between pixels holding the same value.
     fixed : list of str
         Names of the parameters held constant, which the contract declares
         as ``const`` so they add no dimension to the result.
     """
     variables: dict[str, Any] = {}
+    swept: list[str] = []
     fixed: list[str] = []
     for name, value in axes.items():
         if value is None:
@@ -205,12 +210,14 @@ def build_space(wl: list[float], **axes: Any) -> tuple[xr.Dataset, list[str]]:
         if isinstance(value, xr.DataArray):
             # The caller named the dimensions; keep them, whatever their rank.
             variables[name] = value
+            swept.append(name)
         elif _is_sequence(value):
             variables[name] = (name, np.asarray([_scalar(v) for v in value]))
+            swept.append(name)
         else:
             variables[name] = _scalar(value)
             fixed.append(name)
     space = xr.Dataset(
         variables, coords={"wl": ("wl", np.asarray(wl, dtype=float))}
     )
-    return space, fixed
+    return space, swept, fixed

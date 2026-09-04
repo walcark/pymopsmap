@@ -93,3 +93,27 @@ class TestMixtures:
         op = mix.compute(wl=WL, rh=RH_FIELD)
 
         assert op["kext"].dims == ("y", "x", "wl")
+
+
+class TestCoordinatesAreNotParameters:
+    """A field carries coordinates; they describe it, they do not sweep it."""
+
+    @pytest.fixture
+    def located(self):
+        """A humidity field with real coordinates, as a reanalysis gives."""
+        return xr.DataArray(
+            np.array([[10.0, 50.0, 10.0], [90.0, 50.0, 10.0]]),
+            dims=["latitude", "longitude"],
+            coords={"latitude": [50.0, 51.0], "longitude": [0.0, 1.0, 2.0]},
+        )
+
+    def test_repeated_values_still_share_a_run(self, engine, located):
+        pm.load(pm.CAMS.SULPHATE).compute(wl=WL, rh=located)
+
+        assert len(engine) == 3
+
+    def test_the_coordinates_survive_into_the_result(self, engine, located):
+        op = pm.load(pm.CAMS.SULPHATE).compute(wl=WL, rh=located)
+
+        assert list(op["latitude"].values) == [50.0, 51.0]
+        assert op["kext"].dims == ("latitude", "longitude", "wl")

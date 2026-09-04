@@ -256,7 +256,7 @@ class Specie:
         from pymopsmap import engine
         from pymopsmap.engine.outputs import shape_types, variables_for
 
-        space, fixed = build_space(wl, rh=rh)
+        space, swept, fixed = build_space(wl, rh=rh)
         # Materialise every point first: an invalid request must fail up
         # front, with its own error, rather than midway through a sweep
         # wrapped in the engine's.
@@ -277,6 +277,7 @@ class Specie:
             space,
             outputs=variables_for(outputs),
             version=self._sweep_version(outputs),
+            swept=swept,
             fixed=fixed,
             quiet=quiet,
         )
