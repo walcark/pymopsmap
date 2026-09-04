@@ -11,7 +11,7 @@ import xarray as xr
 
 from pymopsmap.engine.outputs import DEFAULT_OUTPUT, OutputRequest
 from pymopsmap.microparams import MicroParameters
-from pymopsmap.sweep import build_space, run_sweep
+from pymopsmap.sweep import build_space, distinct_values, run_sweep
 from pymopsmap.utils import check_within_grid
 
 from .catalog import CamsSpecie, CatalogSpecie, OpacSpecie, path_for
@@ -260,7 +260,7 @@ class Specie:
         # Materialise every point first: an invalid request must fail up
         # front, with its own error, rather than midway through a sweep
         # wrapped in the engine's.
-        for humidity in rh if isinstance(rh, (list, tuple)) else [rh]:
+        for humidity in distinct_values(rh):
             self.at(wl=wl, rh=humidity, kappa=kappa)
 
         def point(**at: Any) -> xr.Dataset:
@@ -371,9 +371,8 @@ class Specie:
             )
         resolver = resolver_module.NCFileResolver(index)
 
-        humidities = rh if isinstance(rh, (list, tuple)) else [rh]
         required: set[str] = set()
-        for value in humidities:
+        for value in distinct_values(rh):
             materialised = self.at(wl=wl, rh=value, kappa=kappa)
             required.update(
                 resolver.resolve(materialised.modes, rh=materialised.engine_rh)
