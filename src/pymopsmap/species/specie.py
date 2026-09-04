@@ -254,7 +254,7 @@ class Specie:
             One variable per optical property, with a dimension per swept axis.
         """
         from pymopsmap import engine
-        from pymopsmap.engine.outputs import variables_for
+        from pymopsmap.engine.outputs import shape_types, variables_for
 
         space, fixed = build_space(wl, rh=rh)
         # Materialise every point first: an invalid request must fail up
@@ -272,7 +272,7 @@ class Specie:
                 quiet=quiet,
             )
 
-        return run_sweep(
+        result = run_sweep(
             point,
             space,
             outputs=variables_for(outputs),
@@ -280,6 +280,13 @@ class Specie:
             fixed=fixed,
             quiet=quiet,
         )
+        # The store keeps the numbers, not the attributes around them, so
+        # what produced them is restated here. A mixture needs it: an
+        # effective radius cannot be rebuilt from non-spherical modes.
+        result.attrs["shape_types"] = shape_types(
+            self.at(wl=wl, rh=distinct_values(rh)[0], kappa=kappa).modes
+        )
+        return result
 
     def _sweep_version(self, outputs: OutputRequest) -> str:
         """
