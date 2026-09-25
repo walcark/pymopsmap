@@ -1,9 +1,11 @@
 """Optical dataset downloader — fetches NC files from a remote source."""
 
+import os
 import shutil
 import time
 import urllib.request
 from pathlib import Path
+from uuid import uuid4
 
 from tqdm import tqdm
 
@@ -40,8 +42,12 @@ class DatasetDownloader:
     def download(self, relative_path: str) -> None:
         source = self._resolved_source()
         url_or_path = f"{source.rstrip('/')}/{relative_path}"
-        tmp_path = self.cache.full_path(relative_path).with_suffix(".tmp")
-        tmp_path.parent.mkdir(parents=True, exist_ok=True)
+        target = self.cache.full_path(relative_path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        # A scratch name of its own: several runs can want the same file at
+        # the same time, and a shared one would have them write over each
+        # other and register a half-written result.
+        tmp_path = target.with_suffix(f".{os.getpid()}.{uuid4().hex}.tmp")
 
         last_exc: Exception = RuntimeError("no attempts made")
         for attempt in range(_MAX_RETRIES):

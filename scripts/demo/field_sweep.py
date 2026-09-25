@@ -81,7 +81,7 @@ def compute(field: xr.DataArray) -> xr.Dataset:
 
 # Two moments while the front is still crossing the scene; at the ends it has
 # either not arrived or fully passed, and both images would be flat.
-SLICES = (25, 70)
+SLICES = (25, 50, 70)
 
 
 def plot(kext: xr.DataArray, path: Path) -> None:
@@ -91,7 +91,7 @@ def plot(kext: xr.DataArray, path: Path) -> None:
     images = [kext.isel(t=step) for step in SLICES]
     scale = {"vmin": float(kext.min()), "vmax": float(kext.max())}
 
-    fig, axes = plt.subplots(1, 2, figsize=(11, 4.6), constrained_layout=True)
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4.6), constrained_layout=True)
     for axis, image, step in zip(axes, images, SLICES):
         when = f"t = {step}"
         drawn = axis.pcolormesh(image["x"], image["y"], image, **scale)

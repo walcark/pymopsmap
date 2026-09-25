@@ -49,6 +49,16 @@ def _scalar(value: Any) -> Any:
 # two computations different, so unrelated species never share an entry.
 SWEEP_STORE_ENV = "PYMOPSMAP_SWEEP_STORE"
 
+# How many MOPSMAP runs to keep in flight. Threads, not processes: a run is a
+# subprocess, so the GIL is released while it works, and the point function
+# closes over a loaded species, which no process pool could pickle.
+WORKERS_ENV = "PYMOPSMAP_WORKERS"
+
+
+def workers() -> int:
+    """Concurrent MOPSMAP runs, one per core unless asked otherwise."""
+    return int(os.environ.get(WORKERS_ENV, os.cpu_count() or 1))
+
 
 def store_root() -> Path:
     """Directory holding the sweep stores."""
@@ -109,6 +119,8 @@ def run_sweep(
             # A field repeats its values between pixels, and a MOPSMAP run
             # costs seconds: compute each distinct point once.
             dedup=True,
+            executor="thread",
+            max_workers=workers(),
             # A failed point would otherwise become NaN, which is the silent
             # gap this pipeline already refuses at the MOPSMAP level.
             on_error="raise",
