@@ -54,7 +54,9 @@ class SpheroidDistrFile(BaseModel):
 
     @property
     def command(self) -> str:
-        return f"shape spheroid distr_file {self.distr_filename}"
+        # Quoted: a list-directed Fortran read treats an unquoted slash as
+        # the end of the record, so a path would never reach MOPSMAP.
+        return f"shape spheroid distr_file '{self.distr_filename}'"
 
 
 class Irregular(BaseModel):
@@ -72,7 +74,7 @@ class IrregularDistrFile(BaseModel):
 
     @property
     def command(self) -> str:
-        return f"shape irregular distr_file {self.distr_filename}"
+        return f"shape irregular distr_file '{self.distr_filename}'"
 
 
 class IrregularOverlay(BaseModel):
@@ -85,8 +87,8 @@ class IrregularOverlay(BaseModel):
     @property
     def command(self) -> str:
         return (
-            f"shape irregular_overlay {self.distr_filename}"
-            f" {{self.xmin}} {{self.xmax}}"
+            f"shape irregular_overlay '{self.distr_filename}'"
+            f" {self.xmin} {self.xmax}"
         )
 
 
