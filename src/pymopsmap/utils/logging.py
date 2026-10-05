@@ -1,13 +1,18 @@
-"""Structured logging via structlog — colored console + JSON file output."""
+"""Structured logging via structlog: colored console, optional JSON file."""
 
 from __future__ import annotations
 
 import logging
+import os
 import sys
 
 import structlog
 
 _INITIALIZED = False
+
+# A library has no business flooding the console of whoever imports it, nor
+# dropping a log file in their working directory: both are opt-in.
+_DEFAULT_LEVEL = "WARNING"
 
 
 def _configure() -> None:
@@ -44,21 +49,23 @@ def _configure() -> None:
         )
     )
 
-    file_handler = logging.FileHandler("pymopsmap.log")
-    file_handler.setFormatter(
-        structlog.stdlib.ProcessorFormatter(
-            processors=[
-                structlog.stdlib.ProcessorFormatter.remove_processors_meta,
-                structlog.processors.JSONRenderer(),
-            ],
-            foreign_pre_chain=shared_processors,
-        )
-    )
-
     root = logging.getLogger()
-    root.setLevel(logging.DEBUG)
+    root.setLevel(os.getenv("PYMOPSMAP_LOG_LEVEL", _DEFAULT_LEVEL).upper())
     root.addHandler(console_handler)
-    root.addHandler(file_handler)
+
+    log_file = os.getenv("PYMOPSMAP_LOG_FILE")
+    if log_file:
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setFormatter(
+            structlog.stdlib.ProcessorFormatter(
+                processors=[
+                    structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+                    structlog.processors.JSONRenderer(),
+                ],
+                foreign_pre_chain=shared_processors,
+            )
+        )
+        root.addHandler(file_handler)
 
     logging.getLogger("matplotlib").setLevel(logging.WARNING)
 
