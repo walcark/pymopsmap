@@ -83,8 +83,18 @@ class SizeParameterLimits:
             mreal=n_real, mimag=n_imag, method="nearest"
         )
         if "eps" in entry.dims:
-            entry = entry.sel(eps=_aspect_ratio(shape), method="nearest")
-        return float(entry)
+            ratio = _aspect_ratio(shape)
+            if ratio is None:
+                # The aspect ratios come from a distribution: the run is only
+                # as covered as the least covered ratio it may reach.
+                entry = entry.where(entry > 0.0).min()
+            else:
+                entry = entry.sel(eps=ratio, method="nearest")
+
+        limit = float(entry)
+        # eps = 1 sits on the grid with a limit of zero: a perfect sphere has
+        # no spheroid file. Reading it as a limit rejects every size.
+        return limit if limit > 0.0 else published
 
 
 def _shape_code(shape: Shape) -> int | None:
@@ -98,6 +108,14 @@ def _shape_code(shape: Shape) -> int | None:
     return None
 
 
-def _aspect_ratio(shape: Shape) -> float:
-    """A sphere is a spheroid of aspect ratio one."""
-    return float(getattr(shape, "aspect_ratio", 1.0))
+def _aspect_ratio(shape: Shape) -> float | None:
+    """
+    The one aspect ratio of a shape, or None when a distribution sets it.
+
+    A sphere is a spheroid of aspect ratio one. A shape reading its ratios
+    from a file spans many, so no single row of the index applies.
+    """
+    if shape.type == "sphere":
+        return 1.0
+    ratio = getattr(shape, "aspect_ratio", None)
+    return None if ratio is None else float(ratio)

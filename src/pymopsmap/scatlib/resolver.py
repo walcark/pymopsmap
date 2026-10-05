@@ -183,8 +183,35 @@ class NCFileResolver:
             selected = self.avail_eps[mask].tolist()
             return selected if selected else _bracket(self.avail_eps, ar)
 
-        # SpheroidDistrFile: can't know without reading file — use all eps
-        return self.avail_eps.tolist()
+        # SpheroidDistrFile: the file names the aspect ratios, so read it
+        # rather than pull in all 31 of them, one of which has no file at all.
+        return self._eps_from_distr_file(shape.distr_filename)  # type: ignore[union-attr]
+
+    def _eps_from_distr_file(self, path: str | Path) -> list[float]:
+        """
+        The eps grid points an aspect ratio distribution file reaches.
+
+        The format is the one init_shape.f90 reads: a first line giving the
+        fraction of prolate spheroids, then one aspect ratio and weight per
+        line. Each ratio is spread over the bracketing grid points, the prolate
+        side under eps = 1 / ratio and the oblate side under eps = ratio.
+        """
+        text = Path(path).read_text().splitlines()
+        if not text:
+            raise IndexFileError(f"empty aspect ratio distribution: {path}")
+        prolate_fraction = float(text[0].split()[0])
+
+        selected: set[float] = set()
+        for line in text[1:]:
+            fields = line.split("#")[0].split()
+            if len(fields) < 2:
+                continue
+            ratio = float(fields[0])
+            if prolate_fraction > 0.0:
+                selected.update(_bracket(self.avail_eps, 1.0 / ratio))
+            if prolate_fraction < 1.0:
+                selected.update(_bracket(self.avail_eps, ratio))
+        return sorted(selected)
 
     @staticmethod
     def _irregular_id(shape: Shape) -> str:
