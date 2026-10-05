@@ -47,6 +47,35 @@ class TestSmartgExport:
         assert lut["ext"].dims == ("hum", "wav")
         assert lut["phase"].dims == ("hum", "wav", "stk", "theta")
 
+    def test_the_angles_come_out_increasing(self, result, tmp_path):
+        """SMART-G 2.0 raises on a decreasing theta; MOPSMAP emits one."""
+        flipped = result.isel(theta=slice(None, None, -1))
+        path = tmp_path / "lut.nc"
+
+        flipped.mopsmap.to_smartg(path, name="sulphate")
+
+        theta = xr.open_dataset(path)["theta"].values
+        assert (np.diff(theta) > 0).all()
+
+    def test_sorting_the_angles_carries_the_phase_with_them(
+        self, result, tmp_path
+    ):
+        """Reordering the coordinate without its data mirrors the phase."""
+        peaked = result.copy()
+        peaked["phase"] = peaked["phase"] * xr.DataArray(
+            np.linspace(10.0, 1.0, len(THETA)), dims="theta"
+        )
+        path = tmp_path / "lut.nc"
+
+        peaked.isel(theta=slice(None, None, -1)).mopsmap.to_smartg(
+            path, name="sulphate"
+        )
+
+        lut = xr.open_dataset(path)
+        forward = lut["phase"].isel(hum=0, wav=0, stk=0, theta=0)
+        backward = lut["phase"].isel(hum=0, wav=0, stk=0, theta=-1)
+        assert float(forward) > float(backward)
+
     def test_the_humidity_dimension_can_be_named(self, result, tmp_path):
         """v1 hardcoded 'rh', which broke as soon as a user named it."""
         renamed = result.rename(rh="rh_nominal")

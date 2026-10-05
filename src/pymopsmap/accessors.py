@@ -58,6 +58,13 @@ class MopsmapAccessor:
                 "OutputType.PHASE_FUNCTION when computing it."
             )
 
+        # SMART-G 2.0 requires strictly increasing scattering angles and
+        # raises otherwise, where 1.x accepted either order.  MOPSMAP
+        # emits them decreasing, so the table is sorted here rather than
+        # left for every reader to discover.
+        if ds["theta"].size > 1 and bool(ds["theta"][0] > ds["theta"][-1]):
+            ds = ds.sortby("theta")
+
         phase = ds["phase"]
         if "mueller_idx" not in phase.dims:
             phase = phase.expand_dims(mueller_idx=[0])
