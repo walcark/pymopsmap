@@ -51,6 +51,10 @@ class SchemaError(ValueError):
     """Raised when a species file does not follow the canonical schema."""
 
 
+class OutsideCoverageError(ValueError):
+    """Raised when every wavelength of a run leaves the size-parameter grid."""
+
+
 class CoverageError(Exception):
     """Raised when the optical dataset at hand lacks a required file."""
 

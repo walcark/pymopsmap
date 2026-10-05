@@ -68,6 +68,7 @@ class TestFallback:
 class TestClipping:
     def test_a_collapsed_spheroid_limit_clips(self, limits):
         from pymopsmap.engine.coverage import clip_modes_to_coverage
+        from pymopsmap.exceptions import OutsideCoverageError
         from pymopsmap.microparams import MicroParameters
         from pymopsmap.psd import LognormalPSD
 
@@ -79,10 +80,10 @@ class TestClipping:
             psd=LognormalPSD(rm=0.1, sigma=1.6, n=1e9, rmin=0.005, rmax=1.0),
         )
 
-        with pytest.warns(UserWarning, match="clipped"):
-            _, mask = clip_modes_to_coverage([mode], limits=limits)
-
-        assert not mask.any()
+        # Nothing survives the clip, so there is no run to make: MOPSMAP would
+        # be handed an empty wavelength file and misreport the reason.
+        with pytest.raises(OutsideCoverageError, match="outside the dataset"):
+            clip_modes_to_coverage([mode], limits=limits)
 
     def test_the_same_mode_passes_where_the_limit_is_high(self, limits):
         from pymopsmap.engine.coverage import clip_modes_to_coverage

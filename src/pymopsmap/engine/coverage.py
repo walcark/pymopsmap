@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from pymopsmap.exceptions import OutsideCoverageError
 from pymopsmap.scatlib.limits import SizeParameterLimits
 
 if TYPE_CHECKING:
@@ -52,25 +53,31 @@ def _max_radius(psd) -> float | None:
     return None  # FileDefinedPSD: cannot determine without reading the file
 
 
-def _valid_mask(
-    mp: MicroParameters, rh: float | None, limits: SizeParameterLimits
-) -> np.ndarray:
+def _grown_max_radius(mp: MicroParameters, rh: float | None) -> float | None:
     """
-    Boolean mask: True where the size parameter is within dataset limits.
+    The largest radius MOPSMAP will work on, growth included.
 
-    The radius checked is the one MOPSMAP will work on. When growth is
-    delegated to the engine it scales every radius by the growth factor
-    (calc_hygroscopic_growth.f90), so a mode that fits dry can leave the
-    coverage once it takes up water.
+    When growth is delegated to the engine it scales every radius by the
+    growth factor (calc_hygroscopic_growth.f90), so a mode that fits dry can
+    leave the coverage once it takes up water.
     """
     from pymopsmap.scatlib.growth import growth_factor_cubed
 
     r_max = _max_radius(mp.psd)
     if r_max is None:
-        return np.ones(len(mp.wavelength), dtype=bool)
-
+        return None
     if mp.kappa and rh:
         r_max *= growth_factor_cubed(mp.kappa, rh) ** (1.0 / 3.0)
+    return r_max
+
+
+def _valid_mask(
+    mp: MicroParameters, rh: float | None, limits: SizeParameterLimits
+) -> np.ndarray:
+    """Boolean mask: True where the size parameter is within dataset limits."""
+    r_max = _grown_max_radius(mp, rh)
+    if r_max is None:
+        return np.ones(len(mp.wavelength), dtype=bool)
 
     x = 2.0 * math.pi * r_max / np.asarray(mp.wavelength, dtype=float)
     x_min = _X_MINIMUM.get(mp.shape.type, 0.0)
@@ -146,7 +153,7 @@ def clip_modes_to_coverage(
     for mp, mask in zip(mp_list, per_mask):
         if mask.all():
             continue
-        r_max = _max_radius(mp.psd)
+        r_max = _grown_max_radius(mp, rh)
         x_min = _X_MINIMUM.get(mp.shape.type, 0.0)
         x_max = limits.maximum(mp.shape, mp.n_real[0], mp.n_imag[0])  # type: ignore[index]
         if r_max is not None:
@@ -161,11 +168,20 @@ def clip_modes_to_coverage(
                 f"shape '{mp.shape.type}': limit [{x_min:.3g}, {x_max:.3g}]"
             )
 
+    detail = (
+        "size-parameter coverage (Gasteiger & Wiegner 2018 Tables 1-2). "
+        + "; ".join(parts)
+    )
+    # Nothing left to run: MOPSMAP would be handed an empty wavelength file
+    # and report a missing wavelength instead of the coverage gap.
+    if not combined.any():
+        raise OutsideCoverageError(
+            f"every wavelength of the run falls outside the dataset. {detail}"
+        )
+
     warnings.warn(
         f"pymopsmap: {n_clipped}/{len(combined)} wavelength(s) clipped. "
-        f"size-parameter coverage (Gasteiger & Wiegner 2018 Tables 1–2). "
-        + "; ".join(parts)
-        + ". Out-of-range positions will be NaN in the result.",
+        f"{detail}. Out-of-range positions will be NaN in the result.",
         UserWarning,
         stacklevel=4,
     )
