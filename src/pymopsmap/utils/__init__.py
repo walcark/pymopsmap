@@ -1,4 +1,4 @@
-"""Utility exports — types, environment paths, logging, temp files, caching."""
+"""Utility exports: types, environment paths, logging, temp files, caching."""
 
 import os
 from pathlib import Path

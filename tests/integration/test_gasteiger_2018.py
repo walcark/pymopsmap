@@ -21,6 +21,7 @@ import os
 from pathlib import Path
 
 import pytest
+import xarray as xr
 
 from pymopsmap import MicroParameters
 from pymopsmap.engine import run_point
@@ -305,3 +306,50 @@ def test_table5(case: str) -> None:
 
 # The quantities that do not scale with the particle concentration.
 _INTENSIVE = frozenset({"ssa", "g", "reff", "lidar_ratio", "depol_ratio"})
+
+
+# --------------------------------------------------------------------------
+# Table 6: the Jacobian around that ensemble, by the same central difference
+# the authors use in paper_examples/sect_55_error_calc/jacobian.py, a relative
+# perturbation of one percent.
+#
+# The article warns that "partial derivatives d zeta / d mr are constant
+# between the mr grid points of the data set", so these are interpolation
+# slopes rather than physical ones. They are also differences of nearly equal
+# numbers printed to two or three significant digits: d omega_0 / d eps comes
+# out of a change in omega_0 of 2e-4. Ten percent is what that supports.
+# --------------------------------------------------------------------------
+
+TABLE6 = {
+    "n_real": {"ssa": -0.037, "g": -0.428, "lidar_ratio": -360.0},
+    "n_imag": {"ssa": -11.0, "g": +3.69, "lidar_ratio": +2839.0},
+    "aspect_ratio": {"ssa": +0.010, "g": +0.058, "lidar_ratio": +48.3},
+}
+
+TABLE6_REFERENCE = {"n_real": 1.53, "n_imag": 0.0063, "aspect_ratio": 2.0}
+
+
+def _table6_run(**overrides: float) -> xr.Dataset:
+    """The reference ensemble of section 5.5, with one parameter moved."""
+    values = TABLE6_REFERENCE | overrides
+    mode = MicroParameters(
+        wavelength=[0.532],
+        n_real=values["n_real"],
+        n_imag=values["n_imag"],
+        shape=Spheroid(mode="prolate", aspect_ratio=values["aspect_ratio"]),
+        psd=LognormalPSD(rm=0.1, sigma=2.6, rmin=0.001, rmax=20.0, n=1e6),
+    )
+    return run_point([mode], INTEGRATED_AND_LIDAR, quiet=True)
+
+
+@pytest.mark.parametrize("parameter", sorted(TABLE6))
+def test_table6_jacobian(parameter: str) -> None:
+    """Reproduce one row of the Jacobian matrix."""
+    reference = TABLE6_REFERENCE[parameter]
+    low = _table6_run(**{parameter: reference * 0.99})
+    high = _table6_run(**{parameter: reference * 1.01})
+    span = reference * 0.02
+
+    for name, expected in TABLE6[parameter].items():
+        derivative = (_value(high, name) - _value(low, name)) / span
+        assert derivative == pytest.approx(expected, rel=0.1), name

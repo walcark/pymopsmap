@@ -122,8 +122,8 @@ def clip_modes_to_coverage(
         limits: the dataset limits; the published table is used without them.
 
     Returns:
-        clipped_modes — same type as input, out-of-range wavelengths dropped.
-        valid_mask    — boolean over the *original* wl axis (True = kept).
+        clipped_modes: same type as input, out-of-range wavelengths dropped.
+        valid_mask: boolean over the *original* wl axis (True = kept).
     """
     from pymopsmap.microparams import MicroParameters as MP
 

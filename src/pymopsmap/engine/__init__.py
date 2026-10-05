@@ -1,4 +1,4 @@
-"""MOPSMAP computation pipeline — resolution, execution, caching."""
+"""MOPSMAP computation pipeline: resolution, execution, caching."""
 
 from __future__ import annotations
 

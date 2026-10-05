@@ -30,21 +30,6 @@ op.kext        # <xarray.DataArray (rh: 2, wl: 100)>
 op.ssa
 ```
 
-## Sweeps
-
-`compute` returns an `xarray.Dataset` whose dimensions are the ones you asked for. Pass a scalar and you get a scalar axis. Pass a `DataArray` and you get your own dimension name.
-
-```python
-op = sulphate.compute(rh=50, wl=wl)                       # (wl,)
-op = sulphate.compute(rh=[50, 70, 90], wl=wl)             # (rh, wl)
-
-op = sulphate.compute(
-    rh=xr.DataArray([50, 70, 90], dims="rh_nominal"),
-    wl=wl,
-)                                                          # (rh_nominal, wl)
-```
-
-
 ## Installation
 
 ```bash
@@ -341,15 +326,37 @@ The schema is documented in `docs/api-v2-spec.md`, section 4. To contribute a
 source to the built-in catalogue, add an ingestion script under
 `scripts/build_catalog/` that emits that schema.
 
+## Validation
+
+The wrapper is held to the numbers published in
+[Gasteiger and Wiegner (2018)](https://doi.org/10.5194/gmd-11-2739-2018),
+the MOPSMAP article. Tables 3 to 6 of that article, 92 values in all, are
+asserted in `tests/integration/test_gasteiger_2018.py`, and
+`tests/integration/test_mie_reference.py` checks the same pipeline against
+`miepython`, an implementation that shares nothing with MOPSMAP.
+
+```bash
+export PYMOPSMAP_DATASET_SOURCE=/path/to/mopsmap/optical_dataset
+pixi run -e dev pytest tests/integration
+```
+
+Four figures of the article are recomputed by `scripts/validation/`.
+
+| Figure | What it shows |
+|---|---|
+| [2](docs/figures/gasteiger_fig2.png) | single particles against size parameter, five shapes |
+| [5](docs/figures/gasteiger_fig5.png) | the OPAC types against relative humidity |
+| [6](docs/figures/gasteiger_fig6.png) | phase functions of five dust size bins, spheres against spheroids |
+| [7](docs/figures/gasteiger_fig7.png) | the OPAC desert type against the cutoff radius |
+
+`docs/validation.md` says what agrees, to what precision, and what does not.
+
 ## Roadmap
 
 - **Growable sweeps**: a store holds one grid, so widening a request today
   recomputes it rather than extending what is already there.
 - **Transparent remote dataset**: automatic download of the optical dataset
   when `PYMOPSMAP_DATASET_SOURCE` is not set, removing the manual setup step.
-- **Article validation**: `scripts/validation/` reproduces Figure 5 of
-  [Gasteiger & Wiegner (2018)](https://doi.org/10.5194/gmd-11-2739-2018); the
-  other figures are next.
 - **Tabulated OPAC**: the wet state published by GEISA, alongside the kappa
   flavour that ships today. The GEISA file host was decommissioned during the
   migration of the database, so the links on its pages no longer resolve.

@@ -1,4 +1,4 @@
-"""Optical dataset resolver — maps refractive index grid to NC file paths."""
+"""Optical dataset resolver: maps refractive index grid to NC file paths."""
 
 from __future__ import annotations
 
@@ -219,6 +219,6 @@ class NCFileResolver:
 
         if isinstance(shape, Irregular):
             return shape.shape_id
-        # For file-defined irregular, we can't know the shape_id — return a
+        # For file-defined irregular, we can't know the shape_id: return a
         # placeholder that causes a downstream error rather than a silent miss.
         return "A"

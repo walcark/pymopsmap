@@ -1,4 +1,4 @@
-"""Optical dataset downloader — fetches NC files from a remote source."""
+"""Optical dataset downloader: fetches NC files from a remote source."""
 
 import os
 import shutil

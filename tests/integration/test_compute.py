@@ -16,7 +16,7 @@ import pytest
 
 pytestmark = pytest.mark.skipif(
     os.getenv("PYMOPSMAP_DATASET_SOURCE") is None,
-    reason="PYMOPSMAP_DATASET_SOURCE not set — skipping integration tests",
+    reason="PYMOPSMAP_DATASET_SOURCE not set: skipping integration tests",
 )
 
 
