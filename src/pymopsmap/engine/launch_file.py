@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal
 
 from pymopsmap.engine.outputs import DEFAULT_OUTPUT, OutputRequest, OutputType
 from pymopsmap.microparams import MicroParameters
@@ -12,6 +13,12 @@ from .commands import microparams_command, wl_command
 from .workspace import Workspace
 
 logger = get_logger(__name__)
+
+# How MOPSMAP reads a size given for a nonspherical particle (read_input.f90,
+# keyword size_equ): as the radius of the sphere of equal cross section, of
+# equal volume, or of equal volume-to-cross-section ratio. Section 2.1 of
+# Gasteiger and Wiegner (2018) defines the three.
+SizeEquivalence = Literal["cs", "vol", "vol_cs_ratio"]
 
 _ASCII_TYPES = {
     OutputType.PHASE_FUNCTION,
@@ -29,6 +36,7 @@ def write_launching_file(
     n_angles: int = 2000,
     rh: float | None = None,
     mopsmap_data_path: Path | None = None,
+    size_equ: SizeEquivalence = "cs",
 ) -> dict[str, Path]:
     """
     Generate a MOPSMAP launch file and return paths to the generated artefacts.
@@ -47,7 +55,11 @@ def write_launching_file(
     mp_list = [mp] if isinstance(mp, MicroParameters) else mp
 
     water_refr = MOPSMAP_PATH.parent / "data" / "refr_water_segelstein"
-    file_prefix = f"scatlib '{dataset_path}'\nwater_refrac_file '{water_refr}'"
+    file_prefix = (
+        f"scatlib '{dataset_path}'\n"
+        f"water_refrac_file '{water_refr}'\n"
+        f"size_equ {size_equ}"
+    )
     file_content = microparams_command(mp, workspace)
     file_suffix = _file_suffix(
         ascii_base=paths.get("ascii_base"),

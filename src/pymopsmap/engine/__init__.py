@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, TypeAlias
 if TYPE_CHECKING:
     import xarray as xr
 
+    from pymopsmap.engine.launch_file import SizeEquivalence
     from pymopsmap.engine.outputs import OutputRequest
     from pymopsmap.microparams import MicroParameters
 
@@ -18,6 +19,7 @@ def run_point(
     output_types: OutputRequest,
     rh: float | None = None,
     quiet: bool = False,
+    size_equ: SizeEquivalence = "cs",
 ) -> xr.Dataset:
     """
     Run MOPSMAP once, for one point of a parameter space.
@@ -78,6 +80,7 @@ def run_point(
             output_types=output_types,
             rh=rh,
             mopsmap_data_path=DATASET_CACHE_DIR,
+            size_equ=size_equ,
         )
         out_mopsmap = launch_mopsmap(input_filename=paths["mopsmap"])
         out_mopsmap["ascii_base"] = paths.get("ascii_base")
