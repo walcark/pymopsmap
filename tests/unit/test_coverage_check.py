@@ -119,3 +119,39 @@ class TestMissingFiles:
         from pymopsmap.scatlib.coverage import require_available
 
         require_available(missing=[], modes=[_mode(1.45)], source="/somewhere")
+
+
+class TestClippingWarning:
+    def test_the_warning_sizes_the_grown_particle(self):
+        """
+        The warning must quote the size parameter the mask actually tested.
+
+        It used to rebuild it from the dry radius, so a mode clipped because
+        it took up water was reported with a size parameter inside the limit.
+        """
+        import warnings
+
+        from pymopsmap.engine.coverage import clip_modes_to_coverage
+        from pymopsmap.microparams import MicroParameters
+        from pymopsmap.psd import LognormalPSD
+        from pymopsmap.shapes import Sphere
+
+        # Dry, this mode sits at x = 709 at 532 nm, inside the limit; the
+        # growth at RH = 70 % takes it past.
+        mode = MicroParameters(
+            wavelength=[0.532, 1.064],
+            n_real=1.49,
+            n_imag=1e-8,
+            shape=Sphere(),
+            psd=LognormalPSD(
+                rm=1.75, sigma=2.03, n=1e6, rmin=0.005, rmax=60.0
+            ),
+            kappa=0.916,
+        )
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            _, mask = clip_modes_to_coverage([mode], rh=70.0)
+
+        assert list(mask) == [False, True]
+        assert "x ∈ [1.04e+03, 1.04e+03]" in str(caught[0].message)
