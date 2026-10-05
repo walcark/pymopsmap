@@ -18,6 +18,7 @@ from .catalog import CamsSpecie, CatalogSpecie, OpacSpecie, path_for
 from .mode import Mode
 from .schema import (
     AMPLITUDE_FIELD,
+    HUMIDITY_DIM,
     Growth,
     expected_psd_variables,
     expected_shape_variables,
@@ -155,11 +156,17 @@ class Specie:
 
     @property
     def swept(self) -> dict[str, int]:
-        """Dimensions a parameter of this species varies over, and sizes."""
+        """
+        Dimensions a parameter of this species varies over, and their sizes.
+
+        Wavelength and humidity are not among them: both are arguments of
+        ``compute``, and the humidity axis of a tabulated species is the table
+        it is interpolated on, not a sweep the caller asked for.
+        """
         sizes: dict[str, int] = {}
         for mode in self.modes:
             for dim, size in self.tree[mode].to_dataset().sizes.items():
-                if dim != "wl":
+                if str(dim) not in ("wl", HUMIDITY_DIM):
                     sizes[str(dim)] = size
         return sizes
 
@@ -256,15 +263,32 @@ class Specie:
         from pymopsmap import engine
         from pymopsmap.engine.outputs import shape_types, variables_for
 
-        space, swept, fixed = build_space(wl, rh=rh)
+        # A parameter the species declares as varying is an axis of the
+        # sweep too. It is walked by position, since what varies is a field
+        # the caller shaped, not a value the engine can be told directly.
+        declared = self.swept
+        space, swept, fixed = build_space(
+            wl,
+            rh=rh,
+            **{dim: np.arange(size) for dim, size in declared.items()},
+        )
         # Materialise every point first: an invalid request must fail up
         # front, with its own error, rather than midway through a sweep
         # wrapped in the engine's.
         for humidity in distinct_values(rh):
-            self.at(wl=wl, rh=humidity, kappa=kappa)
+            self.at(
+                wl=wl,
+                rh=humidity,
+                kappa=kappa,
+                **dict.fromkeys(declared, 0),
+            )
 
         def point(**at: Any) -> xr.Dataset:
-            materialised = self.at(wl=list(at.pop("wl")), kappa=kappa, **at)
+            wavelengths = list(at.pop("wl"))
+            indices = {dim: int(at.pop(dim)) for dim in declared}
+            materialised = self.at(
+                wl=wavelengths, kappa=kappa, **at, **indices
+            )
             return engine.run_point(
                 materialised.modes,
                 output_types=outputs,
@@ -284,10 +308,42 @@ class Specie:
         # The store keeps the numbers, not the attributes around them, so
         # what produced them is restated here. A mixture needs it: an
         # effective radius cannot be rebuilt from non-spherical modes.
+        result = self._label_declared_axes(result, declared)
         result.attrs["shape_types"] = shape_types(
-            self.at(wl=wl, rh=distinct_values(rh)[0], kappa=kappa).modes
+            self.at(
+                wl=wl,
+                rh=distinct_values(rh)[0],
+                kappa=kappa,
+                **dict.fromkeys(declared, 0),
+            ).modes
         )
         return result
+
+    def _label_declared_axes(
+        self, result: xr.Dataset, declared: dict[str, int]
+    ) -> xr.Dataset:
+        """
+        Put the parameter values back on the axes swept by position.
+
+        A declared axis is walked by index, so the result would otherwise
+        carry 0, 1, 2 where the caller gave radii. The values are recovered
+        from whichever variable varies along that dimension alone; a
+        parameter spread over several dimensions keeps its index, since no
+        single value belongs to a position.
+        """
+        for dim in declared:
+            values = self._axis_values(dim)
+            if values is not None:
+                result = result.assign_coords({dim: values})
+        return result
+
+    def _axis_values(self, dim: str) -> Any:
+        """The values a declared dimension takes, when it names them alone."""
+        for name in self.modes:
+            for variable in self.tree[name].to_dataset().values():
+                if variable.dims == (dim,):
+                    return variable.values
+        return None
 
     def _sweep_version(self, outputs: OutputRequest) -> str:
         """
@@ -459,11 +515,23 @@ def _spectrum(values: xr.DataArray, count: int) -> list[float]:
 
 
 def _fields(ds: xr.Dataset, names: frozenset[str]) -> dict:
-    """Read a set of variables, as scalars or as lists when they have dims."""
-    return {
-        name: ds[name].values.tolist() if ds[name].dims else float(ds[name])
-        for name in names
-    }
+    """
+    Read a set of variables back into the values a model expects.
+
+    A variable with dimensions becomes a list, a numeric scalar a float, and
+    anything else is handed over as it is: a shape carries strings too, such
+    as the oblate or prolate of a spheroid.
+    """
+    values = {}
+    for name in names:
+        variable = ds[name]
+        if variable.dims:
+            values[name] = variable.values.tolist()
+        elif variable.dtype.kind in "fiu":
+            values[name] = float(variable)
+        else:
+            values[name] = variable.item()
+    return values
 
 
 def _optional(

@@ -19,9 +19,9 @@ class Mode:
     """
     One mode of a hand-built species.
 
-    Any numeric parameter accepts a ``DataArray`` instead of a float, which
-    sweeps it: distinct dimensions multiply, and two parameters sharing a
-    dimension vary together. The dimensions live on the species rather than on
+    Any numeric parameter accepts a ``DataArray`` where a float would go,
+    which sweeps it: distinct dimensions multiply, and two parameters sharing
+    a dimension vary together. They are declared on the species rather than on
     the compute call, so a parameter name is never ambiguous between modes.
 
     Parameters
@@ -36,10 +36,6 @@ class Mode:
         Dry material density in g cm-3.
     kappa : float, optional
         Hygroscopicity. Its presence makes the species grow with humidity.
-    sweep : dict, optional
-        Size distribution or shape parameters to vary, as ``DataArray``.
-        They are given here rather than inside the ``psd``, whose fields stay
-        typed as floats so that a materialised point is always validated.
     """
 
     shape: Shape
@@ -48,7 +44,6 @@ class Mode:
     n_imag: Any
     density_dry: float | None = None
     kappa: float | None = None
-    sweep: dict[str, xr.DataArray] = field(default_factory=dict)
     name: str = field(default="only")
 
     def to_dataset(self, wl: list[float] | None = None) -> xr.Dataset:
@@ -61,7 +56,6 @@ class Mode:
             variables[name] = _as_variable(getattr(self.psd, name))
         for name in _fields_of(self.shape):
             variables[name] = _as_variable(getattr(self.shape, name))
-        variables.update(self.sweep)
         if self.density_dry is not None:
             variables["density_dry"] = self.density_dry
         if self.kappa is not None:

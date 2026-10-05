@@ -103,33 +103,33 @@ aer = pm.Specie.custom(
     pm.Mode(
         shape=pm.shapes.Sphere(),
         psd=pm.psd.LognormalPSD(
-            rm=0.05, sigma=1.5, n=1e9, rmin=0.01, rmax=10.0
+            rm=xr.DataArray(np.linspace(0.05, 0.5, 20), dims="rm"),
+            sigma=1.5, n=1e9, rmin=0.01, rmax=10.0,
         ),
         n_real=1.45,
         n_imag=xr.DataArray([1e-4, 1e-3, 1e-2], dims="absorption"),
         density_dry=1.8,
-        sweep={"rm": xr.DataArray(np.linspace(0.05, 0.5, 20), dims="rm")},
     )
 )
 
 aer.swept                        # {"rm": 20, "absorption": 3}
-aer.at(wl=wl, rm=7, absorption=0)
+op = aer.compute(wl=wl)          # (rm, absorption, wl)
 ```
 
-Size distribution and shape parameters are swept through `sweep` rather than
-inside the `psd` itself, whose fields stay typed as floats. That is deliberate:
-every materialised point is validated, and a `MicroParameters` never holds an
-array where a number belongs.
+A swept parameter goes where its scalar would, inside the model. Any numeric
+field accepts a `DataArray`: the size distribution of a species describes
+something that may vary, while the one handed to MOPSMAP for a single point is
+always made of numbers, and is validated as such.
 
 Put two parameters on the **same** dimension to walk a trajectory rather than a
 grid:
 
 ```python
-aging = np.linspace(0.05, 0.5, 20)
-sweep = {
-    "rm": xr.DataArray(aging, dims="aging"),
-    "sigma": xr.DataArray(np.linspace(1.4, 2.1, 20), dims="aging"),
-}                                # 20 points, not 400
+pm.psd.LognormalPSD(
+    rm=xr.DataArray(np.linspace(0.05, 0.5, 20), dims="aging"),
+    sigma=xr.DataArray(np.linspace(1.4, 2.1, 20), dims="aging"),
+    n=1e9, rmin=0.01, rmax=10.0,
+)                                # 20 points, not 400
 ```
 
 A custom species saves and reloads through the same format as the built-in

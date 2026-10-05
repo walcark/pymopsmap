@@ -2,7 +2,15 @@
 
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
+
+from pymopsmap.varying import (
+    AtLeastOne,
+    Positive,
+    UnitInterval,
+    Varying,
+    aspect_ratio_range,
+)
 
 
 class Sphere(BaseModel):
@@ -14,9 +22,10 @@ class Sphere(BaseModel):
 
 
 class Spheroid(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     type: Literal["spheroid"] = "spheroid"
     mode: Literal["oblate", "prolate"]
-    aspect_ratio: float = Field(ge=1)
+    aspect_ratio: AtLeastOne
 
     @property
     def command(self) -> str:
@@ -24,11 +33,12 @@ class Spheroid(BaseModel):
 
 
 class SpheroidLognormal(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     type: Literal["spheroid-lognormal"] = "spheroid-lognormal"
-    zeta1: float = Field(ge=0, le=1)
-    zeta2: float = Field(ge=0, le=1)
-    aspect_ratio: float = Field(ge=1.2, le=5.0)
-    sigma_ar: float = Field(gt=0)
+    zeta1: UnitInterval
+    zeta2: UnitInterval
+    aspect_ratio: aspect_ratio_range(1.2, 5.0)  # type: ignore[valid-type]
+    sigma_ar: Positive
 
     @property
     def command(self) -> str:
@@ -66,10 +76,11 @@ class IrregularDistrFile(BaseModel):
 
 
 class IrregularOverlay(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     type: Literal["irregular-overlay"] = "irregular-overlay"
     distr_filename: str
-    xmin: float
-    xmax: float
+    xmin: Varying
+    xmax: Varying
 
     @property
     def command(self) -> str:

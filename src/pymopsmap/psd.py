@@ -3,9 +3,10 @@
 from enum import StrEnum
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from pymopsmap.utils import SortedPosFloat64List
+from pymopsmap.varying import AboveOne, NonNegative, Positive, Varying
 
 
 class FixedPSD(BaseModel):
@@ -14,9 +15,11 @@ class FixedPSD(BaseModel):
     The total particle number density n needs to be given in units of m^-3.
     """
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     type: Literal["fixed"] = "fixed"
-    radius: float = Field(gt=0)
-    n: float = Field(ge=0)
+    radius: Positive
+    n: NonNegative
 
     @property
     def command(self) -> str:
@@ -33,12 +36,14 @@ class LognormalPSD(BaseModel):
     be lower than n0 because of clipping at rmin and rmax.
     """
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     type: Literal["lognormal"] = "lognormal"
-    rm: float = Field(gt=0)
-    sigma: float = Field(gt=1)
-    n: float = Field(ge=0)
-    rmin: float = Field(gt=0)
-    rmax: float = Field(gt=0)
+    rm: Positive
+    sigma: AboveOne
+    n: NonNegative
+    rmin: Positive
+    rmax: Positive
 
     @model_validator(mode="after")
     def check_rmin_rmax(self):
@@ -67,13 +72,15 @@ class ModifiedGammaPSD(BaseModel):
     The parameter A needs to be given in units of m−3.
     """
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     type: Literal["mod-gamma"] = "mod-gamma"
-    A: float = Field(gt=0)
-    B: float = Field(gt=0)
-    alpha: float
-    gamma: float
-    rmin: float = Field(gt=0)
-    rmax: float = Field(gt=0)
+    A: Positive
+    B: Positive
+    alpha: Varying
+    gamma: Varying
+    rmin: Positive
+    rmax: Positive
 
     @model_validator(mode="after")
     def check_bounds(self):

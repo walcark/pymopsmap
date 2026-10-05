@@ -98,12 +98,16 @@ class TestSweptParameters:
         assert low.modes[0].n_imag[0] < high.modes[0].n_imag[0]
 
     def test_distinct_dimensions_multiply(self):
-        """A psd field is swept through `sweep`, so pydantic stays strict."""
+        """A swept parameter goes where its scalar would, in the model."""
         aer = pm.Specie.custom(
             _mode(
-                sweep={
-                    "rm": xr.DataArray(np.linspace(0.05, 0.5, 4), dims="rm")
-                },
+                psd=pm.psd.LognormalPSD(
+                    rm=xr.DataArray(np.linspace(0.05, 0.5, 4), dims="rm"),
+                    sigma=1.5,
+                    n=1e9,
+                    rmin=0.001,
+                    rmax=40.0,
+                ),
                 n_imag=xr.DataArray([1e-4, 1e-2], dims="absorption"),
             )
         )
@@ -112,10 +116,32 @@ class TestSweptParameters:
 
     def test_a_swept_psd_field_reaches_the_materialised_point(self):
         aer = pm.Specie.custom(
-            _mode(sweep={"rm": xr.DataArray([0.05, 0.5], dims="rm")})
+            _mode(
+                psd=pm.psd.LognormalPSD(
+                    rm=xr.DataArray([0.05, 0.5], dims="rm"),
+                    sigma=1.5,
+                    n=1e9,
+                    rmin=0.001,
+                    rmax=40.0,
+                )
+            )
         )
 
         assert aer.at(wl=WL, rm=1).modes[0].psd.rm == pytest.approx(0.5)
+
+    def test_a_swept_shape_field_reaches_it_too(self):
+        """Figure 2 of the article compares aspect ratios 1.4 and 3.0."""
+        aer = pm.Specie.custom(
+            _mode(
+                shape=pm.shapes.Spheroid(
+                    mode="prolate",
+                    aspect_ratio=xr.DataArray([1.4, 3.0], dims="eps"),
+                )
+            )
+        )
+
+        assert aer.swept == {"eps": 2}
+        assert aer.at(wl=WL, eps=1).modes[0].shape.aspect_ratio == 3.0
 
 
 class TestRoundTrip:

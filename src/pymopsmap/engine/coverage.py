@@ -30,7 +30,12 @@ _X_MINIMUM: dict[str, float] = {
 
 
 def _max_radius(psd) -> float | None:
-    """Return the maximum relevant radius (µm) for a coverage check."""
+    """
+    Return the maximum relevant radius (um) for a coverage check.
+
+    The size distribution of a materialised point holds numbers: its fields
+    accept a field of them only while they describe a species.
+    """
     from pymopsmap.psd import (
         DistrListPSD,
         FixedPSD,
@@ -39,9 +44,9 @@ def _max_radius(psd) -> float | None:
     )
 
     if isinstance(psd, FixedPSD):
-        return psd.radius
+        return float(psd.radius)
     if isinstance(psd, (LognormalPSD, ModifiedGammaPSD)):
-        return psd.rmax
+        return float(psd.rmax)
     if isinstance(psd, DistrListPSD):
         return float(max(psd.radii))
     return None  # FileDefinedPSD: cannot determine without reading the file

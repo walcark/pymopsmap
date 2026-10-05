@@ -29,6 +29,10 @@ and five correctness fixes found on the way.
 - The scattering coefficient `ksca`, derived once at parse time.
 - `DomainError` and `CoverageError`, which say what a computation cannot do
   and why.
+- A swept parameter goes where its scalar would: every numeric field of a
+  size distribution or a shape accepts a `DataArray`, and `compute` walks the
+  dimensions the species declares. `Mode(sweep=...)` is gone, with the
+  placeholder value it forced alongside it.
 - Swept parameters and mixture weights accept a `DataArray`, so a scene whose
   humidity and composition vary per pixel yields a result of that shape.
   Repeated values cost one run. A mixture reports its resolved concentrations

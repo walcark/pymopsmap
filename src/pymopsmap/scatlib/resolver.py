@@ -167,17 +167,16 @@ class NCFileResolver:
 
         if isinstance(shape, Spheroid):
             # MOPSMAP stores prolate spheroids under eps = 1/aspect_ratio
-            eps = (
-                1 / shape.aspect_ratio
-                if shape.mode == "prolate"
-                else shape.aspect_ratio
-            )
+            # A shape reaching the resolver belongs to a materialised point,
+            # so its aspect ratio is a number rather than a field of them.
+            ratio = float(shape.aspect_ratio)
+            eps = 1 / ratio if shape.mode == "prolate" else ratio
             return _bracket(self.avail_eps, eps)
 
         if isinstance(shape, SpheroidLognormal):
             # Lognormal distribution covers a range; return all eps in range.
-            ar = shape.aspect_ratio
-            sigma = shape.sigma_ar
+            ar = float(shape.aspect_ratio)
+            sigma = float(shape.sigma_ar)
             lo = max(self.avail_eps[0], ar / (1 + 3 * sigma))
             hi = min(self.avail_eps[-1], ar * (1 + 3 * sigma))
             mask = (self.avail_eps >= lo) & (self.avail_eps <= hi)
