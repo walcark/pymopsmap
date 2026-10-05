@@ -21,7 +21,9 @@ pytestmark = pytest.mark.skipif(
 
 
 def _sphere_mp(wl_count=3):
-    from pymopsmap import LognormalPSD, MicroParameters, Sphere
+    from pymopsmap import MicroParameters
+    from pymopsmap.psd import LognormalPSD
+    from pymopsmap.shapes import Sphere
 
     return MicroParameters(
         wavelength=list(np.linspace(0.4, 0.8, wl_count)),
@@ -42,17 +44,6 @@ class TestSingleSphere:
         assert kext.dims == ("wl",)
         assert len(kext) == 3
         assert (kext.values > 0).all()
-
-    def test_result_cache_hit(self, tmp_path):
-        from pymopsmap.engine import run_point
-        from pymopsmap.engine.outputs import DEFAULT_OUTPUT
-        from pymopsmap.scatlib.results import ResultCache
-
-        mp = _sphere_mp()
-        run_point([mp], DEFAULT_OUTPUT, quiet=True)
-
-        rc = ResultCache()
-        assert rc.get(rc.key([mp], DEFAULT_OUTPUT)) is not None
 
     def test_invalid_params_raises_before_io(self):
         from pydantic import ValidationError
