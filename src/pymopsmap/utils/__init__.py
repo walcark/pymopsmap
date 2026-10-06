@@ -1,9 +1,12 @@
 """Utility exports: types, environment paths, logging, temp files, caching."""
 
 import os
+
+# A library configures no handler: the application decides where its logs
+# go, and a logger with none emits nothing below WARNING.
+from logging import getLogger as get_logger
 from pathlib import Path
 
-from .logging import get_logger
 from .types import Float64List, PosFloat64List, SortedPosFloat64List
 from .validation import check_within_grid
 

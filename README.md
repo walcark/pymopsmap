@@ -291,7 +291,7 @@ conversions live on a `.mopsmap` accessor:
 
 ```python
 op.sel(wl=0.55, method="nearest").kext
-op.mopsmap.to_smartg("lut.nc", humidity_dim="rh")
+op.mopsmap.to_smartg("lut.nc", name="sulphate", humidity_dim="rh")
 ```
 
 ## Catalogue
