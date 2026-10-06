@@ -110,3 +110,64 @@ class TestSmartgExport:
 
         lut = xr.open_dataset(path)
         assert float(lut["ext"].isel(hum=2, wav=1)) == pytest.approx(7.0)
+
+
+@pytest.fixture
+def matrix_result(result) -> xr.Dataset:
+    """A result holding the full scattering matrix, one value per element.
+
+    MOPSMAP emits the elements in the order a1, a2, a3, a4, b1, b2, so
+    marking them 1 to 6 makes the reordering readable in the assertion.
+    """
+    marks = np.arange(1.0, 7.0)
+    matrix = np.broadcast_to(marks, (len(RH), len(WL), len(THETA), 6)).copy()
+    return result.assign(
+        scattering_matrix=(("rh", "wl", "theta", "element"), matrix)
+    )
+
+
+class TestSmartgPhaseMatrix:
+    def test_the_wavelengths_come_out_in_nanometres(self, result, tmp_path):
+        """MOPSMAP works in micrometres, SMART-G reads these in nm."""
+        path = tmp_path / "lut.nc"
+        result.mopsmap.to_smartg(path, name="sulphate")
+
+        wav = xr.open_dataset(path)["wav"].values
+        assert wav == pytest.approx([w * 1e3 for w in WL])
+
+    def test_the_matrix_elements_land_in_smartg_order(
+        self, matrix_result, tmp_path
+    ):
+        """F11, F21, F33, F34, F22, F44 from a1, b1, a3, -b2, a2, a4."""
+        path = tmp_path / "lut.nc"
+        matrix_result.mopsmap.to_smartg(path, name="sulphate")
+
+        stk = xr.open_dataset(path)["phase"].isel(hum=0, wav=0, theta=0)
+        assert stk.values == pytest.approx([1.0, 5.0, 3.0, -6.0, 2.0, 4.0])
+
+    def test_a_scalar_phase_function_fills_only_f11_and_f22(
+        self, result, tmp_path
+    ):
+        """SMART-G zero-fills a short table; say which terms are lost."""
+        path = tmp_path / "lut.nc"
+        result.mopsmap.to_smartg(path, name="sulphate")
+
+        stk = xr.open_dataset(path)["phase"].isel(hum=0, wav=0, theta=0)
+        assert stk.values == pytest.approx([1.0, 0.0, 0.0, 0.0, 1.0, 0.0])
+
+    def test_sorting_the_angles_carries_the_matrix_with_them(
+        self, matrix_result, tmp_path
+    ):
+        """The theta sort has to reach scattering_matrix, not just phase."""
+        peaked = matrix_result.copy()
+        peaked["scattering_matrix"] = peaked[
+            "scattering_matrix"
+        ] * xr.DataArray(np.linspace(10.0, 1.0, len(THETA)), dims="theta")
+        path = tmp_path / "lut.nc"
+
+        peaked.isel(theta=slice(None, None, -1)).mopsmap.to_smartg(
+            path, name="sulphate"
+        )
+
+        phase = xr.open_dataset(path)["phase"].isel(hum=0, wav=0, stk=0)
+        assert float(phase.isel(theta=0)) > float(phase.isel(theta=-1))
