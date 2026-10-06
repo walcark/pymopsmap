@@ -101,3 +101,42 @@ class TestClipping:
         _, mask = clip_modes_to_coverage([mode], limits=limits)
 
         assert mask.all()
+
+
+class TestAspectRatioOfOne:
+    """
+    A spheroid of aspect ratio one is a sphere, and MOPSMAP files it as one.
+
+    ``make_contributions.f90`` sends every eps within 0.001 of one to i_np = 1,
+    the sphere code. There is no spheroid file at eps = 1 to read instead: the
+    index carries the row, with a maximum size parameter of zero.
+    """
+
+    def test_the_resolver_asks_for_the_sphere_file(self, tmp_path):
+        import xarray as xr
+
+        from pymopsmap.scatlib.resolver import NCFileResolver
+
+        index = tmp_path / "index.nc"
+        xr.Dataset(
+            coords={
+                "mreal": [1.52, 1.56],
+                "mimag": [0.0, 0.0043],
+                "eps": [0.833, 1.0, 1.2],
+            }
+        ).to_netcdf(index)
+        resolver = NCFileResolver(index)
+
+        files = resolver._files_for_params(
+            Spheroid(mode="prolate", aspect_ratio=1.0), 1.52, 0.0043
+        )
+
+        assert files == ["spheres/sphere_1.5200_0.004300.nc"]
+
+    def test_the_limit_comes_from_the_sphere_row(self, limits):
+        sphere = limits.maximum(Sphere(), 1.40, 0.001)
+        spheroid = limits.maximum(
+            Spheroid(mode="prolate", aspect_ratio=1.0), 1.40, 0.001
+        )
+
+        assert spheroid == sphere

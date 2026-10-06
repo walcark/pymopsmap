@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from pymopsmap.shapes import Shape
 
 # The shape codes MOPSMAP uses internally (get_nc_filename.f90).
-SPHEROID = -1
+SPHERE = -1
 SPHEROID_MERGED = -7
 IRREGULAR = {
     "A": -109,
@@ -83,7 +83,7 @@ class SizeParameterLimits:
             mreal=n_real, mimag=n_imag, method="nearest"
         )
         if "eps" in entry.dims:
-            ratio = _aspect_ratio(shape)
+            ratio = 1.0 if code == SPHERE else _aspect_ratio(shape)
             if ratio is None:
                 # The aspect ratios come from a distribution: the run is only
                 # as covered as the least covered ratio it may reach.
@@ -100,8 +100,13 @@ class SizeParameterLimits:
 def _shape_code(shape: Shape) -> int | None:
     """Map a shape onto the code MOPSMAP files it under."""
     if shape.type == "sphere":
-        return SPHEROID
+        return SPHERE
     if shape.type.startswith("spheroid"):
+        # An aspect ratio of one is a sphere, and is read from the sphere
+        # files (make_contributions.f90, i_np = 1).
+        ratio = _aspect_ratio(shape)
+        if ratio is not None and abs(ratio - 1.0) < 1e-3:
+            return SPHERE
         return SPHEROID_MERGED
     if shape.type == "irregular":
         return IRREGULAR.get(shape.shape_id)  # type: ignore[union-attr]

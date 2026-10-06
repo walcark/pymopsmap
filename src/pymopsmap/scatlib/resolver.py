@@ -25,6 +25,11 @@ def _fmt_mimag(v: float) -> str:
     return f"{v:.6f}"
 
 
+# How close an aspect ratio has to be to one for MOPSMAP to call it a sphere
+# (make_contributions.f90, abs(avail_eps - 1) < 0.001).
+_SPHERE_TOLERANCE = 1e-3
+
+
 def _fmt_eps(v: float) -> str:
     s = f"{v:.3f}"
     if s[0] == " ":
@@ -157,11 +162,21 @@ class NCFileResolver:
 
         if isinstance(shape, (Spheroid, SpheroidLognormal, SpheroidDistrFile)):
             eps_vals = self._eps_for_shape(shape)
-            return [
-                "spheroids_merged/spheroid_merged_"
-                f"{_fmt_eps(eps)}_{_fmt_mreal(mr)}_{_fmt_mimag(mi)}.nc"
-                for eps, mr, mi in product(eps_vals, mr_vals, mi_vals)
-            ]
+            files = []
+            for eps, mr, mi in product(eps_vals, mr_vals, mi_vals):
+                # A spheroid of aspect ratio one is a sphere, and MOPSMAP
+                # files it as one (make_contributions.f90, i_np = 1). There is
+                # no spheroid file at eps = 1 to read instead.
+                if abs(eps - 1.0) < _SPHERE_TOLERANCE:
+                    files.append(
+                        f"spheres/sphere_{_fmt_mreal(mr)}_{_fmt_mimag(mi)}.nc"
+                    )
+                else:
+                    files.append(
+                        "spheroids_merged/spheroid_merged_"
+                        f"{_fmt_eps(eps)}_{_fmt_mreal(mr)}_{_fmt_mimag(mi)}.nc"
+                    )
+            return files
 
         if isinstance(
             shape, (Irregular, IrregularDistrFile, IrregularOverlay)
