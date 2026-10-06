@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.1
+
+- The CI workflows read the lock file again: they pinned pixi 0.65, which
+  understands lock format 6, and the lock is written in format 7.
+- `black` and `httpx` leave the default environment. `ruff format` does the
+  formatting and `httpx` was never imported.
+- Figure 11 of the article, the nine volcanic ashes, is reproduced.
+- The README stops repeating the guide, and `docs/validation.md` is a
+  reproduction report rather than a commentary.
+
 ## 0.5.0
 
 A validation campaign against the reference article, and the twelve defects it
