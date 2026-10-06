@@ -1,5 +1,7 @@
 """MicroParameters: one aerosol mode, validated."""
 
+from typing import Literal
+
 from pydantic import (
     BaseModel,
     Field,
@@ -16,6 +18,13 @@ from pymopsmap.utils import (
     SortedPosFloat64List,
 )
 
+# How MOPSMAP reads a size given for a nonspherical particle (read_input.f90,
+# keyword size_equ): as the radius of the sphere of equal cross section, of
+# equal volume, or of equal volume-to-cross-section ratio. Section 2.1 of
+# Gasteiger and Wiegner (2018) defines the three, and its Table 5 shows that
+# the choice moves the mass-to-backscatter factor by a factor of two.
+SizeEquivalence = Literal["cs", "vol", "vol_cs_ratio"]
+
 
 class MicroParameters(BaseModel):
     wavelength: SortedPosFloat64List
@@ -30,6 +39,7 @@ class MicroParameters(BaseModel):
     # 1 - X so the average is unchanged (init_wavelength_refr.f90, line 223).
     # Section 3.1 of Gasteiger and Wiegner (2018) introduces it.
     nonabs_fraction: float = Field(default=0.0, ge=0.0, lt=1.0)
+    size_equ: SizeEquivalence = "cs"
 
     @model_validator(mode="after")
     def broadcast_refractive_index(self):

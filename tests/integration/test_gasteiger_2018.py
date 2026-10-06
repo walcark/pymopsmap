@@ -152,13 +152,9 @@ def test_table4(bin_index: int, shape_name: str) -> None:
             concentrations=[1.0, 1.0],
             distr_type=DistrType.DVDLNR,
         ),
-    )
-    result = run_point(
-        [mode],
-        INTEGRATED_AND_LIDAR,
-        quiet=True,
         size_equ="cs" if spherical else "vol",
     )
+    result = run_point([mode], INTEGRATED_AND_LIDAR, quiet=True)
 
     ssa, g = TABLE4[(bin_index, shape_name)]
     assert _value(result, "ssa") == pytest.approx(ssa, rel=TIGHT)
@@ -287,10 +283,9 @@ def test_table5(case: str) -> None:
         shape=shape,
         psd=LognormalPSD(**TABLE5_PSD),
         density=2.6,
+        size_equ=size_equ,
     )
-    result = run_point(
-        [mode], INTEGRATED_AND_LIDAR, quiet=True, size_equ=size_equ
-    )
+    result = run_point([mode], INTEGRATED_AND_LIDAR, quiet=True)
 
     for name, reference in expected.items():
         obtained = _value(result, name)

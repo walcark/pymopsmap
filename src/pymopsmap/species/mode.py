@@ -10,6 +10,7 @@ from typing import Any
 import numpy as np
 import xarray as xr
 
+from pymopsmap.microparams import SizeEquivalence
 from pymopsmap.psd import PSD, FixedPSD
 from pymopsmap.shapes import Shape, Spheroid
 
@@ -64,6 +65,11 @@ class Mode:
         The share of the particles that does not absorb at all, the rest
         absorbing the more for it so the average index holds. Section 3.1 of
         Gasteiger and Wiegner (2018).
+    size_equ : {'cs', 'vol', 'vol_cs_ratio'}
+        Which sphere a radius given for a nonspherical particle is the radius
+        of: the one of equal cross section, of equal volume, or of equal
+        volume-to-cross-section ratio. MOPSMAP reads one for a whole run, so
+        every mode of a species has to agree.
     """
 
     shape: Shape
@@ -73,6 +79,7 @@ class Mode:
     density_dry: float | None = None
     kappa: float | None = None
     nonabs_fraction: float = 0.0
+    size_equ: SizeEquivalence = "cs"
     name: str = field(default="only")
 
     @classmethod
@@ -253,7 +260,11 @@ class Mode:
 
         coords = {"wl": wl} if wl is not None else {}
         ds = xr.Dataset(variables, coords=coords)
-        ds.attrs.update(psd_type=self.psd.type, shape_type=self.shape.type)
+        ds.attrs.update(
+            psd_type=self.psd.type,
+            shape_type=self.shape.type,
+            size_equ=self.size_equ,
+        )
         _stamp_units(ds)
         return ds
 

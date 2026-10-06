@@ -3,22 +3,15 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal
 
 from pymopsmap.engine.outputs import DEFAULT_OUTPUT, OutputRequest, OutputType
-from pymopsmap.microparams import MicroParameters
+from pymopsmap.microparams import MicroParameters, SizeEquivalence
 from pymopsmap.utils import DATASET_CACHE_DIR, MOPSMAP_PATH, get_logger
 
 from .commands import microparams_command, wl_command
 from .workspace import Workspace
 
 logger = get_logger(__name__)
-
-# How MOPSMAP reads a size given for a nonspherical particle (read_input.f90,
-# keyword size_equ): as the radius of the sphere of equal cross section, of
-# equal volume, or of equal volume-to-cross-section ratio. Section 2.1 of
-# Gasteiger and Wiegner (2018) defines the three.
-SizeEquivalence = Literal["cs", "vol", "vol_cs_ratio"]
 
 _ASCII_TYPES = {
     OutputType.PHASE_FUNCTION,
@@ -36,7 +29,6 @@ def write_launching_file(
     n_angles: int = 2000,
     rh: float | None = None,
     mopsmap_data_path: Path | None = None,
-    size_equ: SizeEquivalence = "cs",
 ) -> dict[str, Path]:
     """
     Generate a MOPSMAP launch file and return paths to the generated artefacts.
@@ -53,6 +45,7 @@ def write_launching_file(
     dataset_path = mopsmap_data_path or DATASET_CACHE_DIR
 
     mp_list = [mp] if isinstance(mp, MicroParameters) else mp
+    size_equ = _one_size_equivalence(mp_list)
 
     water_refr = MOPSMAP_PATH.parent / "data" / "refr_water_segelstein"
     file_prefix = (
@@ -76,6 +69,24 @@ def write_launching_file(
 
     logger.debug("MOPSMAP input file written: %s", paths["mopsmap"])
     return paths
+
+
+def _one_size_equivalence(
+    modes: list[MicroParameters],
+) -> SizeEquivalence:
+    """
+    The size equivalence of the run, which every mode has to agree on.
+
+    MOPSMAP reads one ``size_equ`` for the whole launch file, so a mixture
+    whose modes disagree has no faithful rendering.
+    """
+    distinct = {mode.size_equ for mode in modes}
+    if len(distinct) > 1:
+        raise ValueError(
+            "MOPSMAP reads one size equivalence for a whole run, and the "
+            f"modes of this one ask for {sorted(distinct)}."
+        )
+    return distinct.pop() if distinct else "cs"
 
 
 def _generate_paths(workspace: Workspace) -> dict[str, Path]:

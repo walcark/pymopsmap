@@ -529,6 +529,7 @@ class Specie:
                 "density": _optional(ds, "density_dry", None),
                 "nonabs_fraction": _optional(ds, "nonabs_fraction", None)
                 or 0.0,
+                "size_equ": ds.attrs.get("size_equ", "cs"),
             }
         )
 

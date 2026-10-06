@@ -109,10 +109,11 @@ def _bin(shape_name: str, index: int) -> xr.Dataset:
         # OPAC gives the mineral components a density of 2.6 g cm-3, which is
         # what turns an extinction coefficient into the tabulated eta.
         density=2.6,
+        # "We assumed volume-equivalent sizes to keep the particle mass
+        # constant" for the spheroids.
+        size_equ="cs" if spherical else "vol",
     )
-    point = run_point(
-        [mode], OUTPUTS, quiet=True, size_equ="cs" if spherical else "vol"
-    )
+    point = run_point([mode], OUTPUTS, quiet=True)
     return xr.Dataset(
         {
             "phase": (("theta",), point["phase"].values.ravel()),
