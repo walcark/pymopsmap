@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import xarray as xr
+from numpy.typing import NDArray
 
 if TYPE_CHECKING:
     pass
@@ -364,6 +365,19 @@ EXTRA_DIMENSIONS: dict[str, tuple[str, ...]] = {
 def dimensions_of(name: str) -> tuple[str, ...]:
     """The axes one output variable carries, wavelength first."""
     return ("wl", *EXTRA_DIMENSIONS.get(name, ()))
+
+
+def scattering_angles(n_angles: int) -> NDArray[np.float64]:
+    """The scattering angles ``output num_theta n_angles`` produces.
+
+    MOPSMAP samples 0 to 180 degrees evenly, which `parse_phase_function`
+    and its siblings read back from the file.  A sweep loses them: xsweep
+    allocates a result from the shape the contract declares and has no
+    way to know what a dimension it never looped over is indexed by, so
+    `theta` comes back as 0, 1, 2 and the table reads as degrees.  This
+    is what puts the degrees back.
+    """
+    return np.linspace(0.0, 180.0, n_angles)
 
 
 def variables_for(outputs: OutputRequest) -> list[str]:

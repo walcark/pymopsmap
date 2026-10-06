@@ -235,3 +235,33 @@ class TestParseCoeff:
             "beta1",
             "beta2",
         ]
+
+
+class TestScatteringAngles:
+    def test_it_spans_zero_to_one_eighty(self):
+        """MOPSMAP samples the whole range, ends included."""
+        from pymopsmap.engine.outputs import scattering_angles
+
+        theta = scattering_angles(5)
+
+        assert theta[0] == 0.0
+        assert theta[-1] == 180.0
+        assert len(theta) == 5
+
+    def test_it_matches_what_a_point_returns(self):
+        """The grid is reconstructed, so it has to be the measured one."""
+        import numpy as np
+
+        from pymopsmap.engine.outputs import (
+            parse_phase_function,
+            scattering_angles,
+        )
+
+        sample = "\n".join(
+            f"0.550000 {angle:.6f} 1.0" for angle in scattering_angles(7)
+        )
+        parsed = parse_phase_function(sample + "\n")
+
+        np.testing.assert_allclose(
+            parsed["theta"].values, scattering_angles(7), atol=1e-6
+        )

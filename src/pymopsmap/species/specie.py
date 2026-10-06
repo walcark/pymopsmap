@@ -312,6 +312,7 @@ class Specie:
         # what produced them is restated here. A mixture needs it: an
         # effective radius cannot be rebuilt from non-spherical modes.
         result = self._label_declared_axes(result, declared)
+        result = _label_scattering_angles(result, n_angles)
         result.attrs["shape_types"] = shape_types(
             self.at(
                 wl=wl,
@@ -573,6 +574,24 @@ def _mode_names(modes: list[Mode]) -> list[str]:
         name if name != default or len(modes) == 1 else f"mode_{index}"
         for index, name in enumerate(named, start=1)
     ]
+
+
+def _label_scattering_angles(result: xr.Dataset, n_angles: int) -> xr.Dataset:
+    """Put the degrees back on the angular axis of a swept result.
+
+    A point returns `theta` in degrees, but the sweep allocates the result
+    from the shape the contract declares: xsweep never loops over `theta`
+    and cannot know what indexes it, so the values come back 0, 1, 2.
+    Left alone, a table written for another code reads those indices as
+    degrees and the reader rejects it, or worse, accepts it.
+    """
+    from pymopsmap.engine.outputs import scattering_angles
+
+    if "theta" not in result.dims:
+        return result
+    if result.sizes["theta"] != n_angles:
+        return result
+    return result.assign_coords(theta=scattering_angles(n_angles))
 
 
 def _is_angular(outputs: OutputRequest) -> bool:
