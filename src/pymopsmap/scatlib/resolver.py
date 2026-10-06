@@ -98,7 +98,13 @@ class NCFileResolver:
             grown_refractive_index(
                 mode.wavelength,
                 mode.n_real,  # type: ignore[arg-type]
-                mode.n_imag,  # type: ignore[arg-type]
+                # A non-absorbing fraction raises the imaginary index of the
+                # absorbing half so the average holds, and MOPSMAP does it
+                # before anything else (init_wavelength_refr.f90, line 223).
+                [
+                    value / (1.0 - mode.nonabs_fraction)
+                    for value in mode.n_imag  # type: ignore[union-attr]
+                ],
                 mode.kappa or 0.0,
                 rh or 0.0,
             )
@@ -116,6 +122,15 @@ class NCFileResolver:
         for mode, (n_real, n_imag) in zip(modes, indices):
             for mr, mi in zip(n_real, n_imag):
                 files.update(self._files_for_params(mode.shape, mr, mi))
+                if mode.nonabs_fraction:
+                    # The non-absorbing half is taken from the first grid
+                    # point of the imaginary axis, whatever the mode carries
+                    # (make_contributions.f90, i_mimag = 1).
+                    files.update(
+                        self._files_for_params(
+                            mode.shape, mr, float(self.avail_mimag[0])
+                        )
+                    )
         return sorted(files)
 
     def _files_for_params(

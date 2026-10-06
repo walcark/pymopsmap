@@ -2,6 +2,7 @@
 
 from pydantic import (
     BaseModel,
+    Field,
     NonNegativeFloat,
     PositiveFloat,
     model_validator,
@@ -24,6 +25,11 @@ class MicroParameters(BaseModel):
     psd: PSD
     kappa: NonNegativeFloat | None = None
     density: PositiveFloat | None = None
+    # The fraction of the mode made of particles that do not absorb. MOPSMAP
+    # splits the mode in two, giving the rest an imaginary index divided by
+    # 1 - X so the average is unchanged (init_wavelength_refr.f90, line 223).
+    # Section 3.1 of Gasteiger and Wiegner (2018) introduces it.
+    nonabs_fraction: float = Field(default=0.0, ge=0.0, lt=1.0)
 
     @model_validator(mode="after")
     def broadcast_refractive_index(self):

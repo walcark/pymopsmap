@@ -55,6 +55,9 @@ def _single_microparams_command(
             mode_index=num,
         )
     )
+    if mp.nonabs_fraction:
+        string += "\n" + mode + f"refrac nonabs_fraction {mp.nonabs_fraction}"
+
     if mp.kappa is not None:
         string += "\n" + mode + f"kappa {mp.kappa}"
 

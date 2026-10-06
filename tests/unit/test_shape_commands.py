@@ -62,3 +62,46 @@ def test_the_overlay_writes_its_bounds() -> None:
 )
 def test_the_other_shapes_keep_their_command(shape, expected: str) -> None:
     assert shape.command == expected
+
+
+class TestNonAbsorbingFraction:
+    """
+    A fraction of the mode that does not absorb at all.
+
+    Section 3.1 of Gasteiger and Wiegner (2018) introduces it, and MOPSMAP
+    raises the imaginary index of the rest so the average is unchanged
+    (init_wavelength_refr.f90, line 223).
+    """
+
+    def _mode(self, fraction: float):
+        from pymopsmap import MicroParameters
+        from pymopsmap.psd import LognormalPSD
+        from pymopsmap.shapes import Sphere
+
+        return MicroParameters(
+            wavelength=[0.45],
+            n_real=1.53,
+            n_imag=0.0083,
+            shape=Sphere(),
+            psd=LognormalPSD(rm=0.1, sigma=1.6, n=1e6, rmin=0.001, rmax=5.0),
+            nonabs_fraction=fraction,
+        )
+
+    def test_it_is_written_only_when_asked_for(self) -> None:
+        from pymopsmap.engine.commands import microparams_command
+        from pymopsmap.engine.workspace import Workspace
+
+        with Workspace() as workspace:
+            without = microparams_command(self._mode(0.0), workspace)
+            with_it = microparams_command(self._mode(0.5), workspace)
+
+        assert "nonabs_fraction" not in without
+        assert "mode 1 refrac nonabs_fraction 0.5" in with_it
+
+    def test_one_is_refused(self) -> None:
+        import pytest
+        from pydantic import ValidationError
+
+        # Every particle non-absorbing would divide by zero in MOPSMAP.
+        with pytest.raises(ValidationError):
+            self._mode(1.0)

@@ -20,6 +20,7 @@ def run_point(
     rh: float | None = None,
     quiet: bool = False,
     size_equ: SizeEquivalence = "cs",
+    n_angles: int = 2000,
 ) -> xr.Dataset:
     """
     Run MOPSMAP once, for one point of a parameter space.
@@ -81,6 +82,7 @@ def run_point(
             rh=rh,
             mopsmap_data_path=DATASET_CACHE_DIR,
             size_equ=size_equ,
+            n_angles=n_angles,
         )
         out_mopsmap = launch_mopsmap(input_filename=paths["mopsmap"])
         out_mopsmap["ascii_base"] = paths.get("ascii_base")
