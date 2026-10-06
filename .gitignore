@@ -20,3 +20,4 @@ cams_scene.nc
 coverage.xml
 *.png
 !docs/figures/*.png
+!docs/figures/*.nc

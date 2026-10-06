@@ -21,7 +21,7 @@ modeling aerosol optical properties*, Geosci. Model Dev. 11, 2739-2762, 2018.
 | 8 | Size distributions under three equivalences | reproduced in shape | the article's own conversion; its scale is off by sqrt(2 pi) | `gasteiger_fig8.py` |
 | 9 | Dust scattering vs index variability | 4 curves of 5 | the 8 values of section 5.6, to 1e-3 | `gasteiger_fig9.py` |
 | 10 | Nephelometer truncation | reproduced | the three statements of section 5.7 | `gasteiger_fig10.py` |
-| 11 | Volcanic ash optics | not attempted | needs the supporting information of Vogel et al. (2017) | |
+| 11 | Volcanic ash optics | reproduced | the five statements of section 5.8 | `gasteiger_fig11.py` |
 | T3 | One lognormal mode, two indices | reproduced | 20 values, 1.5e-3 | `test_gasteiger_2018.py` |
 | T4 | Dust size bins at 500 nm | reproduced | 20 values, 1.5e-3; 40 in the figure script, 6e-4 | same |
 | T5 | Size equivalence conventions | reproduced | 40 values, 1.5e-3 | same |
@@ -218,6 +218,37 @@ all eight come back:
 | "underestimates total scattering by a factor of ~ 2" at rmod = 1 um | 2.16, 2.01, 1.83 |
 | shape effect on Cts "less than 3 %" | 2.2 % |
 | "The maximum shape effect on Cbs is 7 %" | 7.0 % |
+
+### Figure 11, nine volcanic ashes
+
+![Figure 11 recomputed](figures/gasteiger_fig11.png)
+
+Each measured particle of Vogel et al. (2017) becomes a prolate spheroid of
+its own size and aspect ratio, which is nine to thirty thousand modes per
+volcano. `Mode.from_particles` builds them; the nine runs are hours of MOPSMAP
+and the script caches its result beside the figure.
+
+| statement of section 5.8 | computed |
+|---|---|
+| omega_0 spans "up to about 0.12" | 0.122 |
+| it rises "typically by about 0.05" over the range | 0.048 |
+| variability in g "less than 0.05" | 0.014 |
+| its change with wavelength "less than 0.02" | 0.018 |
+| effective radii "from 9.5 to 21 um" | 9.5 to 21.0 |
+
+One thing does not match. The article names Chaiten and Mount Kelud as the
+least and most absorbing; Chaiten is indeed the least here, but the most
+absorbing comes out as Grimsvotn, whose curve sits on Kelud's: 0.807 against
+0.803 at 300 nm. The ordering of those two turns on a few thousandths.
+
+The measurements are the supporting information of
+
+> Vogel, A. et al., *Reference dataset of volcanic ash physicochemical and
+> optical properties*, J. Geophys. Res. Atmos. 122, 2017,
+> doi:10.1002/2016JD026328
+
+which has to be fetched from the publisher; `VOGEL_DATA` points the script at
+it.
 
 ## Why the tables carry the weight
 

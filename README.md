@@ -191,7 +191,7 @@ pixi run -e dev test-validation
 Both archives of the optical data set are needed: soot reaches a refractive
 index of 1.75, past the 1.64 the main one covers.
 
-Eight figures of the article are recomputed by `scripts/validation/`.
+Nine figures of the article are recomputed by `scripts/validation/`.
 
 | Figure | What it shows |
 |---|---|
@@ -203,6 +203,7 @@ Eight figures of the article are recomputed by `scripts/validation/`.
 | [8](docs/figures/gasteiger_fig8.png) | one size distribution read through three size equivalences |
 | [9](docs/figures/gasteiger_fig9.png) | dust scattering against the variability of its imaginary index |
 | [10](docs/figures/gasteiger_fig10.png) | the truncation correction of an Aurora 3000 nephelometer |
+| [11](docs/figures/gasteiger_fig11.png) | nine volcanic ashes, one mode per measured particle |
 
 `docs/validation.md` says what agrees, to what precision, and what does not.
 

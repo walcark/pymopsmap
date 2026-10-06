@@ -3,7 +3,7 @@
 ## 0.5.0
 
 A validation campaign against the reference article, and the twelve defects it
-found. Every table of Gasteiger and Wiegner (2018) is now asserted, and eight
+found. Every table of Gasteiger and Wiegner (2018) is now asserted, and nine
 of its figures are redrawn from this package.
 
 ### Breaking
@@ -34,8 +34,8 @@ of its figures are redrawn from this package.
   section 3.1 of the article define and neither of which was reachable.
 - `n_angles` on `compute`, which sets the shape of every angular output and so
   keys its store.
-- Eight scripts under `scripts/validation/` reproducing figures 2, 4, 5, 6, 7,
-  8, 9 and 10, and `scripts/demo/gallery.py` drawing the guide.
+- Nine scripts under `scripts/validation/` reproducing figures 2, 4, 5, 6, 7,
+  8, 9, 10 and 11, and `scripts/demo/gallery.py` drawing the guide.
 
 ### Fixed
 

@@ -370,7 +370,7 @@ Worth knowing before you plan around it.
 
 ## Is it right
 
-Every table of the reference article is asserted in the test suite, and eight
+Every table of the reference article is asserted in the test suite, and nine
 of its figures are redrawn from this package.
 
 > Gasteiger, J. and Wiegner, M., *MOPSMAP v1.0: a versatile tool for modeling

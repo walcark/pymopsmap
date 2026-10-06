@@ -227,7 +227,9 @@ def plot(data: xr.Dataset, path: Path) -> None:
     axes[0].set_ylim(0.8, 1.027)
     axes[0].set_ylabel("single scattering albedo $\\omega_0$")
     axes[0].legend(fontsize=8, ncol=2)
-    axes[1].set_yticks(np.arange(0.6, 1.00, 0.01))
+    span = float(data["g"].max() - data["g"].min())
+    middle = float(data["g"].mean())
+    axes[1].set_ylim(middle - span, middle + span)
     axes[1].set_ylabel("asymmetry parameter $g$")
     axes[1].set_xticks(np.arange(300, 1600, 100))
     axes[1].set_xlim(299, 1501)
@@ -242,9 +244,24 @@ def plot(data: xr.Dataset, path: Path) -> None:
     print(f"\nwrote {path}")
 
 
+CACHE = FIGURES / "gasteiger_fig11.nc"
+
+
 def main() -> None:
+    # Nine thousand modes over forty-nine wavelengths, nine times, is hours of
+    # MOPSMAP. The result is a few kilobytes, so redrawing never costs that
+    # twice; delete the file to recompute.
+    if CACHE.exists():
+        print(f"reading {CACHE}")
+        data = xr.load_dataset(CACHE)
+        report(data)
+        plot(data, FIGURES / "gasteiger_fig11.png")
+        return
+
     print("Computing the nine volcanic ashes:")
     data = compute()
+    data.to_netcdf(CACHE)
+    print(f"wrote {CACHE}")
     report(data)
     plot(data, FIGURES / "gasteiger_fig11.png")
 
