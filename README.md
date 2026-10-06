@@ -345,7 +345,7 @@ Four figures of the article are recomputed by `scripts/validation/`.
 | Figure | What it shows |
 |---|---|
 | [2](docs/figures/gasteiger_fig2.png) | single particles against size parameter, five shapes |
-| [5](docs/figures/gasteiger_fig5.png) | the OPAC types against relative humidity |
+| [5](docs/figures/gasteiger_fig5.png) | the OPAC types against relative humidity, 5 of 10 |
 | [6](docs/figures/gasteiger_fig6.png) | phase functions of five dust size bins, spheres against spheroids |
 | [7](docs/figures/gasteiger_fig7.png) | the OPAC desert type against the cutoff radius |
 

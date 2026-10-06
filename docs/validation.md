@@ -15,7 +15,7 @@ modeling aerosol optical properties*, Geosci. Model Dev. 11, 2739-2762, 2018.
 |---|---|---|---|---|
 | 2 | Single particles vs size parameter | reproduced | the two values the text quotes, to 1e-3 | `scripts/validation/gasteiger_fig2.py` |
 | 4 | Sampling and interpolation error | replaced | an independent Mie code, 3e-3 | `tests/integration/test_mie_reference.py` |
-| 5 | OPAC types vs humidity | partial | 5 types of 10, statements of section 5.1 only | `scripts/validation/gasteiger_fig5.py` |
+| 5 | OPAC types vs humidity | partial | 5 types of 10, curve by curve against the published panels | `scripts/validation/gasteiger_fig5.py` |
 | 6 | Phase functions of dust size bins | reproduced | the 40 values of Table 4, to 6e-4 | `scripts/validation/gasteiger_fig6.py` |
 | 7 | Desert aerosol vs cutoff radius | reproduced | the six percentages of section 5.3 | `scripts/validation/gasteiger_fig7.py` |
 | T3 | One lognormal mode, two indices | reproduced | 20 values, 1.5e-3 | `tests/integration/test_gasteiger_2018.py` |
@@ -57,7 +57,46 @@ of which the integrated block gives.
 
 ![Figure 5 recomputed](figures/gasteiger_fig5.png)
 
-Five of the ten types, for the reason given below.
+Drawn in the layout of the published one, so the two can be laid side by side:
+same panel grid, same axis limits and ticks, same colour per type, and the
+legend split over the three top panels the way the article splits it.
+
+The article tabulates none of these values, so the comparison is made by eye,
+panel by panel, against the published figure. The five computable types land on
+their published curves everywhere. A few readings, taken off the figure at
+600 dpi:
+
+| | published | computed |
+|---|---|---|
+| desert, eta at 355 / 532 / 1064 nm | 2.18 / 2.27 / 2.40 | 2.19 / 2.29 / 2.41 |
+| desert, Z at 355 / 532 nm | 0.006 / 0.0105 | 0.006 / 0.0105 |
+| desert, omega_0 at 355 nm | 0.74 | 0.747 |
+| antarctic, Z at 355 nm, RH 0 to 90 | 0.104 to 0.091 | 0.104 to 0.091 |
+| maritime tropical, Z at 532 nm, RH 0 to 90 | 0.078 to 0.045 | 0.079 to 0.045 |
+
+Five types are missing, and only one thing is missing with them: see below.
+
+Getting there corrected three things, two of them in the catalogue.
+
+**The normalisation.** The article normalises every column on "the extinction
+coefficient of the same aerosol type at RH = 0 % **and lambda = 532 nm**", one
+reference for the three wavelengths, which is why its 1064 nm panel does not
+start at one. The script normalised each column on its own dry value.
+
+**The shape of the mineral components.** OPAC is a spherical data set, but the
+predefined OPAC ensembles of MOPSMAP are not: section 4.2 of the user guide
+writes `shape spheroid distr_file ar_kandler` for the three mineral modes and
+`shape sphere` for the water soluble one. That is what Figure 5 shows, and it
+moves the desert extinction-to-mass factor from 2.45 to 2.29 at 532 nm, where
+the published value is 2.27. It also decides whether the type can be computed
+at all at 355 nm: the coarse mineral mode runs to 60 um, a size parameter of
+1062, which the spheroid files cover to 1067 and the sphere files only to 1013.
+
+**The cutoff of the coarse sea salt mode.** It was 60 um, which puts the
+maritime types outside the data set at 355 nm even dry, and far outside once
+they take up water. The article plots them there at every humidity, so its runs
+used at most 27 um; 20 um, the OPAC value of every other component, is what the
+catalogue now carries.
 
 ### Figure 6, phase functions of five dust size bins
 
@@ -125,38 +164,38 @@ the concentration in cm-3 where MOPSMAP reads m-3, so every extensive
 quantity in them sits 1e6 below the published table. The test applies the
 factor rather than alter the shipped expectations.
 
-## Figure 5, the one that stays partial
+## Figure 5, what the five missing types need
 
-Two gaps, both structural.
+One gap, and it is not in the wrapper.
 
-**Soot.** Five of the ten OPAC types contain it, and its real refractive index
-reaches 1.75, outside the 1.28 to 1.64 of the main archive of the optical data
-set. They need the extended archive.
+Five of the ten OPAC types contain soot: urban, continental average,
+continental polluted, maritime polluted and arctic. Its real refractive index
+reaches 1.75, outside the 1.28 to 1.64 that the main archive of the optical
+data set covers, and MOPSMAP stops on a refractive index outside the grid it
+loaded (`make_contributions.f90`, lines 169 and 174).
 
-**Sea salt at high humidity.** The OPAC coarse sea salt mode runs to
-rmax = 60 um. At RH = 70 % the growth factor of the kappa parameterisation
-takes that to 88 um, a size parameter of 1038 at 532 nm, past the 1013 the
-data set covers at that refractive index. The clipping is not the wrapper
-being cautious: MOPSMAP refuses the same run, here at RH = 90 %.
+The extended archive covers the rest of Table 1 of the article. It is a single
+21.2 GB `tar.xz`, so there is no fetching the dozen files that are actually
+missing:
 
+```bash
+curl -LO 'https://zenodo.org/record/1284217/files/mopsmap_dataset_v1.0_extended.tar.xz?download=1'
+tar -xJf mopsmap_dataset_v1.0_extended.tar.xz -C /path/to/mopsmap
 ```
-Error: Maximum specified particle size 1.259E+02 at wavelength 5.320E-01
-is not covered by .../spheres/sphere_1.3600_0.000538.nc
-```
 
-(`add_contribution.f90`, lines 122-124). The article plots those points, so
-its own runs used a cutoff below the OPAC value. It does not say which, so the
-script leaves them out rather than guess.
+It unpacks into the same `optical_dataset` directory as the main archive and
+adds about 25 GB. Nothing else is in the way: with it in place the script
+computes all ten types and skips none.
 
-What remains of Figure 5 is checked against the statements section 5.1 makes
-in words, since the figure tabulates nothing.
-
-## Six defects this campaign found
+## Nine defects this campaign found
 
 Each was a real bug, fixed in its own commit, with a test.
 
 | Defect | Effect |
 |---|---|
+| The sweep store keyed on the species name | a catalogue file rebuilt under the same version served its old results |
+| The OPAC mineral components as spheres | MOPSMAP makes them spheroids, which moves eta by 7 % and Z by a factor of two |
+| The coarse sea salt mode cut at 60 um | the maritime types could not be computed at 355 nm at all |
 | An unquoted path in the launch file | a Fortran list-directed read ends on a slash, so an aspect ratio file never reached MOPSMAP |
 | Escaped braces in the overlay command | `shape irregular_overlay` wrote `{self.xmin}` literally |
 | The eps grid read whole | the resolver asked for all 31 aspect ratios, one of which has no file |

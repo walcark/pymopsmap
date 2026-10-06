@@ -13,17 +13,10 @@ The layout follows the published one so the two can be laid side by side: same
 panel grid, same axis limits and ticks, same colour per type, and the legend
 split over the three panels of the top row the way the article splits it.
 
-Two gaps are structural rather than accidental, and the report names them:
-
-- the five types containing soot need the extended archive of the optical data
-  set, soot reaching a real refractive index of 1.75;
-- the sea salt coarse mode of OPAC runs to rmax = 60 um, which the growth
-  factor at RH >= 70 % pushes past the largest size parameter the data set
-  covers. MOPSMAP itself stops there (add_contribution.f90, "Maximum specified
-  particle size ... is not covered"), so those points are NaN.
-
-The article plots them, which means its own runs used a smaller cutoff than the
-OPAC value. It does not say which, so they are left out rather than guessed at.
+One gap remains, and the report names it: the five types containing soot need
+the extended archive of the optical data set, soot reaching a real refractive
+index of 1.75 where the main archive stops at 1.64. docs/validation.md says how
+to fetch it.
 """
 
 from __future__ import annotations
