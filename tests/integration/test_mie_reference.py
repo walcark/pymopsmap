@@ -111,3 +111,47 @@ def test_pipeline_matches_an_independent_mie_code(
     assert float(result["g"].values.ravel()[0]) == pytest.approx(
         g, rel=SAMPLING_TOLERANCE
     )
+
+
+def test_the_scattering_matrix_elements_are_in_the_order_they_are_read():
+    """
+    The polarisation a sphere produces, against an independent Mie code.
+
+    The matrix comes back as six elements on one axis, and nothing in the
+    array says which is which. For unpolarised incident light the degree of
+    linear polarisation is -b1/a1, which miepython gives as
+    (|S1|^2 - |S2|^2) / (|S1|^2 + |S2|^2).
+    """
+    import miepython
+
+    from pymopsmap.engine.outputs import OutputType
+    from pymopsmap.psd import FixedPSD
+
+    size, index = 5.0, complex(1.5, 0.0)
+    mode = MicroParameters(
+        wavelength=[WAVELENGTH_UM],
+        n_real=index.real,
+        n_imag=index.imag,
+        shape=Sphere(),
+        psd=FixedPSD(radius=size * WAVELENGTH_UM / (2.0 * np.pi), n=1e6),
+    )
+    result = run_point(
+        [mode],
+        frozenset({OutputType.SCATTERING_MATRIX}),
+        quiet=True,
+        n_angles=181,
+    )
+    matrix = result["scattering_matrix"].squeeze("wl", drop=True)
+    ours = (-matrix.isel(element=4) / matrix.isel(element=0)).values
+
+    cosine = np.cos(np.radians(result["theta"].values))
+    s1, s2 = miepython.S1_S2(
+        complex(index.real, -index.imag), size, cosine, norm="qsca"
+    )
+    parallel, perpendicular = np.abs(s1) ** 2, np.abs(s2) ** 2
+    expected = (parallel - perpendicular) / (parallel + perpendicular)
+
+    # The data set samples the size parameter in one percent steps and
+    # averages spheres over narrow bins, which costs a few percent on a
+    # quantity that is a difference of two nearly equal numbers.
+    assert np.allclose(ours, expected, atol=0.04)
