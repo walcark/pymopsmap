@@ -144,7 +144,12 @@ def read(path: str | Path) -> xr.DataTree:
     SchemaError
         If the file does not follow the canonical schema.
     """
-    tree = xr.open_datatree(path).load()
+    # Read into memory and let the file go. A species file is small, and a
+    # tree that keeps its handle open is at the mercy of the xarray file
+    # cache: once it evicts and closes the handle, every later read of that
+    # tree fails with a KeyError from the cache.
+    with xr.open_datatree(path) as opened:
+        tree = opened.load()
     tree = _convert_units(tree)
     validate(tree)
     return tree
