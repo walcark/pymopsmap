@@ -1,9 +1,11 @@
 """Particle shapes, and the MOPSMAP command each one writes."""
 
+from pathlib import Path
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
+from pymopsmap.utils import MOPSMAP_PATH
 from pymopsmap.varying import (
     AtLeastOne,
     Positive,
@@ -11,6 +13,24 @@ from pymopsmap.varying import (
     Varying,
     aspect_ratio_range,
 )
+
+
+def _resolve(name: str) -> str:
+    """
+    Turn a bare distribution name into the path MOPSMAP ships it under.
+
+    The aspect ratio and shape distributions come with MOPSMAP, in its data
+    directory, and a catalogue file has no business storing the absolute path
+    of one machine. A name with no separator is looked up there; anything else
+    is handed over untouched.
+    """
+    if "/" in name or Path(name).exists():
+        return name
+    shipped = MOPSMAP_PATH.parent / "data" / name
+    return str(shipped) if shipped.exists() else name
+
+
+DistributionFile = Annotated[str, AfterValidator(_resolve)]
 
 
 class Sphere(BaseModel):
@@ -50,7 +70,7 @@ class SpheroidLognormal(BaseModel):
 
 class SpheroidDistrFile(BaseModel):
     type: Literal["spheroid-distr-file"] = "spheroid-distr-file"
-    distr_filename: str
+    distr_filename: DistributionFile
 
     @property
     def command(self) -> str:
@@ -70,7 +90,7 @@ class Irregular(BaseModel):
 
 class IrregularDistrFile(BaseModel):
     type: Literal["irregular-distr-file"] = "irregular-distr-file"
-    distr_filename: str
+    distr_filename: DistributionFile
 
     @property
     def command(self) -> str:
@@ -80,7 +100,7 @@ class IrregularDistrFile(BaseModel):
 class IrregularOverlay(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     type: Literal["irregular-overlay"] = "irregular-overlay"
-    distr_filename: str
+    distr_filename: DistributionFile
     xmin: Varying
     xmax: Varying
 
