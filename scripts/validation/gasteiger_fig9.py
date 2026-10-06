@@ -9,12 +9,20 @@ either the mi distribution measured by Kandler et al. (2011), the average mi of
 these measurements, or applying the non-absorbing fraction parameterization
 with different X."
 
-Four of the five curves. The red one needs the size-resolved imaginary index
-distribution of Kandler et al. (2011), a supplement that MOPSMAP does not ship
-with its own version of this example, so it is not here. What is here is the
-black curve, every particle carrying the average index, and the three blue
-ones, where a fraction X of the particles does not absorb at all and the rest
-absorbs the more for it.
+Five curves. The red one carries the size-resolved imaginary index
+distribution measured by Kandler et al. (2011), which is Appendix S1 of
+
+    Kandler, K. et al., Tellus B 63, 475-496, 2011,
+    doi:10.1111/j.1600-0889.2011.00550.x
+
+and has to be fetched from the publisher; point ``KANDLER_DATA`` at it. Each
+diameter bin of that table becomes seventeen modes, one per imaginary index
+bin, weighted by how many particles fell in it. Without the file the curve is
+left out and the rest is drawn.
+
+The black curve gives every particle the average index, and the three blue
+ones let a fraction X of them not absorb at all, the rest absorbing the more
+for it.
 
 The ensemble is the OPAC desert type at RH = 0 %, with the mineral components
 as prolate spheroids with the aspect ratio distribution of Kandler et al.
@@ -25,6 +33,7 @@ sets it up.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import numpy as np
@@ -62,8 +71,17 @@ MODES = [
 R_MIN_UM = 0.005
 R_MAX_UM = 20.0
 
-# The four cases the figure draws, and the colours the caption gives them.
+KANDLER_DATA = Path(
+    os.getenv(
+        "KANDLER_DATA",
+        Path.home() / "downloads" / "TEB" / "teb_550_sm_appendix_s1.txt",
+    )
+)
+MEASURED = "Measured $m_i$ distribution"
+
+# The five cases the figure draws, and the colours the caption gives them.
 CASES = {
+    MEASURED: (None, "red", "-", 2.0),
     "Average $m_i$": (0.0, "black", "-", 2.0),
     "Average $m_i$ with nonabs. fraction $X$=0.25": (
         0.25,
@@ -79,13 +97,14 @@ OUTPUTS = frozenset(
     {OutputType.INTEGRATED, OutputType.LIDAR, OutputType.PHASE_FUNCTION}
 )
 
-# What section 5.6 states for the two cases that do not need the measured
-# index distribution: "omega_0 = 0.741 when using the average mi and
+# What section 5.6 states: "omega_0 = 0.741 when using the average mi and
 # omega_0 = 0.834 using the parameterization with X = 0.5", then "for the
 # asymmetry parameter g, we obtain 0.744, 0.789, and 0.749 for the measured,
 # averaged, and parameterized cases", "values of 41, 78, and 42 sr" for the
-# lidar ratio and "0.241, 0.212, and 0.220" for the depolarisation.
+# lidar ratio and "0.241, 0.212, and 0.220" for the depolarisation. It gives
+# no albedo for the measured case.
 PUBLISHED = {
+    MEASURED: "     ---  0.744    41.00   0.2410",
     "Average $m_i$": "   0.741  0.789    78.00   0.2120",
     "Average $m_i$ with nonabs. fraction $X$=0.50": (
         "   0.834  0.749    42.00   0.2200"
@@ -95,11 +114,102 @@ PUBLISHED = {
 # What the report prints in the left column, since the legend labels are the
 # ones the published figure uses and do not fit a table.
 SHORT = {
+    MEASURED: "measured",
     "Average $m_i$": "average m_i",
     "Average $m_i$ with nonabs. fraction $X$=0.25": "X = 0.25",
     "Average $m_i$ with nonabs. fraction $X$=0.50": "X = 0.50",
     "Average $m_i$ with nonabs. fraction $X$=0.75": "X = 0.75",
 }
+
+
+def _kandler_distribution() -> tuple[list, list] | None:
+    """
+    The measured index distribution, per diameter bin.
+
+    Returns
+    -------
+    tuple or None
+        The diameter bounds in micrometres and, for each, the fraction of
+        particles in each of the seventeen imaginary index bins with that
+        bin's midpoint. None when the file is not at hand.
+
+    Notes
+    -----
+    The table is the dust half of Appendix S1: one row per meteorological
+    situation, wavelength and diameter bin, then the particle counts. Splitting
+    on whitespace turns "0.05 <= d < 0.1" into five tokens, which is why the
+    counts start at index 7.
+    """
+    if not KANDLER_DATA.exists():
+        return None
+    lines = (
+        KANDLER_DATA.read_text(encoding="latin-1")
+        .replace("\r", "")
+        .splitlines()
+    )
+    header = next(line for line in lines if line.startswith("situation"))
+    fields = header.split()
+    midpoints = [
+        0.5 * (float(fields[i - 2]) + float(fields[i + 2]))
+        for i, token in enumerate(fields)
+        if token == "k"
+    ]
+
+    prefix = f"dust\t{WAVELENGTH_UM * 1e3:.0f}\t"
+    diameters, fractions = [], []
+    for line in lines:
+        if not line.startswith(prefix):
+            continue
+        row = line.split()
+        counts = np.array([float(x) for x in row[7 : 7 + len(midpoints)]])
+        diameters.append((float(row[2]), float(row[6])))
+        fractions.append(counts / counts.sum())
+    return diameters, [list(zip(midpoints, share)) for share in fractions]
+
+
+def _measured_modes() -> list[MicroParameters] | None:
+    """The desert ensemble with the measured index distribution on its dust."""
+    table = _kandler_distribution()
+    if table is None:
+        return None
+    diameters, fractions = table
+
+    built = [
+        MicroParameters(
+            wavelength=[WAVELENGTH_UM],
+            n_real=N_REAL,
+            n_imag=WASO_INDEX[1],
+            shape=Sphere(),
+            psd=LognormalPSD(
+                rm=MODES[0][1],
+                sigma=MODES[0][2],
+                n=MODES[0][0] * 1e6,
+                rmin=diameters[0][0] * 0.5,
+                rmax=diameters[-1][1] * 0.5,
+            ),
+        )
+    ]
+    for (low, high), share in zip(diameters, fractions):
+        for index, rm, sigma, spheroidal in MODES[1:]:
+            for imaginary, weight in share:
+                if weight <= 0.0:
+                    continue
+                built.append(
+                    MicroParameters(
+                        wavelength=[WAVELENGTH_UM],
+                        n_real=N_REAL,
+                        n_imag=imaginary,
+                        shape=SpheroidDistrFile(distr_filename=AR_KANDLER),
+                        psd=LognormalPSD(
+                            rm=rm,
+                            sigma=sigma,
+                            n=index * weight * 1e6,
+                            rmin=low * 0.5,
+                            rmax=high * 0.5,
+                        ),
+                    )
+                )
+    return built
 
 
 def _modes(nonabs_fraction: float) -> list[MicroParameters]:
@@ -142,10 +252,13 @@ def compute() -> xr.Dataset:
         for the four integrated quantities the script reports.
     """
     per_case = []
+    drawn = []
     for name, (fraction, *_) in CASES.items():
-        point = run_point(
-            _modes(fraction), OUTPUTS, quiet=True, n_angles=N_ANGLES
-        )
+        modes = _measured_modes() if fraction is None else _modes(fraction)
+        if modes is None:
+            print(f"  {SHORT[name]}: skipped, no {KANDLER_DATA}")
+            continue
+        point = run_point(modes, OUTPUTS, quiet=True, n_angles=N_ANGLES)
         scalar = {
             key: float(point[key].values.ravel()[0])
             for key in ("ssa", "g", "lidar_ratio", "depol_ratio")
@@ -168,10 +281,11 @@ def compute() -> xr.Dataset:
                 coords={"theta": point["theta"].values},
             )
         )
-        print(f"  {name}: done")
+        drawn.append(name)
+        print(f"  {SHORT[name]}: {len(modes)} modes")
     return xr.concat(
         per_case,
-        dim=xr.DataArray(list(CASES), dims="case", name="case"),
+        dim=xr.DataArray(drawn, dims="case", name="case"),
     )
 
 
@@ -188,6 +302,8 @@ def report(data: xr.Dataset) -> None:
         )
     print()
     for label, row in PUBLISHED.items():
+        if label not in data["case"]:
+            continue
         name = f"published, {SHORT[label].replace('average m_i', 'avg')}"
         print(f"{name:18s}{row[2:]}")
 
