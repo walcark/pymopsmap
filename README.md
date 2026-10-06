@@ -25,14 +25,8 @@ short tour.
 ## The idea
 
 An aerosol is a description: a size distribution, a refractive index, a shape,
-how it responds to water. That description does not change when the conditions
-around it do:
-
-- the air it sits in, through relative humidity,
-- the wavelength it is looked at,
-- where and when it is.
-
-So the description is the object, and the conditions are the call.
+how it responds to water. The conditions around it change, the description
+does not. So the description is the object, and the conditions are the call.
 
 ```python
 import numpy as np
@@ -44,107 +38,53 @@ aer = pm.Specie.custom(
         psd=pm.psd.LognormalPSD(
             rm=0.12, sigma=1.8, n=1e9, rmin=0.005, rmax=20.0
         ),
-        n_real=1.53,
-        n_imag=0.008,
-        density_dry=2.6,
-        kappa=0.2,
-    ),
-    name="my dust",
-)
-```
-
-Eight numbers and a shape. That is the whole aerosol, and nothing in it
-mentions a wavelength or a humidity.
-
----
-
-## One aerosol, many conditions
-
-```python
-op = aer.compute(wl=np.linspace(0.4, 2.0, 100), rh=[0, 50, 80])
-
-op.sizes            # {'rh': 3, 'wl': 100}
-op["kext"]          # <xarray.DataArray (rh: 3, wl: 100)>
-op["ssa"]
-```
-
-The dimensions you asked for come back as the dimensions you named. The answer
-is a plain `xarray.Dataset`, so the whole xarray API applies to it: `sel`,
-`interp`, `mean`, `to_netcdf`, plotting.
-
-![Four species across the solar spectrum](docs/figures/guide-spectra.png)
-
----
-
-## A description that varies too
-
-A modal radius you do not know is not a condition, it is part of the
-description. So it goes where the radius goes, as a `DataArray`:
-
-```python
-import xarray as xr
-
-aer = pm.Specie.custom(
-    pm.Mode(
-        shape=pm.shapes.Sphere(),
-        psd=pm.psd.LognormalPSD(
-            rm=xr.DataArray(np.linspace(0.05, 0.4, 8), dims="rm"),
-            sigma=xr.DataArray(np.linspace(1.4, 2.2, 5), dims="sigma"),
-            n=1e9, rmin=0.005, rmax=20.0,
-        ),
         n_real=1.53, n_imag=0.008, density_dry=2.6, kappa=0.2,
     ),
     name="my dust",
 )
 
-aer.swept           # {'rm': 8, 'sigma': 5}
+op = aer.compute(wl=np.linspace(0.4, 2.0, 100), rh=[0, 50, 80])
+
+op.sizes            # {'rh': 3, 'wl': 100}
+op["kext"]          # <xarray.DataArray (rh: 3, wl: 100)>
+```
+
+The answer is a plain `xarray.Dataset`, with the dimensions you named. Or load
+one of the species the package ships:
+
+```python
+pm.load(pm.CAMS.DUST)
+pm.load(pm.OPAC.WASO)
+pm.opac_mix("continental_average")
+```
+
+---
+
+## And a description that varies
+
+A modal radius you do not know is not a condition, it is part of the
+description. So it goes where the radius goes, as a `DataArray`, and the call
+never changes:
+
+```python
+pm.psd.LognormalPSD(
+    rm=xr.DataArray(np.linspace(0.05, 0.4, 8), dims="rm"),
+    sigma=xr.DataArray(np.linspace(1.4, 2.2, 5), dims="sigma"),
+    n=1e9, rmin=0.005, rmax=20.0,
+)
 
 op = aer.compute(wl=[0.55], rh=[0, 50, 80])
 op.sizes            # {'rh': 3, 'rm': 8, 'sigma': 5, 'wl': 1}
 ```
 
-Any numeric field of a mode accepts one: the modal radius, the width, the
-bounds, the refractive index, the aspect ratio of a spheroid. Distinct
-dimensions multiply, and the call never changes.
+<p align="center">
+  <img src="docs/figures/guide-sweep.png" width="92%">
+</p>
 
-![A two-dimensional declared sweep](docs/figures/guide-sweep.png)
-
----
-
-## A scene
-
-The same thing holds in two or three dimensions, which is what a satellite
-image or a model output is. A size that varies from pixel to pixel, a humidity
-that varies from pixel to pixel and from hour to hour:
-
-```python
-rm = xr.DataArray(..., dims=("y", "x"))        # (12, 16)
-rh = xr.DataArray(..., dims=("y", "x", "t"))   # (12, 16, 4)
-
-aer = pm.Specie.custom(
-    pm.Mode(
-        shape=pm.shapes.Sphere(),
-        psd=pm.psd.LognormalPSD(rm=rm, sigma=1.8, n=1e9, rmin=0.005, rmax=20),
-        n_real=1.53, n_imag=0.008, density_dry=2.6, kappa=0.2,
-    ),
-    name="scene",
-)
-
-op = aer.compute(wl=[0.55], rh=rh)
-op.sizes            # {'y': 12, 'x': 16, 't': 4, 'wl': 1}
-```
-
-768 cells, and MOPSMAP runs 103 times: that is how many distinct pairs of
-radius and humidity the scene holds. Nothing in the call says so, and nothing
-has to.
-
-## Where to go next
-
-| | |
-|---|---|
-| [docs/guide.md](docs/guide.md) | the documentation: the catalogue, saving a species, every output, humidity, mixtures, measured particles, and what the library cannot do |
-| [docs/validation.md](docs/validation.md) | what agrees with the reference article, to what precision, and what does not |
-| [docs/api-v2-spec.md](docs/api-v2-spec.md) | the NetCDF schema a species is written in |
+The same holds over a scene: a radius that varies from pixel to pixel and a
+humidity that varies from pixel to pixel and from hour to hour come back as
+`(y, x, t, wl)`, and MOPSMAP runs once per distinct pair.
+[docs/guide.md](docs/guide.md) carries on from here.
 
 ---
 
@@ -160,10 +100,10 @@ pieces are not bundled:
 | Piece | How to get it |
 |---|---|
 | MOPSMAP binary | download from [mopsmap.net](https://mopsmap.net), place at `bin/mopsmap/mopsmap` |
-| Optical dataset | set `PYMOPSMAP_DATASET_SOURCE` to a local path or HTTP base URL; files are fetched on demand into `~/.cache/pymopsmap/` |
+| Optical data set | 40 GB in two archives on [Zenodo](https://zenodo.org/record/1284217); point `PYMOPSMAP_DATASET_SOURCE` at the directory, or at an HTTP base URL to fetch on demand into `~/.cache/pymopsmap/` |
 
 ```bash
-export PYMOPSMAP_DATASET_SOURCE=https://your-server.org/mopsmap_dataset
+export PYMOPSMAP_DATASET_SOURCE=/path/to/optical_dataset
 python -c "import pymopsmap as pm; print(pm.load(pm.CAMS.SULPHATE))"
 ```
 
@@ -175,37 +115,27 @@ cd pymopsmap
 pixi install -e dev
 ```
 
+## Where to go next
+
+| | |
+|---|---|
+| [docs/guide.md](docs/guide.md) | the documentation: the catalogue, saving a species, every output, humidity, mixtures, measured particles, and what the library cannot do |
+| [docs/validation.md](docs/validation.md) | the reproduction of the reference article, figure by figure |
+| [docs/api-v2-spec.md](docs/api-v2-spec.md) | the NetCDF schema a species is written in |
+
+---
+
 ## Validation
 
-The wrapper is held to the numbers published in
+Nine figures and four tables of
 [Gasteiger and Wiegner (2018)](https://doi.org/10.5194/gmd-11-2739-2018), the
-MOPSMAP article. Tables 3 to 6 of it, 92 values in all, are asserted in
-`tests/validation/`, which also checks the same pipeline against `miepython`,
-an implementation that shares no code with MOPSMAP.
+MOPSMAP article, are recomputed through this wrapper. 92 published values are
+asserted in `tests/validation/`, which also checks the same pipeline against
+`miepython`.
 
-```bash
-export PYMOPSMAP_DATASET_SOURCE=/path/to/optical_dataset
-pixi run -e dev test-validation
-```
-
-Both archives of the optical data set are needed: soot reaches a refractive
-index of 1.75, past the 1.64 the main one covers.
-
-Nine figures of the article are recomputed by `scripts/validation/`.
-
-| Figure | What it shows |
-|---|---|
-| [2](docs/figures/gasteiger_fig2.png) | single particles against size parameter, five shapes |
-| [4](docs/figures/gasteiger_fig4.png) | the size sampling and index interpolation error of the data set |
-| [5](docs/figures/gasteiger_fig5.png) | the ten OPAC types against relative humidity |
-| [6](docs/figures/gasteiger_fig6.png) | phase functions of five dust size bins, spheres against spheroids |
-| [7](docs/figures/gasteiger_fig7.png) | the OPAC desert type against the cutoff radius |
-| [8](docs/figures/gasteiger_fig8.png) | one size distribution read through three size equivalences |
-| [9](docs/figures/gasteiger_fig9.png) | dust scattering against the variability of its imaginary index |
-| [10](docs/figures/gasteiger_fig10.png) | the truncation correction of an Aurora 3000 nephelometer |
-| [11](docs/figures/gasteiger_fig11.png) | nine volcanic ashes, one mode per measured particle |
-
-`docs/validation.md` says what agrees, to what precision, and what does not.
+<p align="center">
+  <img src="docs/figures/gasteiger_fig6.png" width="70%">
+</p>
 
 ## Roadmap
 
