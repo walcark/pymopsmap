@@ -105,3 +105,30 @@ class TestNonAbsorbingFraction:
         # Every particle non-absorbing would divide by zero in MOPSMAP.
         with pytest.raises(ValidationError):
             self._mode(1.0)
+
+
+def test_identical_refractive_indices_share_one_file() -> None:
+    """
+    An ensemble built one measured particle at a time has thousands of modes.
+
+    They carry the same refractive index, so naming the file after what it
+    holds turns a thousand files into one.
+    """
+    from pymopsmap.engine.commands import write_refr_file
+    from pymopsmap.engine.workspace import Workspace
+
+    spectrum = dict(wl=[0.4, 0.5], nr=[1.5, 1.5], ni=[0.01, 0.01])
+    with Workspace() as workspace:
+        first = write_refr_file(workspace, mode_index=1, **spectrum)
+        again = write_refr_file(workspace, mode_index=2, **spectrum)
+        other = write_refr_file(
+            workspace,
+            mode_index=3,
+            wl=[0.4, 0.5],
+            nr=[1.6, 1.6],
+            ni=[0.01, 0.01],
+        )
+
+        assert first == again
+        assert other != first
+        assert len(list(workspace.path.glob("ri_*.txt"))) == 2

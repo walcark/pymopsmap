@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 
 from pymopsmap.engine.workspace import Workspace
@@ -81,19 +82,22 @@ def write_refr_file(
     mode_index: int = 1,
 ) -> Path:
     """
-    Write refractive index and wavelenth in a file. Returns
-    the file location.
+    Write the refractive index of one mode, and return the file it went to.
 
-    The file name carries the mode index: every mode of a mixture needs its
-    own file, otherwise the modes overwrite each other and MOPSMAP reads the
-    same refractive index for all of them.
+    The file is named after what it holds rather than after the mode: two
+    modes with the same refractive index share one file, and two with
+    different ones cannot overwrite each other. An ensemble built one measured
+    particle at a time runs to thousands of modes on a single spectrum, which
+    is a single file here and was a thousand before.
     """
-    filename = workspace.file(f"ri_{mode_index}.txt")
-
-    with open(filename, "w") as f:
-        for w, r, i in zip(wl, nr, ni):
-            f.write(f"{w:{_FLOAT}} {r:{_FLOAT}} {i:{_FLOAT}}\n")
-
+    content = "".join(
+        f"{w:{_FLOAT}} {r:{_FLOAT}} {i:{_FLOAT}}\n"
+        for w, r, i in zip(wl, nr, ni)
+    )
+    digest = hashlib.blake2b(content.encode(), digest_size=8).hexdigest()
+    filename = workspace.file(f"ri_{digest}.txt")
+    if not filename.exists():
+        filename.write_text(content)
     return filename
 
 
