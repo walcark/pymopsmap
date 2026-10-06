@@ -9,13 +9,9 @@
   <img src="https://img.shields.io/badge/python-3.11%2B-blue">
 </p>
 
-A Python wrapper for [MOPSMAP](https://mopsmap.net). Compute aerosol optical
-properties with Mie, T-matrix and DDA single-particle scattering. See
-[Gasteiger and Wiegner (2018), GMD](https://doi.org/10.5194/gmd-11-2739-2018)
-for the model itself.
+A Python wrapper for [MOPSMAP](https://mopsmap.net). Compute aerosol optical properties with Mie, T-matrix and DDA single-particle scattering. See [Gasteiger and Wiegner (2018), GMD](https://doi.org/10.5194/gmd-11-2739-2018) for the model itself.
 
-**[docs/guide.md](docs/guide.md) is the documentation.** What follows is the
-short tour.
+**See [docs/guide.md](docs/guide.md) for the documentation.** What follows is a short summary of what PyMOPSMAP can perform.
 
 <p align="center">
   <img src="docs/figures/guide-spectra.png" width="92%">
@@ -24,9 +20,7 @@ short tour.
 
 ## The idea
 
-An aerosol is a description: a size distribution, a refractive index, a shape,
-how it responds to water. The conditions around it change, the description
-does not. So the description is the object, and the conditions are the call.
+An aerosol is a description: a size distribution, a refractive index, a shape, how it responds to water. The conditions around it may change, but the description does not. Consequently, PyMOPSMAP treat the description as the object, and the conditions as the call.
 
 ```python
 import numpy as np
@@ -49,8 +43,7 @@ op.sizes            # {'rh': 3, 'wl': 100}
 op["kext"]          # <xarray.DataArray (rh: 3, wl: 100)>
 ```
 
-The answer is a plain `xarray.Dataset`, with the dimensions you named. Or load
-one of the species the package ships:
+The result is a plain `xarray.Dataset`, with the dimensions you named. You may also load one of the species the package ships:
 
 ```python
 pm.load(pm.CAMS.DUST)
@@ -62,9 +55,7 @@ pm.opac_mix("continental_average")
 
 ## And a description that varies
 
-A modal radius you do not know is not a condition, it is part of the
-description. So it goes where the radius goes, as a `DataArray`, and the call
-never changes:
+You may want to describe multiple aerosol at the same time. A solution is to make the description parameters vary. For instance, the modal radius `rm` of a log-normal particle size distribution may be described as a `DataArray`. This is possible in PyMOPSMAP, and the call does not change:
 
 ```python
 pm.psd.LognormalPSD(
@@ -81,9 +72,8 @@ op.sizes            # {'rh': 3, 'rm': 8, 'sigma': 5, 'wl': 1}
   <img src="docs/figures/guide-sweep.png" width="92%">
 </p>
 
-The same holds over a scene: a radius that varies from pixel to pixel and a
-humidity that varies from pixel to pixel and from hour to hour come back as
-`(y, x, t, wl)`, and MOPSMAP runs once per distinct pair.
+The same holds over a scene: a radius that varies from pixel to pixel and a humidity that varies from pixel to pixel and from hour to hour come back as `(y, x, t, wl)`, and MOPSMAP runs once per distinct pair. 
+
 [docs/guide.md](docs/guide.md) carries on from here.
 
 ---
@@ -94,8 +84,7 @@ humidity that varies from pixel to pixel and from hour to hour come back as
 pip install pymopsmap
 ```
 
-The built-in aerosol catalogue (CAMS, OPAC) ships with the package. Two external
-pieces are not bundled:
+The built-in aerosol catalogue (CAMS, OPAC) is shipped with the package. It is thought for a further extension in case a user may want to add additional sources. Two external pieces are not provided:
 
 | Piece | How to get it |
 |---|---|
@@ -127,11 +116,7 @@ pixi install -e dev
 
 ## Validation
 
-Nine figures and four tables of
-[Gasteiger and Wiegner (2018)](https://doi.org/10.5194/gmd-11-2739-2018), the
-MOPSMAP article, are recomputed through this wrapper. 92 published values are
-asserted in `tests/validation/`, which also checks the same pipeline against
-`miepython`.
+Nine figures and four tables of [Gasteiger and Wiegner (2018)](https://doi.org/10.5194/gmd-11-2739-2018), the MOPSMAP article, are recomputed through this wrapper. 92 published values are asserted in `tests/validation/`, which also checks the same pipeline against `miepython`.
 
 <p align="center">
   <img src="docs/figures/gasteiger_fig6.png" width="70%">
@@ -139,13 +124,9 @@ asserted in `tests/validation/`, which also checks the same pipeline against
 
 ## Roadmap
 
-- **Growable sweeps**: a store holds one grid, so widening a request today
-  recomputes it rather than extending what is already there.
-- **Transparent remote dataset**: automatic download of the optical dataset
-  when `PYMOPSMAP_DATASET_SOURCE` is not set, removing the manual setup step.
-- **Tabulated OPAC**: the wet state published by GEISA, alongside the kappa
-  flavour that ships today. The GEISA file host was decommissioned during the
-  migration of the database, so the links on its pages no longer resolve.
+- **Growable sweeps**: a store holds one grid, so widening a request today recomputes it rather than extending what is already there.
+- **Transparent remote dataset**: automatic download of the optical dataset when `PYMOPSMAP_DATASET_SOURCE` is not set, removing the manual setup step.
+- **Tabulated OPAC**: the wet state published by GEISA, alongside the kappa flavour that ships today. The GEISA file host was decommissioned during the migration of the database, so the links on its pages no longer resolve.
 
 ## How the repository is laid out
 
@@ -181,7 +162,7 @@ docs/
 bin/mopsmap/       the MOPSMAP distribution: binary, source, data, examples
 ```
 
-Three levels, and only the first and third are usually in your way.
+Three levels, and the user will generally only manipulate the first and the third.
 
 | Level | Object | Role |
 |---|---|---|
@@ -189,8 +170,7 @@ Three levels, and only the first and third are usually in your way.
 | Point | `MicroParameters` | one concrete, validated point of it |
 | Combination | `Mix` | species weighted into an external mixture |
 
-`tests/README.md` and `scripts/README.md` say what each directory needs and
-what it proves.
+`tests/README.md` and `scripts/README.md` say what each directory needs and what it proves.
 
 ## Development
 
