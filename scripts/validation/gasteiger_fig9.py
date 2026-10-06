@@ -39,11 +39,12 @@ from pathlib import Path
 import numpy as np
 import xarray as xr
 
-from pymopsmap import MicroParameters
+from pymopsmap import MicroParameters, Specie
 from pymopsmap.engine import run_point
 from pymopsmap.engine.outputs import OutputType
 from pymopsmap.psd import LognormalPSD
 from pymopsmap.shapes import Sphere, SpheroidDistrFile
+from pymopsmap.species import Mode
 
 FIGURES = Path(__file__).resolve().parents[2] / "docs" / "figures"
 AR_KANDLER = "ar_kandler"
@@ -174,11 +175,8 @@ def _measured_modes() -> list[MicroParameters] | None:
         return None
     diameters, fractions = table
 
-    built = [
-        MicroParameters(
-            wavelength=[WAVELENGTH_UM],
-            n_real=N_REAL,
-            n_imag=WASO_INDEX[1],
+    modes = [
+        Mode(
             shape=Sphere(),
             psd=LognormalPSD(
                 rm=MODES[0][1],
@@ -187,29 +185,27 @@ def _measured_modes() -> list[MicroParameters] | None:
                 rmin=diameters[0][0] * 0.5,
                 rmax=diameters[-1][1] * 0.5,
             ),
+            n_real=N_REAL,
+            n_imag=WASO_INDEX[1],
         )
     ]
     for (low, high), share in zip(diameters, fractions):
-        for index, rm, sigma, spheroidal in MODES[1:]:
-            for imaginary, weight in share:
-                if weight <= 0.0:
-                    continue
-                built.append(
-                    MicroParameters(
-                        wavelength=[WAVELENGTH_UM],
-                        n_real=N_REAL,
-                        n_imag=imaginary,
-                        shape=SpheroidDistrFile(distr_filename=AR_KANDLER),
-                        psd=LognormalPSD(
-                            rm=rm,
-                            sigma=sigma,
-                            n=index * weight * 1e6,
-                            rmin=low * 0.5,
-                            rmax=high * 0.5,
-                        ),
-                    )
-                )
-    return built
+        for concentration, rm, sigma, spheroidal in MODES[1:]:
+            modes += Mode.from_index_distribution(
+                n_imag=[imaginary for imaginary, _ in share],
+                weights=[weight for _, weight in share],
+                n_real=N_REAL,
+                shape=SpheroidDistrFile(distr_filename=AR_KANDLER),
+                psd=LognormalPSD(
+                    rm=rm,
+                    sigma=sigma,
+                    n=concentration * 1e6,
+                    rmin=low * 0.5,
+                    rmax=high * 0.5,
+                ),
+            )
+    specie = Specie.custom(modes, name="measured", wl=[WAVELENGTH_UM])
+    return specie.at(wl=[WAVELENGTH_UM]).modes
 
 
 def _modes(nonabs_fraction: float) -> list[MicroParameters]:

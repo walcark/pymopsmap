@@ -527,6 +527,8 @@ class Specie:
                 | _fields(ds, expected_psd_variables(psd_type)),
                 "kappa": _optional(ds, "kappa", kappa),
                 "density": _optional(ds, "density_dry", None),
+                "nonabs_fraction": _optional(ds, "nonabs_fraction", None)
+                or 0.0,
             }
         )
 

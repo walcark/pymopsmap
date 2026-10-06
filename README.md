@@ -117,6 +117,46 @@ pm.psd.LognormalPSD(
 )                                # 20 points, not 400
 ```
 
+### From a table of measured particles
+
+Microscopy gives a size and a shape per particle, not a distribution. Two
+constructors turn such a table into the modes MOPSMAP runs.
+
+```python
+modes = pm.Mode.from_particles(
+    radii=diameters / 2,          # um, one per particle
+    aspect_ratios=1 / minor_over_major,
+    n_real=1.53, n_imag=0.0078,
+    r_max=47.5,                   # clip rather than drop
+)
+pm.Specie.custom(modes).compute(wl=wl)
+```
+
+Particles of the same size and shape become one mode, and an aspect ratio
+between two grid points of the dataset is split over both, which is what
+MOPSMAP does with an unbinned one. Forty thousand measured particles come out
+as a few thousand modes.
+
+The second spreads one mode over a measured distribution of imaginary
+refractive indices, which is not the same as giving every particle the average:
+
+```python
+modes = pm.Mode.from_index_distribution(
+    n_imag=[0.001, 0.004, 0.016],   # bin midpoints
+    weights=[412, 198, 57],         # particles per bin
+    n_real=1.53,
+    shape=pm.shapes.Sphere(),
+    psd=pm.psd.LognormalPSD(rm=0.1, sigma=2.0, n=1e9, rmin=0.005, rmax=20),
+)
+```
+
+A mode can also declare that a fraction of its particles does not absorb at
+all, the rest absorbing the more for it:
+
+```python
+pm.Mode(..., nonabs_fraction=0.5)
+```
+
 A custom species saves and reloads through the same format as the built-in
 catalogue:
 
