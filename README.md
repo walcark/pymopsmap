@@ -9,8 +9,17 @@
   <img src="https://img.shields.io/badge/python-3.11%2B-blue">
 </p>
 
-A Python wrapper for [MOPSMAP](https://mopsmap.net). Compute aerosol optical properties with Mie, T-matrix and DDA single-particle scattering. See [Gasteiger & Wiegner 2018,
-GMD](https://doi.org/10.5194/gmd-11-2739-2018)) for further details. 
+A Python wrapper for [MOPSMAP](https://mopsmap.net). Compute aerosol optical
+properties with Mie, T-matrix and DDA single-particle scattering. See
+[Gasteiger and Wiegner (2018), GMD](https://doi.org/10.5194/gmd-11-2739-2018)
+for the model itself.
+
+**[docs/guide.md](docs/guide.md) is the documentation.** What follows is the
+short tour.
+
+<p align="center">
+  <img src="docs/figures/guide-spectra.png" width="92%">
+</p>
 
 
 ## Simple Python API
