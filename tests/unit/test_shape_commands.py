@@ -119,14 +119,10 @@ def test_identical_refractive_indices_share_one_file() -> None:
 
     spectrum = dict(wl=[0.4, 0.5], nr=[1.5, 1.5], ni=[0.01, 0.01])
     with Workspace() as workspace:
-        first = write_refr_file(workspace, mode_index=1, **spectrum)
-        again = write_refr_file(workspace, mode_index=2, **spectrum)
+        first = write_refr_file(workspace, **spectrum)
+        again = write_refr_file(workspace, **spectrum)
         other = write_refr_file(
-            workspace,
-            mode_index=3,
-            wl=[0.4, 0.5],
-            nr=[1.6, 1.6],
-            ni=[0.01, 0.01],
+            workspace, wl=[0.4, 0.5], nr=[1.6, 1.6], ni=[0.01, 0.01]
         )
 
         assert first == again

@@ -7,8 +7,6 @@ from pathlib import Path
 
 from pymopsmap.engine.workspace import Workspace
 from pymopsmap.microparams import MicroParameters
-from pymopsmap.psd import PSD
-from pymopsmap.shapes import Shape
 from pymopsmap.utils import PosFloat64List, SortedPosFloat64List
 
 # Scientific notation, matching the format MOPSMAP uses in its own data files
@@ -28,7 +26,7 @@ def microparams_command(
     mp_command = "\n".join(
         [
             _single_microparams_command(m, workspace, i + 1)
-            for m, i in zip(mpli, range(len(mpli)))
+            for i, m in enumerate(mpli)
         ]
     )
 
@@ -42,10 +40,10 @@ def _single_microparams_command(
     mode: str = f"mode {num} "
     string = (
         mode
-        + shape_command(mp.shape)
+        + mp.shape.command
         + "\n"
         + mode
-        + psd_command(mp.psd)
+        + mp.psd.command
         + "\n"
         + mode
         + refr_command(
@@ -53,7 +51,6 @@ def _single_microparams_command(
             wl=mp.wavelength,
             nr=mp.n_real,  # type: ignore[arg-type]
             ni=mp.n_imag,  # type: ignore[arg-type]
-            mode_index=num,
         )
     )
     if mp.nonabs_fraction:
@@ -79,7 +76,6 @@ def write_refr_file(
     wl: SortedPosFloat64List,
     nr: PosFloat64List,
     ni: PosFloat64List,
-    mode_index: int = 1,
 ) -> Path:
     """
     Write the refractive index of one mode, and return the file it went to.
@@ -106,22 +102,11 @@ def refr_command(
     wl: SortedPosFloat64List,
     nr: PosFloat64List,
     ni: PosFloat64List,
-    mode_index: int = 1,
 ) -> str:
     # MOPSMAP bug: interpolate_linear returns weight_upper=weight_lower=1.0 for
     # single-element arrays, doubling the refractive index and causing an
     # out-of-range error. Use constant refrac command to bypass the file path.
     if len(wl) == 1:
         return f"refrac {nr[0]:{_FLOAT}} {ni[0]:{_FLOAT}}"
-    filename = str(
-        write_refr_file(workspace, wl=wl, nr=nr, ni=ni, mode_index=mode_index)
-    )
+    filename = str(write_refr_file(workspace, wl=wl, nr=nr, ni=ni))
     return f"refrac file '{filename}'"
-
-
-def shape_command(shape: Shape) -> str:
-    return shape.command
-
-
-def psd_command(psd: PSD) -> str:
-    return psd.command

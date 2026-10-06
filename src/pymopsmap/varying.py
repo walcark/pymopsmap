@@ -17,7 +17,7 @@ from __future__ import annotations
 from typing import Annotated, Any
 
 import xarray as xr
-from pydantic import AfterValidator, BeforeValidator
+from pydantic import AfterValidator
 
 
 def _bounds(
@@ -50,43 +50,29 @@ def _bounds(
     return AfterValidator(check)
 
 
-def _keep_array(value: Any) -> Any:
-    """Let an array through before pydantic tries to make a float of it."""
-    return value
-
-
-Varying = Annotated[
-    float | xr.DataArray, BeforeValidator(_keep_array), _bounds()
-]
+Varying = Annotated[float | xr.DataArray, _bounds()]
 """A number with no constraint, or a field of them."""
 
 Positive = Annotated[
     float | xr.DataArray,
-    BeforeValidator(_keep_array),
     _bounds(low=0.0, strict_low=True),
 ]
 """Strictly positive, or a field of such numbers."""
 
-NonNegative = Annotated[
-    float | xr.DataArray, BeforeValidator(_keep_array), _bounds(low=0.0)
-]
+NonNegative = Annotated[float | xr.DataArray, _bounds(low=0.0)]
 """Zero or more, or a field of such numbers."""
 
 AboveOne = Annotated[
     float | xr.DataArray,
-    BeforeValidator(_keep_array),
     _bounds(low=1.0, strict_low=True),
 ]
 """Strictly above one, as a geometric standard deviation must be."""
 
-AtLeastOne = Annotated[
-    float | xr.DataArray, BeforeValidator(_keep_array), _bounds(low=1.0)
-]
+AtLeastOne = Annotated[float | xr.DataArray, _bounds(low=1.0)]
 """One or more, as an aspect ratio must be."""
 
 UnitInterval = Annotated[
     float | xr.DataArray,
-    BeforeValidator(_keep_array),
     _bounds(low=0.0, high=1.0),
 ]
 """Between zero and one inclusive."""
@@ -96,6 +82,5 @@ def aspect_ratio_range(low: float, high: float) -> Any:
     """The bounded aspect ratio a tabulated distribution is defined over."""
     return Annotated[
         float | xr.DataArray,
-        BeforeValidator(_keep_array),
         _bounds(low=low, high=high),
     ]

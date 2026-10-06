@@ -31,10 +31,7 @@ _SPHERE_TOLERANCE = 1e-3
 
 
 def _fmt_eps(v: float) -> str:
-    s = f"{v:.3f}"
-    if s[0] == " ":
-        s = "0" + s[1:]
-    return s
+    return f"{v:.3f}"
 
 
 def _bracket(grid: np.ndarray, value: float) -> list[float]:

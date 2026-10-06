@@ -36,19 +36,19 @@ def _columns(path) -> list[list[float]]:
 
 class TestRefractiveIndexFile:
     def test_small_imaginary_parts_survive(self):
-        path = write_refr_file(_workspace(), wl=WL, nr=NR, ni=NI, mode_index=1)
+        path = write_refr_file(_workspace(), wl=WL, nr=NR, ni=NI)
 
         written = _columns(path)
         for row, expected in zip(written, NI):
             assert row[2] == pytest.approx(expected, rel=1e-9)
 
     def test_no_value_is_flushed_to_zero(self):
-        path = write_refr_file(_workspace(), wl=WL, nr=NR, ni=NI, mode_index=2)
+        path = write_refr_file(_workspace(), wl=WL, nr=NR, ni=NI)
 
         assert all(row[2] > 0 for row in _columns(path))
 
     def test_real_parts_and_wavelengths_survive(self):
-        path = write_refr_file(_workspace(), wl=WL, nr=NR, ni=NI, mode_index=3)
+        path = write_refr_file(_workspace(), wl=WL, nr=NR, ni=NI)
 
         written = _columns(path)
         for row, wl, nr in zip(written, WL, NR):
@@ -59,7 +59,7 @@ class TestRefractiveIndexFile:
         """MOPSMAP refuses a refractive index file that is not ascending."""
         close = [0.5500000, 0.5500001, 0.5500002]
         path = write_refr_file(
-            _workspace(), wl=close, nr=[1.45] * 3, ni=[1e-4] * 3, mode_index=4
+            _workspace(), wl=close, nr=[1.45] * 3, ni=[1e-4] * 3
         )
 
         column = [row[0] for row in _columns(path)]

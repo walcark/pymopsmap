@@ -129,12 +129,10 @@ def _shape_code(shape: Shape) -> int | None:
 
 def _aspect_ratio(shape: Shape) -> float | None:
     """
-    The one aspect ratio of a shape, or None when a distribution sets it.
+    The one aspect ratio of a spheroid, or None when a distribution sets it.
 
-    A sphere is a spheroid of aspect ratio one. A shape reading its ratios
-    from a file spans many, so no single row of the index applies.
+    A shape reading its ratios from a file spans many, so no single row of the
+    index applies.
     """
-    if shape.type == "sphere":
-        return 1.0
     ratio = getattr(shape, "aspect_ratio", None)
     return None if ratio is None else float(ratio)

@@ -22,9 +22,3 @@ class OpticalDatasetCache:
         target = self.full_path(relative_path)
         target.parent.mkdir(parents=True, exist_ok=True)
         os.replace(tmp_path, target)
-
-    def cached_files(self) -> list[str]:
-        result = []
-        for p in self.root_dir.rglob("*.nc"):
-            result.append(str(p.relative_to(self.root_dir)))
-        return sorted(result)
