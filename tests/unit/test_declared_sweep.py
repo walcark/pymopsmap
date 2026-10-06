@@ -129,3 +129,47 @@ class TestWithHumidity:
 
         assert set(op["kext"].dims) == {"radius", "rh", "wl"}
         assert len(engine) == 4
+
+
+def test_an_axis_named_after_its_parameter_still_carries_its_values(
+    monkeypatch,
+):
+    """
+    A swept axis comes back with the values the caller gave, not 0, 1, 2.
+
+    Naming the dimension after the parameter is the obvious thing to do, and
+    xarray then promotes that variable to an index coordinate. Looking for the
+    values among the data variables alone missed exactly that case.
+    """
+    import xarray as xr
+
+    import pymopsmap as pm
+    from pymopsmap.psd import LognormalPSD
+    from pymopsmap.shapes import Sphere
+    from pymopsmap.species import Mode
+
+    def fake_run_point(modes, output_types, rh, quiet, n_angles=2000):
+        return integrated_result(modes[0].wavelength)
+
+    monkeypatch.setattr("pymopsmap.engine.run_point", fake_run_point)
+
+    radii = [0.05, 0.1, 0.2]
+    specie = pm.Specie.custom(
+        Mode(
+            shape=Sphere(),
+            psd=LognormalPSD(
+                rm=xr.DataArray(radii, dims="rm"),
+                sigma=1.6,
+                n=1e9,
+                rmin=0.005,
+                rmax=20.0,
+            ),
+            n_real=1.53,
+            n_imag=1e-3,
+        ),
+        name="sized",
+    )
+
+    result = specie.compute(wl=[0.55])
+
+    assert list(result["rm"].values) == radii

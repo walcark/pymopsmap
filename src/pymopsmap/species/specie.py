@@ -341,9 +341,16 @@ class Specie:
         return result
 
     def _axis_values(self, dim: str) -> Any:
-        """The values a declared dimension takes, when it names them alone."""
+        """
+        The values a declared dimension takes, when it names them alone.
+
+        Coordinates count: a parameter swept on a dimension of its own name,
+        which is the obvious way to write it, is promoted by xarray from a
+        variable to an index coordinate.
+        """
         for name in self.modes:
-            for variable in self.tree[name].to_dataset().values():
+            dataset = self.tree[name].to_dataset()
+            for variable in (*dataset.values(), *dataset.coords.values()):
                 if variable.dims == (dim,):
                     return variable.values
         return None
