@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, NamedTuple
@@ -363,10 +364,33 @@ class Specie:
                 self.version,
                 self.name,
                 f"schema{SCHEMA_REV}",
+                self.fingerprint(),
                 requested,
             )
             if part
         )
+
+    def fingerprint(self) -> str:
+        """
+        A digest of the description the stored numbers were computed from.
+
+        Naming the species is not enough to key a store. A catalogue file can
+        be rebuilt under the same source and version, and a hand-built species
+        can be edited between two calls; either way the old results are no
+        longer answers to the question being asked.
+        """
+        digest = hashlib.blake2b(digest_size=8)
+        for node in self.tree.subtree:
+            digest.update(node.path.encode())
+            for key, value in sorted(node.attrs.items()):
+                digest.update(f"{key}={value}".encode())
+            dataset = node.to_dataset()
+            for name in sorted(map(str, dataset.variables)):
+                values = np.asarray(dataset[name].values)
+                digest.update(name.encode())
+                digest.update(str(values.dtype).encode())
+                digest.update(values.tobytes())
+        return digest.hexdigest()
 
     def cache_status(
         self,
