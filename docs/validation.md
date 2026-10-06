@@ -15,7 +15,7 @@ modeling aerosol optical properties*, Geosci. Model Dev. 11, 2739-2762, 2018.
 |---|---|---|---|---|
 | 2 | Single particles vs size parameter | reproduced | the two values the text quotes, to 1e-3 | `gasteiger_fig2.py` |
 | 4 | Sampling and interpolation error | spheres only | against `miepython`; the spheroid half needs a T-matrix code | `gasteiger_fig4.py` |
-| 5 | OPAC types vs humidity | 5 types of 10 | curve by curve against the published panels | `gasteiger_fig5.py` |
+| 5 | OPAC types vs humidity | reproduced | all ten types, curve by curve against the published panels | `gasteiger_fig5.py` |
 | 6 | Phase functions of dust size bins | reproduced | the 40 values of Table 4, to 6e-4 | `gasteiger_fig6.py` |
 | 7 | Desert aerosol vs cutoff radius | reproduced | the six percentages of section 5.3 | `gasteiger_fig7.py` |
 | 8 | Size distributions under three equivalences | reproduced in shape | the article's own conversion; its scale is off by sqrt(2 pi) | `gasteiger_fig8.py` |
@@ -32,12 +32,20 @@ The figure scripts are in `scripts/validation/` and the tests in
 `tests/integration/test_mie_reference.py` holds the one check that goes
 through no MOPSMAP data at all.
 
-Running the checks needs the optical data set:
+Running the checks needs the optical data set, both archives: the main one
+covers refractive indices from 1.28 to 1.64, and soot reaches 1.75.
 
 ```bash
-export PYMOPSMAP_DATASET_SOURCE=/path/to/mopsmap/optical_dataset
+curl -LO 'https://zenodo.org/record/1284217/files/mopsmap_dataset_v1.0_main.tar.xz?download=1'
+curl -LO 'https://zenodo.org/record/1284217/files/mopsmap_dataset_v1.0_extended.tar.xz?download=1'
+tar -xJf mopsmap_dataset_v1.0_main.tar.xz -C /somewhere
+tar -xJf mopsmap_dataset_v1.0_extended.tar.xz -C /somewhere
+
+export PYMOPSMAP_DATASET_SOURCE=/somewhere/optical_dataset
 pixi run -e dev pytest tests/integration
 ```
+
+The two unpack into the same directory and come to 40 GB.
 
 ## The figures
 
@@ -79,19 +87,29 @@ same panel grid, same axis limits and ticks, same colour per type, and the
 legend split over the three top panels the way the article splits it.
 
 The article tabulates none of these values, so the comparison is made by eye,
-panel by panel, against the published figure. The five computable types land on
-their published curves everywhere. A few readings, taken off the figure at
-600 dpi:
+panel by panel, against the published figure. All ten types land on their
+published curves. The single-scattering albedo at 532 nm and RH = 0, read off
+the published panel at 600 dpi, against the computed value:
+
+| type | published | computed |
+|---|---|---|
+| urban | 0.673 | 0.6731 |
+| continental polluted | 0.785 | 0.7851 |
+| continental average | 0.845 | 0.8453 |
+| desert | 0.867 | 0.8672 |
+| arctic | 0.749 | 0.7499 |
+| maritime polluted | 0.927 | 0.9260 |
+| continental clean | 0.939 | 0.9388 |
+
+And a few more, elsewhere in the figure:
 
 | | published | computed |
 |---|---|---|
 | desert, eta at 355 / 532 / 1064 nm | 2.18 / 2.27 / 2.40 | 2.19 / 2.29 / 2.41 |
 | desert, Z at 355 / 532 nm | 0.006 / 0.0105 | 0.006 / 0.0105 |
-| desert, omega_0 at 355 nm | 0.74 | 0.747 |
 | antarctic, Z at 355 nm, RH 0 to 90 | 0.104 to 0.091 | 0.104 to 0.091 |
 | maritime tropical, Z at 532 nm, RH 0 to 90 | 0.078 to 0.045 | 0.079 to 0.045 |
-
-Five types are missing, and only one thing is missing with them: see below.
+| urban, normalised extinction at 355 nm, RH 90 | 3.1 | 3.12 |
 
 Getting there corrected three things, two of them in the catalogue.
 
@@ -114,6 +132,10 @@ maritime types outside the data set at 355 nm even dry, and far outside once
 they take up water. The article plots them there at every humidity, so its runs
 used at most 27 um; 20 um, the OPAC value of every other component, is what the
 catalogue now carries.
+
+The five types containing soot need the extended archive of the optical data
+set, soot reaching a real refractive index of 1.75 where the main archive stops
+at 1.64. With it in place they compute like the rest.
 
 ### Figure 6, phase functions of five dust size bins
 
@@ -230,29 +252,6 @@ Separately, the reference runs in `sect_54_size_equivalence/` were made with
 the concentration in cm-3 where MOPSMAP reads m-3, so every extensive
 quantity in them sits 1e6 below the published table. The test applies the
 factor rather than alter the shipped expectations.
-
-## Figure 5, what the five missing types need
-
-One gap, and it is not in the wrapper.
-
-Five of the ten OPAC types contain soot: urban, continental average,
-continental polluted, maritime polluted and arctic. Its real refractive index
-reaches 1.75, outside the 1.28 to 1.64 that the main archive of the optical
-data set covers, and MOPSMAP stops on a refractive index outside the grid it
-loaded (`make_contributions.f90`, lines 169 and 174).
-
-The extended archive covers the rest of Table 1 of the article. It is a single
-21.2 GB `tar.xz`, so there is no fetching the dozen files that are actually
-missing:
-
-```bash
-curl -LO 'https://zenodo.org/record/1284217/files/mopsmap_dataset_v1.0_extended.tar.xz?download=1'
-tar -xJf mopsmap_dataset_v1.0_extended.tar.xz -C /path/to/mopsmap
-```
-
-It unpacks into the same `optical_dataset` directory as the main archive and
-adds about 25 GB. Nothing else is in the way: with it in place the script
-computes all ten types and skips none.
 
 ## Nine defects this campaign found
 

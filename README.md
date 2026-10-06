@@ -340,13 +340,16 @@ export PYMOPSMAP_DATASET_SOURCE=/path/to/mopsmap/optical_dataset
 pixi run -e dev pytest tests/integration
 ```
 
+Both archives of the optical data set are needed: soot reaches a refractive
+index of 1.75, past the 1.64 the main one covers.
+
 Eight figures of the article are recomputed by `scripts/validation/`.
 
 | Figure | What it shows |
 |---|---|
 | [2](docs/figures/gasteiger_fig2.png) | single particles against size parameter, five shapes |
 | [4](docs/figures/gasteiger_fig4.png) | the size sampling and index interpolation error of the data set |
-| [5](docs/figures/gasteiger_fig5.png) | the OPAC types against relative humidity, 5 of 10 |
+| [5](docs/figures/gasteiger_fig5.png) | the ten OPAC types against relative humidity |
 | [6](docs/figures/gasteiger_fig6.png) | phase functions of five dust size bins, spheres against spheroids |
 | [7](docs/figures/gasteiger_fig7.png) | the OPAC desert type against the cutoff radius |
 | [8](docs/figures/gasteiger_fig8.png) | one size distribution read through three size equivalences |

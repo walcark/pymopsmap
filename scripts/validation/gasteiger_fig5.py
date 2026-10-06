@@ -13,10 +13,10 @@ The layout follows the published one so the two can be laid side by side: same
 panel grid, same axis limits and ticks, same colour per type, and the legend
 split over the three panels of the top row the way the article splits it.
 
-One gap remains, and the report names it: the five types containing soot need
-the extended archive of the optical data set, soot reaching a real refractive
-index of 1.75 where the main archive stops at 1.64. docs/validation.md says how
-to fetch it.
+The five types containing soot need the extended archive of the optical data
+set, soot reaching a real refractive index of 1.75 where the main archive stops
+at 1.64. Without it they are reported and skipped, so a partial data set still
+produces a partial figure.
 """
 
 from __future__ import annotations
