@@ -28,7 +28,7 @@ DRY = {
     "waso": (2.24, 0.0212, 0.005, 20.0, 1.8),
     "soot": (2.00, 0.0118, 0.005, 20.0, 1.0),
     "ssam": (2.03, 0.209, 0.005, 20.0, 2.2),
-    "sscm": (2.03, 1.75, 0.005, 60.0, 2.2),
+    "sscm": (2.03, 1.75, 0.005, 20.0, 2.2),
     "minm": (1.95, 0.07, 0.005, 20.0, 2.6),
     "miam": (2.00, 0.39, 0.005, 20.0, 2.6),
     "micm": (2.15, 1.90, 0.005, 60.0, 2.6),
@@ -87,6 +87,62 @@ class TestHessTable:
                 float(ds["rmin"]),
                 float(ds["rmax"]),
             ) == pytest.approx((rm, sigma, rmin, rmax))
+
+
+class TestShape:
+    """
+    MOPSMAP gives the mineral components a shape OPAC does not.
+
+    The worked desert example of the user guide, section 4.2, writes
+    'shape spheroid distr_file ar_kandler' for the three mineral modes and
+    'shape sphere' for the water soluble one, which is what its predefined
+    OPAC ensembles use and therefore what Figure 5 of the article shows.
+    """
+
+    @pytest.mark.parametrize("name", ["minm", "miam", "micm", "mitr"])
+    def test_mineral_components_are_spheroids(self, tree, name):
+        ds = tree[f"{name}/only"].to_dataset()
+
+        assert ds.attrs["shape_type"] == "spheroid-distr-file"
+        assert str(ds["distr_filename"].item()) == "ar_kandler"
+
+    @pytest.mark.parametrize(
+        "name", ["waso", "inso", "soot", "ssam", "sscm", "suso"]
+    )
+    def test_the_others_are_spheres(self, tree, name):
+        assert tree[f"{name}/only"].to_dataset().attrs["shape_type"] == (
+            "sphere"
+        )
+
+    def test_the_shipped_name_resolves_to_the_mopsmap_data_directory(self):
+        """A catalogue travels; the path of one data directory does not."""
+        from pymopsmap.shapes import SpheroidDistrFile
+        from pymopsmap.utils import MOPSMAP_PATH
+
+        shape = SpheroidDistrFile(distr_filename="ar_kandler")
+
+        assert shape.distr_filename == str(
+            MOPSMAP_PATH.parent / "data" / "ar_kandler"
+        )
+
+
+class TestCoarseSeaSaltCutoff:
+    def test_it_is_cut_where_the_data_set_can_follow_it(self, tree):
+        """
+        Figure 5 of the article settles the coarse sea salt cutoff at 20 um.
+
+        It plots the maritime types at 355 nm up to RH = 90 %. A dry radius of
+        60 um grows to 126 um there, a size parameter of 2229 against the 1013
+        the sphere files of the data set cover, and MOPSMAP stops rather than
+        extrapolate. Their runs cannot have used 60.
+        """
+        import math
+
+        rmax = float(tree["sscm/only"].to_dataset()["rmax"])
+        kappa = float(tree["sscm/only"].to_dataset()["kappa"])
+        grown = rmax * (1.0 + kappa * 90.0 / 10.0) ** (1.0 / 3.0)
+
+        assert 2.0 * math.pi * grown / 0.355 < 1013.0
 
 
 class TestHygroscopicity:

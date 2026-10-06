@@ -45,7 +45,13 @@ DRY_STATE: dict[str, tuple[float, float, float, float, float]] = {
     "waso": (2.24, 0.0212, 0.005, 20.0, 1.8),
     "soot": (2.00, 0.0118, 0.005, 20.0, 1.0),
     "ssam": (2.03, 0.209, 0.005, 20.0, 2.2),
-    "sscm": (2.03, 1.75, 0.005, 60.0, 2.2),
+    # The coarse sea salt mode is cut at 20 um, not at the 60 um of the
+    # coarse mineral mode. Figure 5 of Gasteiger and Wiegner (2018) settles
+    # it: it plots the maritime types at 355 nm up to RH = 90 %, where a
+    # 60 um dry radius grows to 126 um, a size parameter of 2229 against the
+    # 1013 the sphere files cover. MOPSMAP stops there, so their runs cannot
+    # have used 60.
+    "sscm": (2.03, 1.75, 0.005, 20.0, 2.2),
     "minm": (1.95, 0.07, 0.005, 20.0, 2.6),
     "miam": (2.00, 0.39, 0.005, 20.0, 2.6),
     "micm": (2.15, 1.90, 0.005, 60.0, 2.6),
@@ -86,6 +92,14 @@ KAPPA: dict[str, float] = {
 }
 
 
+# The shape MOPSMAP gives each component in its own OPAC presets. The mineral
+# components are prolate spheroids with the aspect ratio distribution of
+# Kandler et al. (2009), as the worked desert example of the MOPSMAP user
+# guide (section 4.2) spells out; everything else is spherical.
+SPHEROIDAL = {"minm", "miam", "micm", "mitr"}
+ASPECT_RATIO_FILE = "ar_kandler"
+
+
 def build() -> None:
     """Write the kappa flavour of the OPAC catalogue."""
     tree = xr.DataTree()
@@ -99,7 +113,8 @@ def build() -> None:
         references=(
             "Hess, Koepke and Schult (1998), BAMS 79:831, Table 1c; "
             "Zieger et al. (2013), ACP 13:10609, Table 4; "
-            "refractive indices from the MOPSMAP data directory."
+            "refractive indices and particle shapes from the MOPSMAP data "
+            "directory and user guide, section 4.2."
         ),
     )
     for name in sorted(DRY_STATE):
@@ -118,6 +133,7 @@ def _mode_dataset(name: str) -> xr.Dataset:
     sigma, rm, rmin, rmax, density = DRY_STATE[name]
     wl, n_real, n_imag = _read_refractive_index(REFRACTIVE_FILE[name])
 
+    spheroidal = name in SPHEROIDAL
     ds = xr.Dataset(
         data_vars={
             "n_real": (("wl",), n_real),
@@ -133,8 +149,15 @@ def _mode_dataset(name: str) -> xr.Dataset:
             "density_dry": density,
         },
         coords={"wl": wl},
-        attrs={"psd_type": "lognormal", "shape_type": "sphere"},
+        attrs={
+            "psd_type": "lognormal",
+            "shape_type": ("spheroid-distr-file" if spheroidal else "sphere"),
+        },
     )
+    if spheroidal:
+        # Stored as the bare name MOPSMAP ships it under, not as a path:
+        # the catalogue travels, the data directory does not.
+        ds["distr_filename"] = ASPECT_RATIO_FILE
 
     ds["wl"].attrs.update(units="um", long_name="wavelength")
     ds["n_real"].attrs.update(units="1")
