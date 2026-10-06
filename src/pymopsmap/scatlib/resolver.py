@@ -1,0 +1,272 @@
+"""Optical dataset resolver: maps refractive index grid to NC file paths."""
+
+from __future__ import annotations
+
+from itertools import product
+from pathlib import Path
+from typing import TYPE_CHECKING
+
+import numpy as np
+
+from pymopsmap.exceptions import IndexFileError
+from pymopsmap.scatlib.limits import read_index
+from pymopsmap.utils import check_within_grid
+
+if TYPE_CHECKING:
+    from pymopsmap.microparams import MicroParameters
+    from pymopsmap.shapes import Shape
+
+
+def _fmt_mreal(v: float) -> str:
+    return f"{v:.4f}"
+
+
+def _fmt_mimag(v: float) -> str:
+    return f"{v:.6f}"
+
+
+# How close an aspect ratio has to be to one for MOPSMAP to call it a sphere
+# (make_contributions.f90, abs(avail_eps - 1) < 0.001).
+_SPHERE_TOLERANCE = 1e-3
+
+
+def _fmt_eps(v: float) -> str:
+    return f"{v:.3f}"
+
+
+def _shape_key(shape: Shape) -> tuple:
+    """What distinguishes two shapes of the same type, for the memo."""
+    return (
+        getattr(shape, "aspect_ratio", None),
+        getattr(shape, "mode", None),
+        getattr(shape, "shape_id", None),
+        getattr(shape, "distr_filename", None),
+        getattr(shape, "sigma_ar", None),
+    )
+
+
+def _bracket(grid: np.ndarray, value: float) -> list[float]:
+    """Return the 1 or 2 grid values that bracket `value`.
+
+    When value lies exactly on a grid point, returns only that single value
+    (no interpolation needed, and deduplication collapses to 1 file).
+    """
+    i = int(np.searchsorted(grid, value))
+    # Exact match: no interpolation needed
+    if i < len(grid) and np.isclose(grid[i], value, rtol=1e-9, atol=0):
+        return [float(grid[i])]
+    indices = set()
+    if i > 0:
+        indices.add(i - 1)
+    if i < len(grid):
+        indices.add(i)
+    return sorted({grid[j] for j in indices})
+
+
+class NCFileResolver:
+    def __init__(self, index_path: Path):
+        try:
+            ds = read_index(str(index_path))
+        except Exception as exc:
+            raise IndexFileError(
+                f"Cannot open index.nc at {index_path}: {exc}"
+            ) from exc
+        self.avail_mreal: np.ndarray = np.sort(
+            ds["mreal"].values.astype(float)
+        )
+        self.avail_mimag: np.ndarray = np.sort(
+            ds["mimag"].values.astype(float)
+        )
+        if "eps" in ds:
+            self.avail_eps: np.ndarray = np.sort(
+                ds["eps"].values.astype(float)
+            )
+        else:
+            self.avail_eps = np.array([])
+        self._known: dict[tuple, list[str]] = {}
+
+    def resolve(
+        self, modes: list[MicroParameters], rh: float | None = None
+    ) -> list[str]:
+        """
+        List the dataset files a run needs.
+
+        Parameters
+        ----------
+        modes : list of MicroParameters
+            The modes of the run.
+        rh : float, optional
+            The humidity handed to MOPSMAP. When set, the engine grows the
+            particles itself and uses a refractive index the dry values do not
+            point at, so the files are resolved on the grown one.
+        """
+        from .growth import grown_refractive_index
+
+        indices = [
+            grown_refractive_index(
+                mode.wavelength,
+                mode.n_real,  # type: ignore[arg-type]
+                # A non-absorbing fraction raises the imaginary index of the
+                # absorbing half so the average holds, and MOPSMAP does it
+                # before anything else (init_wavelength_refr.f90, line 223).
+                [
+                    value / (1.0 - mode.nonabs_fraction)
+                    for value in mode.n_imag  # type: ignore[union-attr]
+                ],
+                mode.kappa or 0.0,
+                rh or 0.0,
+            )
+            for mode in modes
+        ]
+
+        # MOPSMAP stops on a value outside the grid it loaded
+        # (interpolate_linear.f90), so refuse it here, with the axis named.
+        for index, (n_real, n_imag) in enumerate(indices, start=1):
+            where = f"mode {index}"
+            check_within_grid("n_real", n_real, self.avail_mreal, where)
+            check_within_grid("n_imag", n_imag, self.avail_mimag, where)
+
+        files: set[str] = {"index.nc"}
+        for mode, (n_real, n_imag) in zip(modes, indices):
+            for mr, mi in zip(n_real, n_imag):
+                files.update(self._files_for_params(mode.shape, mr, mi))
+                if mode.nonabs_fraction:
+                    # The non-absorbing half is taken from the first grid
+                    # point of the imaginary axis, whatever the mode carries
+                    # (make_contributions.f90, i_mimag = 1).
+                    files.update(
+                        self._files_for_params(
+                            mode.shape, mr, float(self.avail_mimag[0])
+                        )
+                    )
+        return sorted(files)
+
+    def _files_for_params(
+        self, shape: Shape, mreal: float, mimag: float
+    ) -> list[str]:
+        """
+        The files one shape needs at one refractive index.
+
+        Memoised: an ensemble built one measured particle at a time asks this
+        once per mode and wavelength, and five hundred modes over forty-nine
+        wavelengths came out as four distinct files.
+        """
+        key = (shape.type, _shape_key(shape), mreal, mimag)
+        if key not in self._known:
+            self._known[key] = self._resolve_files(shape, mreal, mimag)
+        return self._known[key]
+
+    def _resolve_files(
+        self, shape: Shape, mreal: float, mimag: float
+    ) -> list[str]:
+        from pymopsmap.shapes import (
+            Irregular,
+            IrregularDistrFile,
+            IrregularOverlay,
+            Sphere,
+            Spheroid,
+            SpheroidDistrFile,
+            SpheroidLognormal,
+        )
+
+        mr_vals = _bracket(self.avail_mreal, mreal)
+        mi_vals = _bracket(self.avail_mimag, mimag)
+
+        if isinstance(shape, Sphere):
+            return [
+                f"spheres/sphere_{_fmt_mreal(mr)}_{_fmt_mimag(mi)}.nc"
+                for mr, mi in product(mr_vals, mi_vals)
+            ]
+
+        if isinstance(shape, (Spheroid, SpheroidLognormal, SpheroidDistrFile)):
+            eps_vals = self._eps_for_shape(shape)
+            files = []
+            for eps, mr, mi in product(eps_vals, mr_vals, mi_vals):
+                # A spheroid of aspect ratio one is a sphere, and MOPSMAP
+                # files it as one (make_contributions.f90, i_np = 1). There is
+                # no spheroid file at eps = 1 to read instead.
+                if abs(eps - 1.0) < _SPHERE_TOLERANCE:
+                    files.append(
+                        f"spheres/sphere_{_fmt_mreal(mr)}_{_fmt_mimag(mi)}.nc"
+                    )
+                else:
+                    files.append(
+                        "spheroids_merged/spheroid_merged_"
+                        f"{_fmt_eps(eps)}_{_fmt_mreal(mr)}_{_fmt_mimag(mi)}.nc"
+                    )
+            return files
+
+        if isinstance(
+            shape, (Irregular, IrregularDistrFile, IrregularOverlay)
+        ):
+            shape_id = self._irregular_id(shape)
+            return [
+                f"irregular/shape{shape_id}_{_fmt_mreal(mr)}_{_fmt_mimag(mi)}.nc"
+                for mr, mi in product(mr_vals, mi_vals)
+            ]
+
+        return []
+
+    def _eps_for_shape(self, shape: Shape) -> list[float]:
+        from pymopsmap.shapes import Spheroid, SpheroidLognormal
+
+        if len(self.avail_eps) == 0:
+            return []
+
+        if isinstance(shape, Spheroid):
+            # MOPSMAP stores prolate spheroids under eps = 1/aspect_ratio
+            # A shape reaching the resolver belongs to a materialised point,
+            # so its aspect ratio is a number rather than a field of them.
+            ratio = float(shape.aspect_ratio)
+            eps = 1 / ratio if shape.mode == "prolate" else ratio
+            return _bracket(self.avail_eps, eps)
+
+        if isinstance(shape, SpheroidLognormal):
+            # Lognormal distribution covers a range; return all eps in range.
+            ar = float(shape.aspect_ratio)
+            sigma = float(shape.sigma_ar)
+            lo = max(self.avail_eps[0], ar / (1 + 3 * sigma))
+            hi = min(self.avail_eps[-1], ar * (1 + 3 * sigma))
+            mask = (self.avail_eps >= lo) & (self.avail_eps <= hi)
+            selected = self.avail_eps[mask].tolist()
+            return selected if selected else _bracket(self.avail_eps, ar)
+
+        # SpheroidDistrFile: the file names the aspect ratios, so read it
+        # rather than pull in all 31 of them, one of which has no file at all.
+        return self._eps_from_distr_file(shape.distr_filename)  # type: ignore[union-attr]
+
+    def _eps_from_distr_file(self, path: str | Path) -> list[float]:
+        """
+        The eps grid points an aspect ratio distribution file reaches.
+
+        The format is the one init_shape.f90 reads: a first line giving the
+        fraction of prolate spheroids, then one aspect ratio and weight per
+        line. Each ratio is spread over the bracketing grid points, the prolate
+        side under eps = 1 / ratio and the oblate side under eps = ratio.
+        """
+        text = Path(path).read_text().splitlines()
+        if not text:
+            raise IndexFileError(f"empty aspect ratio distribution: {path}")
+        prolate_fraction = float(text[0].split()[0])
+
+        selected: set[float] = set()
+        for line in text[1:]:
+            fields = line.split("#")[0].split()
+            if len(fields) < 2:
+                continue
+            ratio = float(fields[0])
+            if prolate_fraction > 0.0:
+                selected.update(_bracket(self.avail_eps, 1.0 / ratio))
+            if prolate_fraction < 1.0:
+                selected.update(_bracket(self.avail_eps, ratio))
+        return sorted(selected)
+
+    @staticmethod
+    def _irregular_id(shape: Shape) -> str:
+        from pymopsmap.shapes import Irregular
+
+        if isinstance(shape, Irregular):
+            return shape.shape_id
+        # For file-defined irregular, we can't know the shape_id: return a
+        # placeholder that causes a downstream error rather than a silent miss.
+        return "A"

@@ -3,13 +3,9 @@
 import pytest
 from pydantic import ValidationError
 
-from pymopsmap.models.microparams import (
-    DistrListPSD,
-    DistrType,
-    FixedPSD,
-    MicroParameters,
-    Sphere,
-)
+from pymopsmap.microparams import MicroParameters
+from pymopsmap.psd import DistrListPSD, DistrType, FixedPSD
+from pymopsmap.shapes import Sphere
 
 
 class TestScalarBroadcast:

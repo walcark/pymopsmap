@@ -11,6 +11,12 @@ dist/
 *.tmp
 .pytest_cache/
 data/**
-scripts/
+!data/cams/**
+scripts/probe*
 *.log
+# Scenes and scratch pulled down by the demo scripts
+cams_scene.nc
+.coverage
+coverage.xml
 *.png
+!docs/figures/*.png

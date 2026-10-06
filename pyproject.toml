@@ -1,6 +1,6 @@
 [project]
 name = "pymopsmap"
-version = "0.3.1"
+version = "0.5.0"
 description = "Python wrapper for MOPSMAP aerosol optical properties computation"
 readme = "README.md"
 license = "Apache-2.0"
@@ -17,9 +17,8 @@ dependencies = [
   "numpy>=2.0",
   "scipy>=1.10",
   "tqdm>=4.0",
-  "einops>=0.7",
-  "structlog>=24.0",
   "netcdf4>=1.7",
+  "xsweep>=0.5,<0.6",
 ]
 
 [project.urls]
@@ -30,28 +29,31 @@ Issues = "https://github.com/walcark/pymopsmap/issues"
 build-backend = "hatchling.build"
 requires = ["hatchling"]
 
+# The species catalogue lives inside the package, so it ships in the wheel.
+[tool.hatch.build.targets.wheel]
+packages = ["src/pymopsmap"]
+
 [tool.pixi.workspace]
 channels = ["conda-forge"]
 platforms = ["linux-64"]
 
 [tool.pixi.pypi-dependencies]
 pymopsmap = { path = ".", editable = true }
+xsweep = ">=0.5,<0.6"
 
 [tool.pixi.tasks]
-run = "python -m pymopsmap.core.opticalprops"
-run-debug = "PYMOPSMAP_KEEP_TEMP=1 pixi run python -m pymopsmap.core.opticalprops"
 
 [tool.pixi.dependencies]
 python = "3.12.*"
+# The MOPSMAP binary is linked against the NetCDF Fortran bindings.
+netcdf-fortran = ">=4.6,<5"
 xarray = ">=2025.11.0,<2026"
 numpy = ">=2.3.5,<3"
 black = ">=25.1.0,<26"
 pydantic = ">=2.12.4,<3"
 netcdf4 = ">=1.7.3,<2"
 matplotlib = ">=3.10.8,<4"
-structlog = ">=25.0,<26"
 scipy = ">=1.16.3,<2"
-einops = ">=0.8.1,<0.9"
 tqdm = ">=4.67.1,<5"
 httpx = ">=0.28.0,<0.29"
 
@@ -64,14 +66,21 @@ builder = { features = ["builder"] }
 ruff = "*"
 mypy = ">=1.5"
 pre-commit = ">=4.4.0,<5"
+cdsapi = ">=0.7"
 pytest = ">=9.0.1,<10"
 pytest-cov = ">=6.0"
+miepython = ">=3.3.0,<4"
 
 [tool.pixi.feature.dev.tasks]
 fmt = { cmd = "ruff format ." }
 lint = { cmd = "ruff check ." }
 type-check = { cmd = "mypy src/pymopsmap" }
-test = { cmd = "python -m pytest tests --cov=src/pymopsmap --cov-report=xml", env = { DATA_PATH = "tests/data", PYMOPSMAP_CACHE_DIR = "tests/data/cache" } }
+# Unit tests need nothing but the package. The other two directories skip
+# themselves without PYMOPSMAP_DATASET_SOURCE, and are run by name.
+test = { cmd = "python -m pytest tests/unit --cov=src/pymopsmap --cov-report=xml", env = { PYMOPSMAP_CACHE_DIR = "tests/data/cache" } }
+test-integration = { cmd = "python -m pytest tests/integration -q" }
+test-validation = { cmd = "python -m pytest tests/validation -q" }
+test-all = { cmd = "python -m pytest tests -q" }
 all = { depends-on = ["fmt", "lint", "type-check", "test"] }
 
 [tool.pixi.feature.builder.dependencies]

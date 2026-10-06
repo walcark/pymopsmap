@@ -9,26 +9,165 @@
   <img src="https://img.shields.io/badge/python-3.11%2B-blue">
 </p>
 
-Python wrapper for [MOPSMAP](https://mopsmap.net) — aerosol optical property computation based on Mie, T-matrix, and DDA single-particle scattering ([Gasteiger & Wiegner 2018, GMD](https://doi.org/10.5194/gmd-11-2739-2018)).
+A Python wrapper for [MOPSMAP](https://mopsmap.net). Compute aerosol optical
+properties with Mie, T-matrix and DDA single-particle scattering. See
+[Gasteiger and Wiegner (2018), GMD](https://doi.org/10.5194/gmd-11-2739-2018)
+for the model itself.
 
-## Overview
+**[docs/guide.md](docs/guide.md) is the documentation.** What follows is the
+short tour.
 
-PyMopsmap drives the MOPSMAP Fortran binary from Python. Given a set of aerosol microphysical parameters (shape, size distribution, refractive index), it:
+<p align="center">
+  <img src="docs/figures/guide-spectra.png" width="92%">
+</p>
 
-1. resolves and downloads the required optical dataset files,
-2. writes a MOPSMAP launch file and runs the binary,
-3. parses the outputs into an `xarray`-backed `OptiProps` object,
-4. caches the result on disk keyed by a blake2b hash of the inputs.
+
+## The idea
+
+An aerosol is a description: a size distribution, a refractive index, a shape,
+how it responds to water. That description does not change when the conditions
+around it do:
+
+- the air it sits in, through relative humidity,
+- the wavelength it is looked at,
+- where and when it is.
+
+So the description is the object, and the conditions are the call.
+
+```python
+import numpy as np
+import pymopsmap as pm
+
+aer = pm.Specie.custom(
+    pm.Mode(
+        shape=pm.shapes.Sphere(),
+        psd=pm.psd.LognormalPSD(
+            rm=0.12, sigma=1.8, n=1e9, rmin=0.005, rmax=20.0
+        ),
+        n_real=1.53,
+        n_imag=0.008,
+        density_dry=2.6,
+        kappa=0.2,
+    ),
+    name="my dust",
+)
+```
+
+Eight numbers and a shape. That is the whole aerosol, and nothing in it
+mentions a wavelength or a humidity.
+
+---
+
+## One aerosol, many conditions
+
+```python
+op = aer.compute(wl=np.linspace(0.4, 2.0, 100), rh=[0, 50, 80])
+
+op.sizes            # {'rh': 3, 'wl': 100}
+op["kext"]          # <xarray.DataArray (rh: 3, wl: 100)>
+op["ssa"]
+```
+
+The dimensions you asked for come back as the dimensions you named. The answer
+is a plain `xarray.Dataset`, so the whole xarray API applies to it: `sel`,
+`interp`, `mean`, `to_netcdf`, plotting.
+
+![Four species across the solar spectrum](docs/figures/guide-spectra.png)
+
+---
+
+## A description that varies too
+
+A modal radius you do not know is not a condition, it is part of the
+description. So it goes where the radius goes, as a `DataArray`:
+
+```python
+import xarray as xr
+
+aer = pm.Specie.custom(
+    pm.Mode(
+        shape=pm.shapes.Sphere(),
+        psd=pm.psd.LognormalPSD(
+            rm=xr.DataArray(np.linspace(0.05, 0.4, 8), dims="rm"),
+            sigma=xr.DataArray(np.linspace(1.4, 2.2, 5), dims="sigma"),
+            n=1e9, rmin=0.005, rmax=20.0,
+        ),
+        n_real=1.53, n_imag=0.008, density_dry=2.6, kappa=0.2,
+    ),
+    name="my dust",
+)
+
+aer.swept           # {'rm': 8, 'sigma': 5}
+
+op = aer.compute(wl=[0.55], rh=[0, 50, 80])
+op.sizes            # {'rh': 3, 'rm': 8, 'sigma': 5, 'wl': 1}
+```
+
+Any numeric field of a mode accepts one: the modal radius, the width, the
+bounds, the refractive index, the aspect ratio of a spheroid. Distinct
+dimensions multiply, and the call never changes.
+
+![A two-dimensional declared sweep](docs/figures/guide-sweep.png)
+
+---
+
+## A scene
+
+The same thing holds in two or three dimensions, which is what a satellite
+image or a model output is. A size that varies from pixel to pixel, a humidity
+that varies from pixel to pixel and from hour to hour:
+
+```python
+rm = xr.DataArray(..., dims=("y", "x"))        # (12, 16)
+rh = xr.DataArray(..., dims=("y", "x", "t"))   # (12, 16, 4)
+
+aer = pm.Specie.custom(
+    pm.Mode(
+        shape=pm.shapes.Sphere(),
+        psd=pm.psd.LognormalPSD(rm=rm, sigma=1.8, n=1e9, rmin=0.005, rmax=20),
+        n_real=1.53, n_imag=0.008, density_dry=2.6, kappa=0.2,
+    ),
+    name="scene",
+)
+
+op = aer.compute(wl=[0.55], rh=rh)
+op.sizes            # {'y': 12, 'x': 16, 't': 4, 'wl': 1}
+```
+
+768 cells, and MOPSMAP runs 103 times: that is how many distinct pairs of
+radius and humidity the scene holds. Nothing in the call says so, and nothing
+has to.
+
+## Where to go next
+
+| | |
+|---|---|
+| [docs/guide.md](docs/guide.md) | the documentation: the catalogue, saving a species, every output, humidity, mixtures, measured particles, and what the library cannot do |
+| [docs/validation.md](docs/validation.md) | what agrees with the reference article, to what precision, and what does not |
+| [docs/api-v2-spec.md](docs/api-v2-spec.md) | the NetCDF schema a species is written in |
+
+---
 
 ## Installation
-
-### From PyPI
 
 ```bash
 pip install pymopsmap
 ```
 
-### From source (development)
+The built-in aerosol catalogue (CAMS, OPAC) ships with the package. Two external
+pieces are not bundled:
+
+| Piece | How to get it |
+|---|---|
+| MOPSMAP binary | download from [mopsmap.net](https://mopsmap.net), place at `bin/mopsmap/mopsmap` |
+| Optical dataset | set `PYMOPSMAP_DATASET_SOURCE` to a local path or HTTP base URL; files are fetched on demand into `~/.cache/pymopsmap/` |
+
+```bash
+export PYMOPSMAP_DATASET_SOURCE=https://your-server.org/mopsmap_dataset
+python -c "import pymopsmap as pm; print(pm.load(pm.CAMS.SULPHATE))"
+```
+
+For development:
 
 ```bash
 git clone https://github.com/walcark/pymopsmap.git
@@ -36,139 +175,100 @@ cd pymopsmap
 pixi install -e dev
 ```
 
-| Environment | Dev tools | Command |
-|---|---|---|
-| `default` | No | `pixi install` |
-| `dev` | ruff, mypy, pytest | `pixi install -e dev` |
+## Validation
 
-### MOPSMAP binary
-
-The MOPSMAP Fortran binary must be placed at `bin/mopsmap/mopsmap` relative to the repository root. Download it from [mopsmap.net](https://mopsmap.net).
-
-### Optical dataset
-
-MOPSMAP requires a pre-computed optical dataset. Set `PYMOPSMAP_DATASET_SOURCE` to a local path or HTTP base URL pointing to the dataset root:
+The wrapper is held to the numbers published in
+[Gasteiger and Wiegner (2018)](https://doi.org/10.5194/gmd-11-2739-2018), the
+MOPSMAP article. Tables 3 to 6 of it, 92 values in all, are asserted in
+`tests/validation/`, which also checks the same pipeline against `miepython`,
+an implementation that shares no code with MOPSMAP.
 
 ```bash
 export PYMOPSMAP_DATASET_SOURCE=/path/to/optical_dataset
-# or
-export PYMOPSMAP_DATASET_SOURCE=https://your-server.org/mopsmap_dataset
+pixi run -e dev test-validation
 ```
 
-Dataset files are downloaded on demand and cached under `~/.cache/pymopsmap/` (override with `PYMOPSMAP_CACHE_DIR`).
+Both archives of the optical data set are needed: soot reaches a refractive
+index of 1.75, past the 1.64 the main one covers.
 
-### Verify
+Eight figures of the article are recomputed by `scripts/validation/`.
 
-```bash
-pixi run -e dev python -c "import pymopsmap; print('pymopsmap OK')"
-```
+| Figure | What it shows |
+|---|---|
+| [2](docs/figures/gasteiger_fig2.png) | single particles against size parameter, five shapes |
+| [4](docs/figures/gasteiger_fig4.png) | the size sampling and index interpolation error of the data set |
+| [5](docs/figures/gasteiger_fig5.png) | the ten OPAC types against relative humidity |
+| [6](docs/figures/gasteiger_fig6.png) | phase functions of five dust size bins, spheres against spheroids |
+| [7](docs/figures/gasteiger_fig7.png) | the OPAC desert type against the cutoff radius |
+| [8](docs/figures/gasteiger_fig8.png) | one size distribution read through three size equivalences |
+| [9](docs/figures/gasteiger_fig9.png) | dust scattering against the variability of its imaginary index |
+| [10](docs/figures/gasteiger_fig10.png) | the truncation correction of an Aurora 3000 nephelometer |
 
-## Quick start
-
-```python
-import pymopsmap as pm
-
-mp = pm.MicroParameters(
-    wavelength=[0.44, 0.55, 0.67],
-    n_real=[1.45, 1.45, 1.45],
-    n_imag=[1e-3, 1e-3, 1e-3],
-    shape=pm.Sphere(),
-    psd=pm.LognormalPSD(rm=0.1, sigma=1.5, n=1.0, rmin=0.01, rmax=10.0),
-)
-
-op = pm.compute(mp)     # → OptiProps (xarray Dataset)
-kext = pm.kext(mp)      # → DataArray indexed by wavelength
-```
-
-### Batch computation over external parameters
-
-```python
-sweep = pm.ParametricSweep()
-for rh, mp_rh in zip([0, 50, 80], [mp_rh0, mp_rh50, mp_rh80]):
-    sweep.add(pm.ParticleMixture([mp_rh]), {"rh": rh})
-
-op = pm.compute(sweep)   # → OptiProps with an extra 'rh' dimension
-```
-
-### CAMS aerosol adapter
-
-```python
-from pymopsmap.adapters import cams_to_kext, CamsAerosol, CamsVersion
-
-kext = cams_to_kext(
-    aerosol=CamsAerosol.SEA_SALT_CAMS,
-    version=CamsVersion.V49_R1,
-    wl_microns=[0.44, 0.55, 0.67],
-    rh=[0, 50, 80, 99],
-)
-```
-
-### OPAC aerosol adapter
-
-```python
-from pymopsmap.adapters.input.opac import OpacMix, OpacMixName, OpacHumidityMode
-
-mix = OpacMix(OpacMixName.CONTINENTAL_AVERAGE)
-
-# GEISA mode: wet PSD and refractive index interpolated from GEISA tables
-op = mix.compute(wavelengths=[0.44, 0.55, 0.67], rhs=[0, 50, 80])
-
-# Kappa mode: hygroscopic growth via κ parameterisation (Zieger et al. 2013)
-# with volume-weighted refractive index mixing with water
-op = mix.compute(
-    wavelengths=[0.44, 0.55, 0.67],
-    rhs=[0, 50, 80],
-    mode=OpacHumidityMode.KAPPA,
-)
-```
-
-## Output types
-
-```python
-op = pm.compute(mp, output_types=frozenset({
-    pm.OutputType.INTEGRATED,
-    pm.OutputType.PHASE_FUNCTION,
-    pm.OutputType.LIDAR,
-}))
-```
-
-Available: `INTEGRATED`, `LIDAR`, `PHASE_FUNCTION`, `SCATTERING_MATRIX`, `VOLUME_SCATTERING_FUNCTION`, `COEFF`.
-
-## Design philosophy
-
-The adapter layer (`adapters/input/`) is designed for progressive extension. Each adapter translates an external aerosol description format — CAMS reanalysis tables, OPAC climatology, user-defined files — into the common `MicroParameters` + `ParametricSweep` representation that the engine consumes. Adding support for a new data source means implementing one adapter without touching the engine or the cache.
-
-The same extensibility applies to output adapters (`adapters/output/`): once optical properties are computed as `OptiProps`, they can be converted to any downstream format (e.g. SMART-G LUT) by adding an output adapter.
-
-## Dataset cache
-
-```python
-pm.cache_status(mp)   # lists cached vs missing dataset files
-pm.prefetch(mp)       # download without computing
-```
-
-## Project structure
-
-```
-src/pymopsmap/
-├── models/      # MicroParameters, OptiProps, OutputRequest, particle systems
-├── engine/      # MOPSMAP binary interface (launch file, runner, output parser)
-├── cache/       # Optical dataset files and result cache
-├── adapters/
-│   ├── input/   # External data formats → MicroParameters  (e.g. CAMS, OPAC)
-│   └── output/  # OptiProps → external formats             (e.g. SMART-G)
-└── utils/       # Logging, types, temp files, caching
-```
+`docs/validation.md` says what agrees, to what precision, and what does not.
 
 ## Roadmap
 
-- **Transparent remote dataset** — automatic download of the full optical dataset from a hosted server when `PYMOPSMAP_DATASET_SOURCE` is not set, removing the manual setup step.
-- **Article validation** — complete reproduction of the figures from [Gasteiger & Wiegner (2018)](https://doi.org/10.5194/gmd-11-2739-2018) as a test suite, ensuring physical correctness of the computed optical properties across all shape types and size parameters.
+- **Growable sweeps**: a store holds one grid, so widening a request today
+  recomputes it rather than extending what is already there.
+- **Transparent remote dataset**: automatic download of the optical dataset
+  when `PYMOPSMAP_DATASET_SOURCE` is not set, removing the manual setup step.
+- **Tabulated OPAC**: the wet state published by GEISA, alongside the kappa
+  flavour that ships today. The GEISA file host was decommissioned during the
+  migration of the database, so the links on its pages no longer resolve.
+
+## How the repository is laid out
+
+```
+src/pymopsmap/     the library
+  species/         Specie, Mode, Mix, the NetCDF schema, the catalogue
+  shapes.py        Sphere, Spheroid, Irregular, and the rest
+  psd.py           LognormalPSD, ModifiedGammaPSD, and the rest
+  microparams.py   one validated point, rendered to MOPSMAP commands
+  engine/          one point, one MOPSMAP run, and the output rules
+  sweep.py         a parameter space to points, and the xsweep binding
+  scatlib/         the optical data set: resolve, download, cache
+  accessors.py     the .mopsmap accessor on a result
+  data/            the species catalogue the wheel ships
+
+tests/
+  unit/            nothing but the package, MOPSMAP stubbed
+  integration/     the binary and the data set, end to end
+  validation/      the published numbers of the reference article
+  data/            fixtures, not the library's data
+
+scripts/           none of it is imported by the package
+  build_catalog/   builds src/pymopsmap/data
+  validation/      redraws the article's figures
+  demo/            draws the guide, and sweeps a real CAMS scene
+
+docs/
+  guide.md         the documentation
+  validation.md    what agrees with the article, and what does not
+  api-v2-spec.md   the NetCDF schema a species is written in
+  figures/         committed, and regenerated by scripts/
+
+bin/mopsmap/       the MOPSMAP distribution: binary, source, data, examples
+```
+
+Three levels, and only the first and third are usually in your way.
+
+| Level | Object | Role |
+|---|---|---|
+| Description | `Specie` | the parameter space, from a file or built in Python |
+| Point | `MicroParameters` | one concrete, validated point of it |
+| Combination | `Mix` | species weighted into an external mixture |
+
+`tests/README.md` and `scripts/README.md` say what each directory needs and
+what it proves.
 
 ## Development
 
 ```bash
-pixi run -e dev test          # pytest + coverage
-pixi run -e dev lint          # ruff
-pixi run -e dev all           # fmt + lint + type-check + test
+pixi run -e dev test              # unit, no data set needed
+pixi run -e dev test-integration  # the pipeline end to end
+pixi run -e dev test-validation   # against the published article
+pixi run -e dev all               # fmt + lint + type-check + test
 ```
+
+`tests/README.md` says what each directory needs and proves, and
+`scripts/README.md` what each script produces.
