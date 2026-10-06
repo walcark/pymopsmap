@@ -17,20 +17,13 @@ _FLOAT = ".10e"
 
 
 def microparams_command(
-    mp: MicroParameters | list[MicroParameters],
-    workspace: Workspace,
+    modes: list[MicroParameters], workspace: Workspace
 ) -> str:
-    """Returns the full command of a MicroParams instance or list."""
-    mpli = [mp] if isinstance(mp, MicroParameters) else mp
-
-    mp_command = "\n".join(
-        [
-            _single_microparams_command(m, workspace, i + 1)
-            for i, m in enumerate(mpli)
-        ]
+    """The mode block of the launch file, one stanza per mode."""
+    return "\n".join(
+        _single_microparams_command(mode, workspace, index)
+        for index, mode in enumerate(modes, start=1)
     )
-
-    return mp_command
 
 
 def _single_microparams_command(

@@ -23,7 +23,7 @@ _ASCII_TYPES = {
 
 
 def write_launching_file(
-    mp: MicroParameters | list[MicroParameters],
+    modes: list[MicroParameters],
     workspace: Workspace | None = None,
     output_types: OutputRequest = DEFAULT_OUTPUT,
     n_angles: int = 2000,
@@ -44,8 +44,7 @@ def write_launching_file(
 
     dataset_path = mopsmap_data_path or DATASET_CACHE_DIR
 
-    mp_list = [mp] if isinstance(mp, MicroParameters) else mp
-    size_equ = _one_size_equivalence(mp_list)
+    size_equ = _one_size_equivalence(modes)
 
     water_refr = MOPSMAP_PATH.parent / "data" / "refr_water_segelstein"
     file_prefix = (
@@ -53,13 +52,13 @@ def write_launching_file(
         f"water_refrac_file '{water_refr}'\n"
         f"size_equ {size_equ}"
     )
-    file_content = microparams_command(mp, workspace)
+    file_content = microparams_command(modes, workspace)
     file_suffix = _file_suffix(
         ascii_base=paths.get("ascii_base"),
         output_types=output_types,
         n_angles=n_angles,
         rh=rh,
-        wavelengths=mp_list[0].wavelength,
+        wavelengths=modes[0].wavelength,
     )
 
     content = "\n".join([file_prefix, file_content, file_suffix])

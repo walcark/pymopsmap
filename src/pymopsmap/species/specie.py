@@ -129,8 +129,9 @@ class Specie:
         Parameters
         ----------
         modes : Mode or list of Mode
-            The modes, in order. Their names default to ``only`` for a single
-            mode, and to ``mode_1``, ``mode_2``, ... for several.
+            The modes, in order. A mode names the group it becomes; several
+            modes left at the default name are numbered ``mode_1``,
+            ``mode_2``, and so on.
         name : str
             Name of the species, used in error messages and when saving.
         wl : list of float, optional
@@ -144,8 +145,7 @@ class Specie:
         listed = [modes] if isinstance(modes, Mode) else list(modes)
         tree = xr.DataTree()
         tree.attrs["source"] = "custom"
-        for index, mode in enumerate(listed, start=1):
-            label = mode.name if len(listed) == 1 else f"mode_{index}"
+        for label, mode in zip(_mode_names(listed), listed):
             tree[label] = xr.DataTree(mode.to_dataset(wl))
         growth = (
             Growth.KAPPA
@@ -545,6 +545,34 @@ class Specie:
                 "size_equ": ds.attrs.get("size_equ", "cs"),
             }
         )
+
+
+def _mode_names(modes: list[Mode]) -> list[str]:
+    """
+    One group name per mode, honouring the ones that were given.
+
+    A tree cannot hold two groups of the same name, and silently dropping one
+    would lose a mode. Several modes left at the default are numbered instead,
+    which is the case the ensemble constructors produce.
+
+    Raises
+    ------
+    ValueError
+        If two modes were given the same name on purpose.
+    """
+    default = Mode.__dataclass_fields__["name"].default
+    named = [mode.name for mode in modes]
+    chosen = [name for name in named if name != default]
+    clashing = {name for name in chosen if chosen.count(name) > 1}
+    if clashing:
+        raise ValueError(
+            f"two modes share the mode name {sorted(clashing)}; a species "
+            "holds one group per name."
+        )
+    return [
+        name if name != default or len(modes) == 1 else f"mode_{index}"
+        for index, name in enumerate(named, start=1)
+    ]
 
 
 def _is_angular(outputs: OutputRequest) -> bool:

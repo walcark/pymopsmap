@@ -27,25 +27,25 @@ def sphere_mp():
 
 
 def test_launch_file_contains_scatlib(sphere_mp):
-    paths = write_launching_file(sphere_mp)
+    paths = write_launching_file([sphere_mp])
     content = paths["mopsmap"].read_text()
     assert f"scatlib '{DATASET_CACHE_DIR}'" in content
 
 
 def test_launch_file_contains_integrated(sphere_mp):
-    paths = write_launching_file(sphere_mp)
+    paths = write_launching_file([sphere_mp])
     content = paths["mopsmap"].read_text()
     assert "output integrated" in content
 
 
 def test_launch_file_with_rh(sphere_mp):
-    paths = write_launching_file(sphere_mp, rh=50.0)
+    paths = write_launching_file([sphere_mp], rh=50.0)
     content = paths["mopsmap"].read_text()
     assert "rH 50.0" in content
 
 
 def test_launch_file_without_rh(sphere_mp):
-    paths = write_launching_file(sphere_mp)
+    paths = write_launching_file([sphere_mp])
     content = paths["mopsmap"].read_text()
     assert "rH" not in content
 
@@ -53,7 +53,7 @@ def test_launch_file_without_rh(sphere_mp):
 def test_launch_file_no_ascii_for_integrated_only(sphere_mp):
     from pymopsmap.engine.outputs import DEFAULT_OUTPUT
 
-    paths = write_launching_file(sphere_mp, output_types=DEFAULT_OUTPUT)
+    paths = write_launching_file([sphere_mp], output_types=DEFAULT_OUTPUT)
     content = paths["mopsmap"].read_text()
     assert "ascii_file" not in content
 
@@ -62,7 +62,7 @@ def test_launch_file_ascii_for_lidar(sphere_mp):
     from pymopsmap.engine.outputs import OutputType
 
     paths = write_launching_file(
-        sphere_mp,
+        [sphere_mp],
         output_types=frozenset({OutputType.INTEGRATED, OutputType.LIDAR}),
     )
     content = paths["mopsmap"].read_text()
@@ -83,7 +83,7 @@ def single_wl_mp():
 
 def test_single_wavelength_uses_wavelength_value_command(single_wl_mp):
     """Single wl: use 'wavelength <val>' (MOPSMAP interpolate_linear bug)."""
-    paths = write_launching_file(single_wl_mp)
+    paths = write_launching_file([single_wl_mp])
     content = paths["mopsmap"].read_text()
     match = re.search(r"^wavelength (\S+)$", content, re.MULTILINE)
     assert match is not None
@@ -93,7 +93,7 @@ def test_single_wavelength_uses_wavelength_value_command(single_wl_mp):
 
 def test_single_wavelength_uses_constant_refrac_command(single_wl_mp):
     """Single wl must use 'refrac nr ni' (MOPSMAP interpolate_linear bug)."""
-    paths = write_launching_file(single_wl_mp)
+    paths = write_launching_file([single_wl_mp])
     content = paths["mopsmap"].read_text()
     match = re.search(r"refrac ([\d.eE+-]+) ([\d.eE+-]+)", content)
     assert match is not None
@@ -104,7 +104,7 @@ def test_single_wavelength_uses_constant_refrac_command(single_wl_mp):
 
 def test_multi_wavelength_uses_from_refrac_file(sphere_mp):
     """Multi-wl must use 'wavelength from_refrac_file' and 'refrac file'."""
-    paths = write_launching_file(sphere_mp)
+    paths = write_launching_file([sphere_mp])
     content = paths["mopsmap"].read_text()
     assert "wavelength from_refrac_file" in content
     assert "refrac file" in content

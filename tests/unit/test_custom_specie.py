@@ -183,3 +183,43 @@ class TestRoundTrip:
 
         assert back.modes == ["fine", "coarse"]
         assert back.rh_range == (0.0, 95.0)
+
+
+class TestModeNames:
+    """
+    A mode names the group it becomes, whatever the species holds.
+
+    The name used to be honoured only for a species of one mode, which made it
+    silent in exactly the case the two ensemble constructors produce.
+    """
+
+    def _mode(self, name: str) -> pm.Mode:
+        return pm.Mode(
+            shape=pm.shapes.Sphere(),
+            psd=pm.psd.LognormalPSD(
+                rm=0.1, sigma=2.0, n=1e9, rmin=0.005, rmax=20.0
+            ),
+            n_real=1.45,
+            n_imag=1e-4,
+            name=name,
+        )
+
+    def test_one_mode_keeps_its_name(self):
+        specie = pm.Specie.custom(self._mode("only"))
+
+        assert specie.modes == ["only"]
+
+    def test_several_modes_keep_theirs_in_order(self):
+        specie = pm.Specie.custom([self._mode("fine"), self._mode("coarse")])
+
+        assert specie.modes == ["fine", "coarse"]
+
+    def test_unnamed_modes_are_numbered(self):
+        """``only`` is the default, and two groups cannot share it."""
+        specie = pm.Specie.custom([self._mode("only"), self._mode("only")])
+
+        assert specie.modes == ["mode_1", "mode_2"]
+
+    def test_a_clash_is_refused_rather_than_silently_dropped(self):
+        with pytest.raises(ValueError, match="mode name"):
+            pm.Specie.custom([self._mode("fine"), self._mode("fine")])

@@ -28,21 +28,21 @@ class TestNoUnreadOutput:
         Asking for it segfaults a binary built against another netcdf-fortran,
         after the computation has already succeeded.
         """
-        paths = write_launching_file(mp=_mp())
+        paths = write_launching_file(modes=[_mp()])
 
         assert "output netcdf" not in paths["mopsmap"].read_text()
 
     def test_no_netcdf_path_is_advertised(self):
-        assert "netcdf" not in write_launching_file(mp=_mp())
+        assert "netcdf" not in write_launching_file(modes=[_mp()])
 
     def test_the_integrated_output_is_still_requested(self):
-        content = write_launching_file(mp=_mp())["mopsmap"].read_text()
+        content = write_launching_file(modes=[_mp()])["mopsmap"].read_text()
 
         assert "output integrated" in content
 
     def test_ascii_outputs_are_still_requested(self):
         paths = write_launching_file(
-            mp=_mp(),
+            modes=[_mp()],
             output_types=frozenset(
                 {OutputType.INTEGRATED, OutputType.PHASE_FUNCTION}
             ),

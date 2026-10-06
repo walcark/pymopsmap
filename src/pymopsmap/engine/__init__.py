@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, TypeAlias
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     import xarray as xr
@@ -10,11 +10,9 @@ if TYPE_CHECKING:
     from pymopsmap.engine.outputs import OutputRequest
     from pymopsmap.microparams import MicroParameters
 
-    Modes: TypeAlias = MicroParameters | list[MicroParameters]
-
 
 def run_point(
-    modes: Modes,
+    modes: list[MicroParameters],
     output_types: OutputRequest,
     rh: float | None = None,
     quiet: bool = False,
@@ -52,8 +50,7 @@ def run_point(
 
     # Clip wavelengths that exceed dataset size-parameter coverage.
     # original_wl is used to reindex the result back to the full grid.
-    mp_ref = modes if not isinstance(modes, list) else modes[0]
-    original_wl = list(mp_ref.wavelength)
+    original_wl = list(modes[0].wavelength)
     modes_run, valid_mask = clip_modes_to_coverage(
         modes, rh=rh, limits=SizeParameterLimits(index_path)
     )
@@ -61,20 +58,19 @@ def run_point(
     # Resolve required dataset files and download missing ones. A file the
     # source does not ship is a coverage gap, not a download failure.
     resolver = NCFileResolver(index_path)
-    mp_list = [modes_run] if not isinstance(modes_run, list) else modes_run
-    required = resolver.resolve(mp_list, rh=rh)
+    required = resolver.resolve(modes_run, rh=rh)
     try:
         downloader.download_missing(required)
     except DownloadError as exc:
         require_available(
-            missing=[exc.file_path], modes=mp_list, source=exc.source
+            missing=[exc.file_path], modes=modes_run, source=exc.source
         )
         raise
 
     # Run MOPSMAP on the (possibly clipped) wavelength grid
     with Workspace() as workspace:
         paths = write_launching_file(
-            mp=modes_run,
+            modes=modes_run,
             workspace=workspace,
             output_types=output_types,
             rh=rh,
@@ -86,7 +82,7 @@ def run_point(
         result = format_mopsmap_outputs(out_mopsmap, output_types=output_types)
     # Some combination rules need to know what produced the result: an
     # effective radius cannot be rebuilt from non-spherical modes.
-    result.attrs["shape_types"] = shape_types(mp_list)
+    result.attrs["shape_types"] = shape_types(modes_run)
 
     # Reindex to the original wavelength grid; clipped positions become NaN.
     if not valid_mask.all():

@@ -56,7 +56,7 @@ class TestSphericalFilenames:
             shape=Sphere(),
             psd=LognormalPSD(rm=0.1, sigma=2.0, n=1e6, rmin=0.005, rmax=20.0),
         )
-        files = resolver.resolve(mp)
+        files = resolver.resolve([mp])
         assert "index.nc" in files
         sphere_files = [f for f in files if f.startswith("spheres/")]
         assert len(sphere_files) == 4  # 2 mreal × 2 mimag brackets
@@ -70,7 +70,7 @@ class TestSphericalFilenames:
             shape=Sphere(),
             psd=LognormalPSD(rm=0.1, sigma=2.0, n=1e6, rmin=0.005, rmax=20.0),
         )
-        files = resolver.resolve(mp)
+        files = resolver.resolve([mp])
         sphere_files = [f for f in files if f.startswith("spheres/")]
         # Exact grid points collapse to 1 value each → 1 × 1 = 1 file
         assert len(sphere_files) == 1
@@ -83,7 +83,7 @@ class TestSphericalFilenames:
             shape=Sphere(),
             psd=LognormalPSD(rm=0.1, sigma=2.0, n=1e6, rmin=0.005, rmax=20.0),
         )
-        assert "index.nc" in resolver.resolve(mp)
+        assert "index.nc" in resolver.resolve([mp])
 
     def test_filename_format(self, resolver):
         mp = MicroParameters(
@@ -94,7 +94,7 @@ class TestSphericalFilenames:
             psd=LognormalPSD(rm=0.1, sigma=2.0, n=1e6, rmin=0.005, rmax=20.0),
         )
         sphere_files = [
-            f for f in resolver.resolve(mp) if f.startswith("spheres/")
+            f for f in resolver.resolve([mp]) if f.startswith("spheres/")
         ]
         for f in sphere_files:
             assert f.startswith("spheres/sphere_")
@@ -110,7 +110,7 @@ class TestIrregularFilenames:
             shape=Irregular(shape_id="B"),
             psd=LognormalPSD(rm=0.1, sigma=2.0, n=1e6, rmin=0.005, rmax=20.0),
         )
-        files = resolver.resolve(mp)
+        files = resolver.resolve([mp])
         irr_files = [f for f in files if f.startswith("irregular/")]
         assert all("shapeB" in f for f in irr_files)
 
@@ -133,6 +133,6 @@ class TestMultipleWavelengths:
             psd=LognormalPSD(rm=0.1, sigma=2.0, n=1e6, rmin=0.005, rmax=20.0),
         )
         # Files from two identical (n_real, n_imag) pairs should deduplicate
-        files_two = resolver.resolve(mp_two)
-        files_one = resolver.resolve(mp_one)
+        files_two = resolver.resolve([mp_two])
+        files_one = resolver.resolve([mp_one])
         assert sorted(files_two) == sorted(files_one)

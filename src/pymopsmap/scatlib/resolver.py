@@ -86,27 +86,22 @@ class NCFileResolver:
         self._known: dict[tuple, list[str]] = {}
 
     def resolve(
-        self,
-        mp: MicroParameters | list[MicroParameters],
-        rh: float | None = None,
+        self, modes: list[MicroParameters], rh: float | None = None
     ) -> list[str]:
         """
         List the dataset files a run needs.
 
         Parameters
         ----------
-        mp : MicroParameters or list of MicroParameters
+        modes : list of MicroParameters
             The modes of the run.
         rh : float, optional
             The humidity handed to MOPSMAP. When set, the engine grows the
             particles itself and uses a refractive index the dry values do not
             point at, so the files are resolved on the grown one.
         """
-        from pymopsmap.microparams import MicroParameters as MP
-
         from .growth import grown_refractive_index
 
-        modes = [mp] if isinstance(mp, MP) else mp
         indices = [
             grown_refractive_index(
                 mode.wavelength,

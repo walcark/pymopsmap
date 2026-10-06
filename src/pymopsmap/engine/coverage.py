@@ -107,10 +107,10 @@ def _clip_mp(mp: MicroParameters, mask: np.ndarray) -> MicroParameters:
 
 
 def clip_modes_to_coverage(
-    modes: MicroParameters | list[MicroParameters],
+    modes: list[MicroParameters],
     rh: float | None = None,
     limits: SizeParameterLimits | None = None,
-) -> tuple[MicroParameters | list[MicroParameters], np.ndarray]:
+) -> tuple[list[MicroParameters], np.ndarray]:
     """
     Clip wavelengths outside the Gasteiger & Wiegner (2018) coverage.
 
@@ -124,22 +124,12 @@ def clip_modes_to_coverage(
         limits: the dataset limits; the published table is used without them.
 
     Returns:
-        clipped_modes: same type as input, out-of-range wavelengths dropped.
+        clipped_modes: the modes, out-of-range wavelengths dropped.
         valid_mask: boolean over the *original* wl axis (True = kept).
     """
-    from pymopsmap.microparams import MicroParameters as MP
-
-    single = isinstance(modes, MP)
-    if single:
-        assert isinstance(modes, MP)
-        mp_list: list[MP] = [modes]
-    else:
-        assert isinstance(modes, list)
-        mp_list = list(modes)
-
     limits = limits or SizeParameterLimits(None)
-    per_mask = [_valid_mask(mp, rh, limits) for mp in mp_list]
-    combined: np.ndarray = np.ones(len(mp_list[0].wavelength), dtype=bool)
+    per_mask = [_valid_mask(mp, rh, limits) for mp in modes]
+    combined: np.ndarray = np.ones(len(modes[0].wavelength), dtype=bool)
     for m in per_mask:
         combined &= m
 
@@ -148,11 +138,11 @@ def clip_modes_to_coverage(
 
     # Build warning message
     n_clipped = int((~combined).sum())
-    wl = np.asarray(mp_list[0].wavelength, dtype=float)
+    wl = np.asarray(modes[0].wavelength, dtype=float)
     clipped_wl = wl[~combined]
 
     parts: list[str] = []
-    for mp, mask in zip(mp_list, per_mask):
+    for mp, mask in zip(modes, per_mask):
         if mask.all():
             continue
         r_max = _grown_max_radius(mp, rh)
@@ -188,9 +178,7 @@ def clip_modes_to_coverage(
         stacklevel=4,
     )
 
-    clipped = [_clip_mp(mp, combined) for mp in mp_list]
-    result = clipped[0] if single else clipped
-    return result, combined
+    return [_clip_mp(mp, combined) for mp in modes], combined
 
 
 def reindex_to_full_grid(

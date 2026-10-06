@@ -55,7 +55,7 @@ class TestMultiModeRefractiveIndexFiles:
 
     def test_single_mode_writes_one_file(self):
         paths = _refr_paths(
-            microparams_command(_mode(1.45, 1e-4, 0.1), Workspace())
+            microparams_command([_mode(1.45, 1e-4, 0.1)], Workspace())
         )
 
         assert len(paths) == 1

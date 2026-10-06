@@ -92,8 +92,8 @@ class TestNonAbsorbingFraction:
         from pymopsmap.engine.workspace import Workspace
 
         with Workspace() as workspace:
-            without = microparams_command(self._mode(0.0), workspace)
-            with_it = microparams_command(self._mode(0.5), workspace)
+            without = microparams_command([self._mode(0.0)], workspace)
+            with_it = microparams_command([self._mode(0.5)], workspace)
 
         assert "nonabs_fraction" not in without
         assert "mode 1 refrac nonabs_fraction 0.5" in with_it

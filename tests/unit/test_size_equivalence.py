@@ -43,7 +43,7 @@ class TestInTheLaunchFile:
         from pymopsmap.engine.workspace import Workspace
 
         with Workspace() as workspace:
-            paths = write_launching_file(_mode("vol"), workspace)
+            paths = write_launching_file([_mode("vol")], workspace)
             content = paths["mopsmap"].read_text()
 
         assert "size_equ vol" in content

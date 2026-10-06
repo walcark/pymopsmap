@@ -151,11 +151,8 @@ class Mode:
                 density_dry=density_dry,
                 kappa=kappa,
                 nonabs_fraction=nonabs_fraction,
-                name=f"mode_{index + 1}",
             )
-            for index, ((radius, ratio), weight) in enumerate(
-                sorted(counts.items())
-            )
+            for (radius, ratio), weight in sorted(counts.items())
         ]
 
     @classmethod
@@ -223,7 +220,7 @@ class Mode:
         whole = float(getattr(psd, amplitude))
 
         modes = []
-        for index, (imaginary, weight) in enumerate(zip(n_imag, weights)):
+        for imaginary, weight in zip(n_imag, weights):
             if weight <= 0.0:
                 continue
             modes.append(
@@ -236,7 +233,6 @@ class Mode:
                     n_imag=float(imaginary),
                     density_dry=density_dry,
                     kappa=kappa,
-                    name=f"mode_{index + 1}",
                 )
             )
         return modes
