@@ -13,18 +13,24 @@ modeling aerosol optical properties*, Geosci. Model Dev. 11, 2739-2762, 2018.
 
 | | Target | State | Agreement | Where |
 |---|---|---|---|---|
-| 2 | Single particles vs size parameter | reproduced | the two values the text quotes, to 1e-3 | `scripts/validation/gasteiger_fig2.py` |
-| 4 | Sampling and interpolation error | replaced | an independent Mie code, 3e-3 | `tests/integration/test_mie_reference.py` |
-| 5 | OPAC types vs humidity | partial | 5 types of 10, curve by curve against the published panels | `scripts/validation/gasteiger_fig5.py` |
-| 6 | Phase functions of dust size bins | reproduced | the 40 values of Table 4, to 6e-4 | `scripts/validation/gasteiger_fig6.py` |
-| 7 | Desert aerosol vs cutoff radius | reproduced | the six percentages of section 5.3 | `scripts/validation/gasteiger_fig7.py` |
-| T3 | One lognormal mode, two indices | reproduced | 20 values, 1.5e-3 | `tests/integration/test_gasteiger_2018.py` |
+| 2 | Single particles vs size parameter | reproduced | the two values the text quotes, to 1e-3 | `gasteiger_fig2.py` |
+| 4 | Sampling and interpolation error | spheres only | against `miepython`; the spheroid half needs a T-matrix code | `gasteiger_fig4.py` |
+| 5 | OPAC types vs humidity | 5 types of 10 | curve by curve against the published panels | `gasteiger_fig5.py` |
+| 6 | Phase functions of dust size bins | reproduced | the 40 values of Table 4, to 6e-4 | `gasteiger_fig6.py` |
+| 7 | Desert aerosol vs cutoff radius | reproduced | the six percentages of section 5.3 | `gasteiger_fig7.py` |
+| 8 | Size distributions under three equivalences | reproduced in shape | the article's own conversion; its scale is off by sqrt(2 pi) | `gasteiger_fig8.py` |
+| 9 | Dust scattering vs index variability | 4 curves of 5 | the 8 values of section 5.6, to 1e-3 | `gasteiger_fig9.py` |
+| 10 | Nephelometer truncation | reproduced | the three statements of section 5.7 | `gasteiger_fig10.py` |
+| 11 | Volcanic ash optics | not attempted | needs the supporting information of Vogel et al. (2017) | |
+| T3 | One lognormal mode, two indices | reproduced | 20 values, 1.5e-3 | `test_gasteiger_2018.py` |
 | T4 | Dust size bins at 500 nm | reproduced | 20 values, 1.5e-3; 40 in the figure script, 6e-4 | same |
 | T5 | Size equivalence conventions | reproduced | 40 values, 1.5e-3 | same |
 | T6 | Jacobian of a dust ensemble | reproduced | 3 values to 1.5e-3, 9 derivatives to 0.1 | same |
 
-Figures 1, 3 and 8 are diagrams with nothing to compute. Figure 9 and section
-5.6 onwards describe scripts shipped with MOPSMAP rather than the wrapper.
+The figure scripts are in `scripts/validation/` and the tests in
+`tests/integration/`. Figures 1 and 3 are diagrams with nothing to compute.
+`tests/integration/test_mie_reference.py` holds the one check that goes
+through no MOPSMAP data at all.
 
 Running the checks needs the optical data set:
 
@@ -33,7 +39,7 @@ export PYMOPSMAP_DATASET_SOURCE=/path/to/mopsmap/optical_dataset
 pixi run -e dev pytest tests/integration
 ```
 
-## The four figures
+## The figures
 
 ### Figure 2, single particles against size parameter
 
@@ -52,6 +58,17 @@ which is where Table 2 says their coverage ends.
 
 Extinction efficiency is not a MOPSMAP output. It is `kext / cross_dens`, both
 of which the integrated block gives.
+
+### Figure 4, the error of the data set itself
+
+![Figure 4 recomputed](figures/gasteiger_fig4.png)
+
+The one figure about the data set's own accuracy, so the one that needs a
+reference outside MOPSMAP. Panels (b) and (d) are complete: the four grid
+points around m = 1.54 + 0.005i, the value MOPSMAP interpolates there, and
+`miepython` computed explicitly on the same size grid. Panels (a) and (c) show
+the spheres; their second pair of curves is a T-matrix calculation for prolate
+spheroids at high size resolution, which is what the data set exists to avoid.
 
 ### Figure 5, the OPAC types against relative humidity
 
@@ -134,6 +151,52 @@ Every percentage section 5.3 quotes comes back:
 | PM2.5 raises omega_0 by | 0.035 to 0.071 | 0.0352 to 0.0708 |
 | PM2.5 lowers g by | 0.02 to 0.04 | 0.021 to 0.0434 |
 
+### Figure 8, the three size equivalences
+
+![Figure 8 recomputed](figures/gasteiger_fig8.png)
+
+No MOPSMAP run: the figure shows what `size_equ` means before any optics. The
+shapes, the crossings and the three cutoffs all land on the published ones,
+and the conversion the article spells out comes back exactly, 0.757 um.
+
+The scale does not. The three published peaks are 380, 332 and 252 cm-3 um-1
+where the lognormal of `log_distr.f90`, at the concentration Table 5 is
+computed with, gives 151.7, 132.1 and 100.2. The three ratios are 2.504, 2.513
+and 2.515 against sqrt(2 pi) = 2.5066, so the published curves are drawn
+without the normalisation factor of the lognormal. Their shapes are right.
+
+### Figure 9, the imaginary index variability of dust
+
+![Figure 9 recomputed](figures/gasteiger_fig9.png)
+
+Four curves of five. The red one needs the size-resolved index distribution of
+Kandler et al. (2011), which MOPSMAP does not ship with its own copy of this
+example.
+
+Section 5.6 states eight numbers for the two cases that do not need it, and
+all eight come back:
+
+| | published | computed |
+|---|---|---|
+| omega_0, average m_i | 0.741 | 0.7401 |
+| omega_0, X = 0.5 | 0.834 | 0.8341 |
+| g, average m_i | 0.789 | 0.7895 |
+| g, X = 0.5 | 0.749 | 0.7488 |
+| S, average m_i | 78 sr | 78.35 sr |
+| S, X = 0.5 | 42 sr | 41.96 sr |
+| delta_l, average m_i | 0.212 | 0.2114 |
+| delta_l, X = 0.5 | 0.220 | 0.2201 |
+
+### Figure 10, the nephelometer truncation
+
+![Figure 10 recomputed](figures/gasteiger_fig10.png)
+
+| statement of section 5.7 | computed |
+|---|---|
+| "underestimates total scattering by a factor of ~ 2" at rmod = 1 um | 2.16, 2.01, 1.83 |
+| shape effect on Cts "less than 3 %" | 2.2 % |
+| "The maximum shape effect on Cbs is 7 %" | 7.0 % |
+
 ## Why the tables carry the weight
 
 A figure has to be read off an axis, which costs a digit or two and invites
@@ -146,7 +209,7 @@ For Table 5 the agreement is six digits on twelve quantities at once,
 including the extinction coefficient, the cross section density, the mass
 concentration, the lidar ratio and the linear depolarisation ratio.
 
-## Two statements of the article that do not hold
+## Three statements of the article that do not hold
 
 **Table 3 gives no concentration.** Its extinction coefficients are
 reproduced with N = 1000 cm-3, which is the only value that fits; the other
@@ -158,6 +221,10 @@ rmod = 0.5 um, sigma = 2 and rmax = 1.75 um, the lognormal of `log_distr.f90`
 puts 96.46 % of its particles inside that range, so N0 = 10^3.66 would give
 4410 cm-3, not 100. The in-range concentration is the half that reproduces
 the table, and MOPSMAP echoes it back as n = 100.0.
+
+**Figure 8 is drawn without the normalisation of the lognormal.** Its three
+peaks sit a factor sqrt(2 pi) above what its own parameters give, as the
+section on that figure sets out. The shapes are right.
 
 Separately, the reference runs in `sect_54_size_equivalence/` were made with
 the concentration in cm-3 where MOPSMAP reads m-3, so every extensive

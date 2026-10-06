@@ -340,14 +340,18 @@ export PYMOPSMAP_DATASET_SOURCE=/path/to/mopsmap/optical_dataset
 pixi run -e dev pytest tests/integration
 ```
 
-Four figures of the article are recomputed by `scripts/validation/`.
+Eight figures of the article are recomputed by `scripts/validation/`.
 
 | Figure | What it shows |
 |---|---|
 | [2](docs/figures/gasteiger_fig2.png) | single particles against size parameter, five shapes |
+| [4](docs/figures/gasteiger_fig4.png) | the size sampling and index interpolation error of the data set |
 | [5](docs/figures/gasteiger_fig5.png) | the OPAC types against relative humidity, 5 of 10 |
 | [6](docs/figures/gasteiger_fig6.png) | phase functions of five dust size bins, spheres against spheroids |
 | [7](docs/figures/gasteiger_fig7.png) | the OPAC desert type against the cutoff radius |
+| [8](docs/figures/gasteiger_fig8.png) | one size distribution read through three size equivalences |
+| [9](docs/figures/gasteiger_fig9.png) | dust scattering against the variability of its imaginary index |
+| [10](docs/figures/gasteiger_fig10.png) | the truncation correction of an Aurora 3000 nephelometer |
 
 `docs/validation.md` says what agrees, to what precision, and what does not.
 
