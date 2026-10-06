@@ -10,6 +10,7 @@ them lets a request through that the engine then rejects.
 
 from __future__ import annotations
 
+from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -44,15 +45,28 @@ PUBLISHED_MAXIMUM: dict[str, float] = {
 }
 
 
+@lru_cache(maxsize=4)
+def read_index(path: str) -> xr.Dataset:
+    """
+    The data set index, read once per path and shared from then on.
+
+    netCDF4 is not thread safe, and a sweep walks its points in threads. Each
+    point used to open this file twice, which raced into "NetCDF: Not a valid
+    ID". It is a few megabytes and never changes under us, so one read serves
+    every point.
+    """
+    return xr.open_dataset(path).load()
+
+
 class SizeParameterLimits:
     """The largest size parameter the dataset covers, per shape and index."""
 
     def __init__(self, index_path: str | Path | None):
         self._table: xr.DataArray | None = None
         if index_path is not None:
-            with xr.open_dataset(index_path) as ds:
-                if "max_sizepara" in ds:
-                    self._table = ds["max_sizepara"].load()
+            ds = read_index(str(index_path))
+            if "max_sizepara" in ds:
+                self._table = ds["max_sizepara"]
 
     def maximum(self, shape: Shape, n_real: float, n_imag: float) -> float:
         """

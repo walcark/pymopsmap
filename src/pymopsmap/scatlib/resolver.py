@@ -7,9 +7,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import numpy as np
-import xarray as xr
 
 from pymopsmap.exceptions import IndexFileError
+from pymopsmap.scatlib.limits import read_index
 from pymopsmap.utils import check_within_grid
 
 if TYPE_CHECKING:
@@ -58,7 +58,7 @@ def _bracket(grid: np.ndarray, value: float) -> list[float]:
 class NCFileResolver:
     def __init__(self, index_path: Path):
         try:
-            ds = xr.open_dataset(index_path)
+            ds = read_index(str(index_path))
         except Exception as exc:
             raise IndexFileError(
                 f"Cannot open index.nc at {index_path}: {exc}"
@@ -75,7 +75,6 @@ class NCFileResolver:
             )
         else:
             self.avail_eps = np.array([])
-        ds.close()
 
     def resolve(
         self,
