@@ -63,6 +63,7 @@ class SizeParameterLimits:
 
     def __init__(self, index_path: str | Path | None):
         self._table: xr.DataArray | None = None
+        self._known: dict[tuple, float] = {}
         if index_path is not None:
             ds = read_index(str(index_path))
             if "max_sizepara" in ds:
@@ -84,7 +85,20 @@ class SizeParameterLimits:
         float
             The largest size parameter covered, falling back to the published
             table when the index is unavailable.
+
+        Notes
+        -----
+        Memoised: an ensemble built one measured particle at a time asks this
+        once per mode and wavelength, and a shape with one refractive index
+        has one answer. Half a million xarray selections become a handful.
         """
+        key = (shape.type, _aspect_ratio(shape), n_real, n_imag)
+        if key not in self._known:
+            self._known[key] = self._lookup(shape, n_real, n_imag)
+        return self._known[key]
+
+    def _lookup(self, shape: Shape, n_real: float, n_imag: float) -> float:
+        """The limit, read from the index rather than from the memo."""
         published = PUBLISHED_MAXIMUM.get(shape.type, float("inf"))
         if self._table is None:
             return published

@@ -34,6 +34,17 @@ def _fmt_eps(v: float) -> str:
     return f"{v:.3f}"
 
 
+def _shape_key(shape: Shape) -> tuple:
+    """What distinguishes two shapes of the same type, for the memo."""
+    return (
+        getattr(shape, "aspect_ratio", None),
+        getattr(shape, "mode", None),
+        getattr(shape, "shape_id", None),
+        getattr(shape, "distr_filename", None),
+        getattr(shape, "sigma_ar", None),
+    )
+
+
 def _bracket(grid: np.ndarray, value: float) -> list[float]:
     """Return the 1 or 2 grid values that bracket `value`.
 
@@ -72,6 +83,7 @@ class NCFileResolver:
             )
         else:
             self.avail_eps = np.array([])
+        self._known: dict[tuple, list[str]] = {}
 
     def resolve(
         self,
@@ -135,6 +147,21 @@ class NCFileResolver:
         return sorted(files)
 
     def _files_for_params(
+        self, shape: Shape, mreal: float, mimag: float
+    ) -> list[str]:
+        """
+        The files one shape needs at one refractive index.
+
+        Memoised: an ensemble built one measured particle at a time asks this
+        once per mode and wavelength, and five hundred modes over forty-nine
+        wavelengths came out as four distinct files.
+        """
+        key = (shape.type, _shape_key(shape), mreal, mimag)
+        if key not in self._known:
+            self._known[key] = self._resolve_files(shape, mreal, mimag)
+        return self._known[key]
+
+    def _resolve_files(
         self, shape: Shape, mreal: float, mimag: float
     ) -> list[str]:
         from pymopsmap.shapes import (

@@ -140,3 +140,34 @@ class TestAspectRatioOfOne:
         )
 
         assert spheroid == sphere
+
+
+class TestRepeatedLookups:
+    def test_the_same_index_is_looked_up_once(self, limits, monkeypatch):
+        """
+        An ensemble built from measured particles asks the same question
+        thousands of times.
+
+        Every mode of it carries the same refractive index on the same
+        wavelength grid, so the limit is one selection, not one per mode and
+        wavelength. Nine thousand modes over forty-nine wavelengths used to
+        mean half a million xarray selections.
+        """
+        import xarray as xr
+
+        shape = Spheroid(mode="oblate", aspect_ratio=2.0)
+        selections = []
+        original = xr.DataArray.sel
+
+        def counting(self, *args, **kwargs):
+            selections.append(kwargs)
+            return original(self, *args, **kwargs)
+
+        monkeypatch.setattr(xr.DataArray, "sel", counting)
+        limits._known.clear()
+
+        first = limits.maximum(shape, 1.40, 0.010)
+        for _ in range(50):
+            assert limits.maximum(shape, 1.40, 0.010) == first
+
+        assert len(selections) <= 3
