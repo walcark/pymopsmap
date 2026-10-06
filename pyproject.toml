@@ -75,7 +75,12 @@ miepython = ">=3.3.0,<4"
 fmt = { cmd = "ruff format ." }
 lint = { cmd = "ruff check ." }
 type-check = { cmd = "mypy src/pymopsmap" }
-test = { cmd = "python -m pytest tests --cov=src/pymopsmap --cov-report=xml", env = { PYMOPSMAP_CACHE_DIR = "tests/data/cache" } }
+# Unit tests need nothing but the package. The other two directories skip
+# themselves without PYMOPSMAP_DATASET_SOURCE, and are run by name.
+test = { cmd = "python -m pytest tests/unit --cov=src/pymopsmap --cov-report=xml", env = { PYMOPSMAP_CACHE_DIR = "tests/data/cache" } }
+test-integration = { cmd = "python -m pytest tests/integration -q" }
+test-validation = { cmd = "python -m pytest tests/validation -q" }
+test-all = { cmd = "python -m pytest tests -q" }
 all = { depends-on = ["fmt", "lint", "type-check", "test"] }
 
 [tool.pixi.feature.builder.dependencies]

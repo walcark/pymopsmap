@@ -1,15 +1,20 @@
 # pymopsmap, a guide
 
-MOPSMAP computes what a cloud of aerosol particles does to light. It is a
-Fortran program that reads a text file and interpolates a 40 GB table of
-pre-computed single-particle scattering. This package is what turns a
-description of an aerosol into that text file, and the Fortran output back
-into labelled arrays.
+**MOPSMAP** computes aerosol optical properties: phase function, scattering
+and absorption coefficients, and the rest. It is a Fortran program that reads
+a text file and interpolates a 40 GB table of pre-computed single-particle
+scattering. **pymopsmap** turns a description of an aerosol into that text
+file, and the Fortran output back into labelled arrays.
 
 - [The idea](#the-idea)
-- [What you describe](#what-you-describe)
+- [One aerosol, many conditions](#one-aerosol-many-conditions)
+- [A description that varies too](#a-description-that-varies-too)
+- [Naming an axis](#naming-an-axis)
+- [A scene](#a-scene)
+- [What xsweep brings](#what-xsweep-brings)
+- [The catalogue](#the-catalogue)
+- [Saving and reading](#saving-and-reading)
 - [What comes back](#what-comes-back)
-- [Sweeping a parameter space](#sweeping-a-parameter-space)
 - [Humidity](#humidity)
 - [Mixtures](#mixtures)
 - [Measured particles](#measured-particles)
@@ -20,69 +25,20 @@ into labelled arrays.
 
 ## The idea
 
-An aerosol is not a function call. It is a description: a size distribution, a
-refractive index, a shape, how it responds to water. That description does not
-change when you ask it a question, and most of the time you ask it many
-questions, on a grid of wavelengths and humidities, or over a satellite image.
+An aerosol is a description: a size distribution, a refractive index, a shape,
+how it responds to water. That description does not change when the conditions
+around it do:
 
-So the description is the object, and the question is the call:
+- the air it sits in, through relative humidity,
+- the wavelength it is looked at,
+- where and when it is.
+
+So the description is the object, and the conditions are the call.
 
 ```python
 import numpy as np
 import pymopsmap as pm
 
-dust = pm.load(pm.CAMS.DUST)
-op = dust.compute(wl=np.linspace(0.4, 2.0, 100), rh=[0, 50, 80])
-
-op["kext"]        # <xarray.DataArray (rh: 3, wl: 100)>
-op["ssa"]
-```
-
-Three consequences follow, and they are the whole design.
-
-**A parameter space belongs to the species, not to the call.** A radius you
-want to vary goes where the radius goes, as a `DataArray`. The call stays a
-question.
-
-**The answer is an `xarray.Dataset`.** Not a wrapper with accessors to learn:
-the dimensions you asked for come back as the dimensions you named, and the
-whole xarray API applies to them.
-
-**Nothing is recomputed.** Results are stored on disk by
-[xsweep](https://github.com/walcark/xsweep), keyed on the description and the
-grid, so asking twice costs once and an interrupted sweep resumes.
-
-### The three levels
-
-| Level | Object | What it is |
-|---|---|---|
-| Description | `Specie` | a parameter space, from a file or built in Python |
-| Point | `MicroParameters` | one validated point of it, rendered to MOPSMAP commands |
-| Combination | `Mix` | species weighted into an external mixture |
-
-Only the first and third are usually in your way. The second exists because
-MOPSMAP needs numbers, and because a parameter that may be an array while it
-describes a species has to be a number by the time it reaches the Fortran.
-
----
-
-## What you describe
-
-### From the catalogue
-
-Two sources ship inside the wheel.
-
-```python
-pm.load(pm.CAMS.SULPHATE)              # ECMWF CAMS, versions 47r1 to 49r1
-pm.load(pm.OPAC.WASO)                  # the ten OPAC components
-pm.opac_mix("continental_average")     # the ten OPAC climatologies
-```
-
-![Four CAMS species across the solar spectrum](figures/guide-spectra.png)
-
-### In Python
-
-```python
 aer = pm.Specie.custom(
     pm.Mode(
         shape=pm.shapes.Sphere(),
@@ -92,10 +48,150 @@ aer = pm.Specie.custom(
         n_real=1.53,
         n_imag=0.008,
         density_dry=2.6,
+        kappa=0.2,
     ),
     name="my dust",
 )
 ```
+
+Eight numbers and a shape. That is the whole aerosol, and nothing in it
+mentions a wavelength or a humidity.
+
+---
+
+## One aerosol, many conditions
+
+```python
+op = aer.compute(wl=np.linspace(0.4, 2.0, 100), rh=[0, 50, 80])
+
+op.sizes            # {'rh': 3, 'wl': 100}
+op["kext"]          # <xarray.DataArray (rh: 3, wl: 100)>
+op["ssa"]
+```
+
+The dimensions you asked for come back as the dimensions you named. The answer
+is a plain `xarray.Dataset`, so the whole xarray API applies to it: `sel`,
+`interp`, `mean`, `to_netcdf`, plotting.
+
+![Four species across the solar spectrum](figures/guide-spectra.png)
+
+---
+
+## A description that varies too
+
+A modal radius you do not know is not a condition, it is part of the
+description. So it goes where the radius goes, as a `DataArray`:
+
+```python
+import xarray as xr
+
+aer = pm.Specie.custom(
+    pm.Mode(
+        shape=pm.shapes.Sphere(),
+        psd=pm.psd.LognormalPSD(
+            rm=xr.DataArray(np.linspace(0.05, 0.4, 8), dims="rm"),
+            sigma=xr.DataArray(np.linspace(1.4, 2.2, 5), dims="sigma"),
+            n=1e9, rmin=0.005, rmax=20.0,
+        ),
+        n_real=1.53, n_imag=0.008, density_dry=2.6, kappa=0.2,
+    ),
+    name="my dust",
+)
+
+aer.swept           # {'rm': 8, 'sigma': 5}
+
+op = aer.compute(wl=[0.55], rh=[0, 50, 80])
+op.sizes            # {'rh': 3, 'rm': 8, 'sigma': 5, 'wl': 1}
+```
+
+Any numeric field of a mode accepts one: the modal radius, the width, the
+bounds, the refractive index, the aspect ratio of a spheroid. Distinct
+dimensions multiply, and the call never changes.
+
+![A two-dimensional declared sweep](figures/guide-sweep.png)
+
+---
+
+## Naming an axis
+
+The dimension is yours to name, and its name is what the two parameters have
+in common. Put two of them on the **same** dimension and they vary together, a
+trajectory rather than a grid:
+
+```python
+pm.psd.LognormalPSD(
+    rm=xr.DataArray(np.linspace(0.05, 0.4, 8), dims="aging"),
+    sigma=xr.DataArray(np.linspace(1.4, 2.2, 8), dims="aging"),
+    n=1e9, rmin=0.005, rmax=20.0,
+)
+
+aer.swept           # {'aging': 8}
+op.sizes            # {'aging': 8, 'wl': 1}
+```
+
+Eight points, not forty. An aerosol that coarsens as it ages is one axis, not
+two, and saying so is naming the dimension after what it means.
+
+---
+
+## A scene
+
+The same thing holds in two or three dimensions, which is what a satellite
+image or a model output is. A size that varies from pixel to pixel, a humidity
+that varies from pixel to pixel and from hour to hour:
+
+```python
+rm = xr.DataArray(..., dims=("y", "x"))        # (12, 16)
+rh = xr.DataArray(..., dims=("y", "x", "t"))   # (12, 16, 4)
+
+aer = pm.Specie.custom(
+    pm.Mode(
+        shape=pm.shapes.Sphere(),
+        psd=pm.psd.LognormalPSD(rm=rm, sigma=1.8, n=1e9, rmin=0.005, rmax=20),
+        n_real=1.53, n_imag=0.008, density_dry=2.6, kappa=0.2,
+    ),
+    name="scene",
+)
+
+op = aer.compute(wl=[0.55], rh=rh)
+op.sizes            # {'y': 12, 'x': 16, 't': 4, 'wl': 1}
+```
+
+768 cells, and MOPSMAP runs 103 times: that is how many distinct pairs of
+radius and humidity the scene holds. Nothing in the call says so, and nothing
+has to.
+
+## What xsweep brings
+
+The sweep is walked by [xsweep](https://github.com/walcark/xsweep), and four
+of its properties are what make a large grid practical.
+
+| | |
+|---|---|
+| **A store** | results are written to `~/.cache/pymopsmap/sweeps`, keyed on the species description, the grid and the contract. Re-running costs nothing, and a sweep killed halfway resumes from the points it is missing |
+| **Deduplication** | a field of a million humidities holding ninety distinct values is ninety MOPSMAP runs |
+| **Threads** | MOPSMAP is a subprocess, so the points go out in parallel. `PYMOPSMAP_WORKERS` sets how many; the default is one per core |
+| **No silent gaps** | a point that fails raises. It does not become a NaN you discover three figures later |
+
+On a real CAMS scene of 10 320 pixels, 91 distinct humidities, it is 91 runs
+and about twenty seconds.
+
+---
+
+## The catalogue
+
+Two sources ship inside the wheel, for when you would rather not type eight
+numbers.
+
+```python
+pm.load(pm.CAMS.SULPHATE)              # ECMWF CAMS, versions 47r1 to 49r1
+pm.load(pm.OPAC.WASO)                  # the ten OPAC components
+pm.opac_mix("continental_average")     # the ten OPAC climatologies
+```
+
+They answer the same `compute` as a species you build, and carry the same
+parameter space: `pm.load(...).swept` is empty, and nothing stops you from
+reading one and sweeping a copy of it.
 
 Size distributions: `LognormalPSD`, `ModifiedGammaPSD`, `FixedPSD` for a
 single size, `DistrListPSD` for a tabulated one, `FileDefinedPSD` for a file.
@@ -111,17 +207,22 @@ pm.Mode(..., nonabs_fraction=0.5)      # half the particles do not absorb
 pm.Mode(..., size_equ="vol")           # a radius is the volume-equivalent one
 ```
 
-### From a file
+---
 
-A species is a NetCDF `DataTree`, one group per mode, and reading one is the
-same code path as reading the catalogue. So a species you build round-trips:
+## Saving and reading
+
+A species is a NetCDF `DataTree`, one group per mode. Reading one is the same
+code path as reading the catalogue, so a species you build round-trips:
 
 ```python
 aer.to_netcdf("my_dust.nc")
 pm.load("my_dust.nc").compute(wl=wl)
 ```
 
-The schema is in `docs/api-v2-spec.md`, section 4.
+The schema is in `docs/api-v2-spec.md`, section 4. Adding a source to the
+catalogue is writing that schema, not writing code.
+
+---
 
 ---
 
@@ -130,7 +231,7 @@ The schema is in `docs/api-v2-spec.md`, section 4.
 Integrated properties by default. Ask for more by naming them:
 
 ```python
-op = dust.compute(
+op = aer.compute(
     wl=[0.55], rh=50,
     outputs={pm.OutputType.PHASE_FUNCTION, pm.OutputType.SCATTERING_MATRIX},
     n_angles=721,
@@ -152,73 +253,6 @@ op["scattering_matrix"]   # (wl, theta, element), element = a1 a2 a3 a4 b1 b2
 
 The integrated block always comes back, whatever you ask for: MOPSMAP writes
 it anyway.
-
----
-
-## Sweeping a parameter space
-
-Any numeric field of a mode accepts a `DataArray` where a float would go. The
-dimension you name becomes a dimension of the result.
-
-```python
-import xarray as xr
-
-aer = pm.Specie.custom(
-    pm.Mode(
-        shape=pm.shapes.Sphere(),
-        psd=pm.psd.LognormalPSD(
-            rm=xr.DataArray(np.logspace(-1.5, 0, 24), dims="rm"),
-            sigma=1.6, n=1e9, rmin=0.005, rmax=20.0,
-        ),
-        n_real=1.53,
-        n_imag=xr.DataArray(np.logspace(-4, -1.3, 18), dims="n_imag"),
-        density_dry=1.8,
-    )
-)
-
-aer.swept                     # {'rm': 24, 'n_imag': 18}
-op = aer.compute(wl=[0.55])   # (rm, n_imag, wl)
-```
-
-![A two-dimensional declared sweep](figures/guide-sweep.png)
-
-**Distinct dimensions multiply, a shared dimension varies together.** Put two
-parameters on the same dimension to walk a trajectory rather than a grid:
-
-```python
-pm.psd.LognormalPSD(
-    rm=xr.DataArray(np.linspace(0.05, 0.5, 20), dims="aging"),
-    sigma=xr.DataArray(np.linspace(1.4, 2.1, 20), dims="aging"),
-    n=1e9, rmin=0.01, rmax=10.0,
-)                             # 20 points, not 400
-```
-
-### What xsweep brings
-
-The sweep is walked by [xsweep](https://github.com/walcark/xsweep), and four
-of its properties are what make a large grid practical.
-
-| | |
-|---|---|
-| **A store** | results are written to `~/.cache/pymopsmap/sweeps`, keyed on the species description, the grid and the contract. Re-running costs nothing, and a sweep killed halfway resumes from the points it is missing |
-| **Deduplication** | a field of a million humidities holding ninety distinct values is ninety MOPSMAP runs |
-| **Threads** | MOPSMAP is a subprocess, so the points go out in parallel. `PYMOPSMAP_WORKERS` sets how many; the default is one per core |
-| **No silent gaps** | a point that fails raises. It does not become a NaN you discover three figures later |
-
-### A field, not a grid
-
-Humidity, and the weights of a mixture, accept a `DataArray` of any shape. A
-satellite scene is one call:
-
-```python
-op = mix.compute(wl=[0.55], rh=humidity_field)   # humidity_field is (y, x)
-
-op["kext"]              # (y, x, wl)
-```
-
-The cost is the number of *distinct* values, not the number of pixels. On a
-real CAMS scene of 10 320 pixels this is 91 MOPSMAP runs, and with threads
-about twenty seconds.
 
 ---
 
@@ -347,5 +381,7 @@ including three statements of the article that do not hold.
 
 ```bash
 export PYMOPSMAP_DATASET_SOURCE=/path/to/optical_dataset
-pixi run -e dev pytest tests/integration
+pixi run -e dev test-validation
 ```
+
+`tests/README.md` says what each test directory needs and proves.

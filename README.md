@@ -22,22 +22,131 @@ short tour.
 </p>
 
 
-## Simple Python API
+## The idea
 
-PyMOPSMAP allows you to compute optical properties of known aerosol types (CAMS, OPAC) or custom aerosols, in just a few lines of code.
+An aerosol is a description: a size distribution, a refractive index, a shape,
+how it responds to water. That description does not change when the conditions
+around it do:
+
+- the air it sits in, through relative humidity,
+- the wavelength it is looked at,
+- where and when it is.
+
+So the description is the object, and the conditions are the call.
 
 ```python
 import numpy as np
 import pymopsmap as pm
 
-# Load an aerosol and compute its optical properties
-sulphate = pm.load(pm.CAMS.SULPHATE)
-op = sulphate.compute(rh=[50, 90], wl=np.linspace(0.4, 2.0, 100))
-
-# Extract any optical properties
-op.kext        # <xarray.DataArray (rh: 2, wl: 100)>
-op.ssa
+aer = pm.Specie.custom(
+    pm.Mode(
+        shape=pm.shapes.Sphere(),
+        psd=pm.psd.LognormalPSD(
+            rm=0.12, sigma=1.8, n=1e9, rmin=0.005, rmax=20.0
+        ),
+        n_real=1.53,
+        n_imag=0.008,
+        density_dry=2.6,
+        kappa=0.2,
+    ),
+    name="my dust",
+)
 ```
+
+Eight numbers and a shape. That is the whole aerosol, and nothing in it
+mentions a wavelength or a humidity.
+
+---
+
+## One aerosol, many conditions
+
+```python
+op = aer.compute(wl=np.linspace(0.4, 2.0, 100), rh=[0, 50, 80])
+
+op.sizes            # {'rh': 3, 'wl': 100}
+op["kext"]          # <xarray.DataArray (rh: 3, wl: 100)>
+op["ssa"]
+```
+
+The dimensions you asked for come back as the dimensions you named. The answer
+is a plain `xarray.Dataset`, so the whole xarray API applies to it: `sel`,
+`interp`, `mean`, `to_netcdf`, plotting.
+
+![Four species across the solar spectrum](docs/figures/guide-spectra.png)
+
+---
+
+## A description that varies too
+
+A modal radius you do not know is not a condition, it is part of the
+description. So it goes where the radius goes, as a `DataArray`:
+
+```python
+import xarray as xr
+
+aer = pm.Specie.custom(
+    pm.Mode(
+        shape=pm.shapes.Sphere(),
+        psd=pm.psd.LognormalPSD(
+            rm=xr.DataArray(np.linspace(0.05, 0.4, 8), dims="rm"),
+            sigma=xr.DataArray(np.linspace(1.4, 2.2, 5), dims="sigma"),
+            n=1e9, rmin=0.005, rmax=20.0,
+        ),
+        n_real=1.53, n_imag=0.008, density_dry=2.6, kappa=0.2,
+    ),
+    name="my dust",
+)
+
+aer.swept           # {'rm': 8, 'sigma': 5}
+
+op = aer.compute(wl=[0.55], rh=[0, 50, 80])
+op.sizes            # {'rh': 3, 'rm': 8, 'sigma': 5, 'wl': 1}
+```
+
+Any numeric field of a mode accepts one: the modal radius, the width, the
+bounds, the refractive index, the aspect ratio of a spheroid. Distinct
+dimensions multiply, and the call never changes.
+
+![A two-dimensional declared sweep](docs/figures/guide-sweep.png)
+
+---
+
+## A scene
+
+The same thing holds in two or three dimensions, which is what a satellite
+image or a model output is. A size that varies from pixel to pixel, a humidity
+that varies from pixel to pixel and from hour to hour:
+
+```python
+rm = xr.DataArray(..., dims=("y", "x"))        # (12, 16)
+rh = xr.DataArray(..., dims=("y", "x", "t"))   # (12, 16, 4)
+
+aer = pm.Specie.custom(
+    pm.Mode(
+        shape=pm.shapes.Sphere(),
+        psd=pm.psd.LognormalPSD(rm=rm, sigma=1.8, n=1e9, rmin=0.005, rmax=20),
+        n_real=1.53, n_imag=0.008, density_dry=2.6, kappa=0.2,
+    ),
+    name="scene",
+)
+
+op = aer.compute(wl=[0.55], rh=rh)
+op.sizes            # {'y': 12, 'x': 16, 't': 4, 'wl': 1}
+```
+
+768 cells, and MOPSMAP runs 103 times: that is how many distinct pairs of
+radius and humidity the scene holds. Nothing in the call says so, and nothing
+has to.
+
+## Where to go next
+
+| | |
+|---|---|
+| [docs/guide.md](docs/guide.md) | the documentation: the catalogue, saving a species, every output, humidity, mixtures, measured particles, and what the library cannot do |
+| [docs/validation.md](docs/validation.md) | what agrees with the reference article, to what precision, and what does not |
+| [docs/api-v2-spec.md](docs/api-v2-spec.md) | the NetCDF schema a species is written in |
+
+---
 
 ## Installation
 
@@ -66,327 +175,17 @@ cd pymopsmap
 pixi install -e dev
 ```
 
-## Sweeps
-
-`compute` returns an `xarray.Dataset` whose dimensions are the ones you asked
-for. Pass a scalar and you get a scalar axis; pass a `DataArray` and you get
-your own dimension name.
-
-```python
-op = sulphate.compute(rh=50, wl=wl)                       # (wl,)
-op = sulphate.compute(rh=[50, 70, 90], wl=wl)             # (rh, wl)
-
-op = sulphate.compute(
-    rh=xr.DataArray([50, 70, 90], dims="rh_nominal"),
-    wl=wl,
-)                                                          # (rh_nominal, wl)
-```
-
-Results are stored on disk by [xsweep](https://github.com/walcark/xsweep), so
-re-running a grid you have already computed calls MOPSMAP for nothing, and a
-sweep interrupted halfway resumes from the points it is missing.
-
-## Custom species
-
-The parameter space lives on the species, not in the call. Any microphysical
-parameter accepts a `DataArray`, and xarray's broadcasting rules apply: distinct
-dimensions multiply, a shared dimension varies together.
-
-```python
-aer = pm.Specie.custom(
-    pm.Mode(
-        shape=pm.shapes.Sphere(),
-        psd=pm.psd.LognormalPSD(
-            rm=xr.DataArray(np.linspace(0.05, 0.5, 20), dims="rm"),
-            sigma=1.5, n=1e9, rmin=0.01, rmax=10.0,
-        ),
-        n_real=1.45,
-        n_imag=xr.DataArray([1e-4, 1e-3, 1e-2], dims="absorption"),
-        density_dry=1.8,
-    )
-)
-
-aer.swept                        # {"rm": 20, "absorption": 3}
-op = aer.compute(wl=wl)          # (rm, absorption, wl)
-```
-
-A swept parameter goes where its scalar would, inside the model. Any numeric
-field accepts a `DataArray`: the size distribution of a species describes
-something that may vary, while the one handed to MOPSMAP for a single point is
-always made of numbers, and is validated as such.
-
-Put two parameters on the **same** dimension to walk a trajectory rather than a
-grid:
-
-```python
-pm.psd.LognormalPSD(
-    rm=xr.DataArray(np.linspace(0.05, 0.5, 20), dims="aging"),
-    sigma=xr.DataArray(np.linspace(1.4, 2.1, 20), dims="aging"),
-    n=1e9, rmin=0.01, rmax=10.0,
-)                                # 20 points, not 400
-```
-
-### From a table of measured particles
-
-Microscopy gives a size and a shape per particle, not a distribution. Two
-constructors turn such a table into the modes MOPSMAP runs.
-
-```python
-modes = pm.Mode.from_particles(
-    radii=diameters / 2,          # um, one per particle
-    aspect_ratios=1 / minor_over_major,
-    n_real=1.53, n_imag=0.0078,
-    r_max=47.5,                   # clip rather than drop
-)
-pm.Specie.custom(modes).compute(wl=wl)
-```
-
-Particles of the same size and shape become one mode, and an aspect ratio
-between two grid points of the dataset is split over both, which is what
-MOPSMAP does with an unbinned one. Forty thousand measured particles come out
-as a few thousand modes.
-
-The second spreads one mode over a measured distribution of imaginary
-refractive indices, which is not the same as giving every particle the average:
-
-```python
-modes = pm.Mode.from_index_distribution(
-    n_imag=[0.001, 0.004, 0.016],   # bin midpoints
-    weights=[412, 198, 57],         # particles per bin
-    n_real=1.53,
-    shape=pm.shapes.Sphere(),
-    psd=pm.psd.LognormalPSD(rm=0.1, sigma=2.0, n=1e9, rmin=0.005, rmax=20),
-)
-```
-
-A mode can also declare that a fraction of its particles does not absorb at
-all, the rest absorbing the more for it:
-
-```python
-pm.Mode(..., nonabs_fraction=0.5)
-```
-
-A custom species saves and reloads through the same format as the built-in
-catalogue:
-
-```python
-aer.to_netcdf("my_aerosol.nc")
-pm.load("my_aerosol.nc").compute(wl=wl)
-```
-
-## Mixtures
-
-`Mix` combines species as an external mixture.
-
-```python
-mix = pm.Mix({
-    pm.CAMS.SULPHATE: 3.2e9,      # m-3
-    pm.CAMS.SEA_SALT: 1.1e8,
-})
-op = mix.compute(rh=[50, 80], wl=wl)
-```
-
-Each species is computed once and the results are combined afterwards, so
-changing a weight costs nothing:
-
-```python
-polluted = pm.Mix({pm.CAMS.SULPHATE: 9.6e9, pm.CAMS.SEA_SALT: 1.1e8})
-polluted.compute(rh=[50, 80], wl=wl)      # no MOPSMAP run, reuses the store
-```
-
-### A composition that varies from pixel to pixel
-
-Weights accept a `DataArray` just as humidity does, so a scene whose aerosol
-mix changes across the image costs no extra MOPSMAP run: each species is
-computed over the distinct humidities, and the weights are applied afterwards.
-
-```python
-mix = pm.Mix({
-    pm.CAMS.SULPHATE: sulphate_field,   # DataArray over (y, x)
-    pm.CAMS.SEA_SALT: sea_salt_field,
-})
-op = mix.compute(wl=[0.55], rh=humidity_field)
-
-op["kext"]            # (y, x, wl)
-op["concentration"]   # (specie, y, x)
-```
-
-### Weighting by mass or by optical depth
-
-Number concentration is rarely what you have. Two other currencies express the
-same weights:
-
-```python
-# CAMS gives mass mixing ratios, not number densities
-mix = pm.Mix.from_mass({pm.CAMS.SULPHATE: 4.1e-9, pm.CAMS.DUST: 2.2e-8})  # kg m-3
-
-# AERONET-style: fractions of total optical depth at a reference wavelength
-mix = pm.Mix.from_optical_depth(
-    {pm.CAMS.SULPHATE: 0.30, pm.CAMS.DUST: 0.70},
-    wl_ref=0.56,
-    rh_ref=50,
-)
-op = mix.compute(rh=50, wl=wl)
-op.kext            # normalised extinction, sums to 1 at wl_ref
-op.kext * 0.25     # for a total AOD of 0.25
-
-op["concentration"]   # what the inversion produced, in m-3, per species
-```
-
-`rh_ref` is required, and it is the humidity **at which your fractions were
-observed**, not a convention. Optical depth fractions are a derived quantity:
-they depend on humidity, because species do not grow alike. Number
-concentration is what stays fixed, so PyMopsmap inverts your fractions into
-concentrations at `rh_ref` and carries those. Ask for another humidity
-afterwards and you get what the same air mass would look like there, with
-different fractions.
-
-If your fractions and your humidity come from the same observation, `rh_ref`
-equals `rh` and you type the number twice.
-
-### OPAC climatology
-
-```python
-op = pm.opac_mix("continental_average").compute(rh=[0, 50, 80], wl=wl)
-```
-
-The ten climatologies of Hess et al. (1998) ship with the package, as does the
-dry state of their ten components under `pm.OPAC`.
-
-## Humidity
-
-How a species responds to relative humidity is a property of the species, stated
-in its data file, not a switch at call time.
-
-| `specie.growth` | The data provides | Effect |
-|---|---|---|
-| `"tabulated"` | wet values on a real `rh` axis | interpolated at your `rh` |
-| `"kappa"` | dry values and a hygroscopicity `kappa` | MOPSMAP grows the particles |
-| `"none"` | dry only | passing `rh=` raises |
-
-```python
-sulphate.growth              # 'tabulated'
-sulphate.rh_range            # (0.0, 95.0)
-sulphate.compute(rh=99, wl=wl)
-# DomainError: rh=99 is outside the CAMS 49r1 range [0, 95] for 'sulphate'
-```
-
-For a `"kappa"` species the file value is a default you can override:
-
-```python
-aer.compute(rh=80, wl=wl, kappa=0.3)
-```
-
-## Output types
-
-Integrated properties come back by default. Ask for more:
-
-```python
-op = sulphate.compute(
-    rh=50, wl=wl,
-    outputs={pm.OutputType.PHASE_FUNCTION, pm.OutputType.LIDAR},
-)
-op.phase          # (wl, theta)
-op.lidar_ratio    # (wl,)
-```
-
-Available: `INTEGRATED`, `LIDAR`, `PHASE_FUNCTION`, `SCATTERING_MATRIX`,
-`VOLUME_SCATTERING_FUNCTION`, `COEFF`.
-
-## Exports
-
-The result is a plain `xarray.Dataset`, so the whole xarray API applies. Format
-conversions live on a `.mopsmap` accessor:
-
-```python
-op.sel(wl=0.55, method="nearest").kext
-op.mopsmap.to_smartg("lut.nc", name="sulphate", humidity_dim="rh")
-```
-
-## Catalogue
-
-```python
-list(pm.CAMS)                # SULPHATE, SEA_SALT, DUST, BLACK_CARBON, ...
-pm.CAMS.SULPHATE.versions    # ('47r1', '48r1', '49r1')
-
-pm.load(pm.CAMS.SULPHATE, version="48r1")
-pm.load(pm.OPAC.WASO)        # OPAC components keep their published codes
-```
-
-A species absent from a version is absent from its file, so loading it fails
-clearly rather than yielding NaN: `secondary_organic` did not exist in CAMS
-47r1.
-
-Dataset files needed for a computation can be inspected and pre-fetched:
-
-```python
-sulphate.cache_status(wl=wl, rh=50)     # cached vs missing
-sulphate.prefetch(wl=wl, rh=50)         # download without computing
-```
-
-Two errors say what a computation cannot do. `DomainError` when a wavelength or
-a humidity falls outside what the species tabulates, and `CoverageError` when
-the optical dataset at hand does not ship a file the refractive index needs.
-The MOPSMAP dataset comes in two archives, and the main one covers refractive
-indices from 1.28 to 1.64: soot and mineral dust reach past it.
-
-## How it works
-
-Three levels, and only the first two are public.
-
-| Level | Object | Role |
-|---|---|---|
-| Description | `Specie` | the parameter space, from a NetCDF file or built in Python |
-| Point | `MicroParameters` | one concrete, validated point, rendered to MOPSMAP commands |
-| Combination | `Mix` | concentration-weighted species, external mixing |
-
-A `Specie` wraps an `xarray.DataTree`: one group per mode, refractive index and
-size distribution parameters as variables, the distribution and shape types as
-attributes. Reading a species and writing one are the same code path, which is
-why a hand-built aerosol round-trips through the catalogue format.
-
-`compute` hands that space to [xsweep](https://github.com/walcark/xsweep),
-which walks the points; each one materialises a `MicroParameters`, runs MOPSMAP
-in its own directory, and the results are assembled back onto your dimensions.
-A point that fails raises rather than becoming a silent NaN.
-
-```
-src/pymopsmap/
-├── species/      # Specie, Mode, Mix, the NetCDF schema, the catalogue
-├── shapes.py     # Sphere, Spheroid, Irregular, ...
-├── psd.py        # LognormalPSD, ModifiedGammaPSD, ...
-├── microparams.py# one validated point
-├── engine/       # one point, one MOPSMAP run, and the output rules
-├── sweep.py      # parameter space to points, and the xsweep binding
-├── scatlib/      # the MOPSMAP optical dataset: resolve, download, cache
-├── accessors.py  # .mopsmap accessor on the result
-└── data/         # the built-in catalogue
-```
-
-## Adding a species
-
-Write the NetCDF, load it. No code:
-
-```python
-pm.load("my_source/my_specie.nc")
-```
-
-The schema is documented in `docs/api-v2-spec.md`, section 4. To contribute a
-source to the built-in catalogue, add an ingestion script under
-`scripts/build_catalog/` that emits that schema.
-
 ## Validation
 
 The wrapper is held to the numbers published in
-[Gasteiger and Wiegner (2018)](https://doi.org/10.5194/gmd-11-2739-2018),
-the MOPSMAP article. Tables 3 to 6 of that article, 92 values in all, are
-asserted in `tests/integration/test_gasteiger_2018.py`, and
-`tests/integration/test_mie_reference.py` checks the same pipeline against
-`miepython`, an implementation that shares nothing with MOPSMAP.
+[Gasteiger and Wiegner (2018)](https://doi.org/10.5194/gmd-11-2739-2018), the
+MOPSMAP article. Tables 3 to 6 of it, 92 values in all, are asserted in
+`tests/validation/`, which also checks the same pipeline against `miepython`,
+an implementation that shares no code with MOPSMAP.
 
 ```bash
-export PYMOPSMAP_DATASET_SOURCE=/path/to/mopsmap/optical_dataset
-pixi run -e dev pytest tests/integration
+export PYMOPSMAP_DATASET_SOURCE=/path/to/optical_dataset
+pixi run -e dev test-validation
 ```
 
 Both archives of the optical data set are needed: soot reaches a refractive
@@ -420,7 +219,11 @@ Eight figures of the article are recomputed by `scripts/validation/`.
 ## Development
 
 ```bash
-pixi run -e dev test          # pytest + coverage
-pixi run -e dev lint          # ruff
-pixi run -e dev all           # fmt + lint + type-check + test
+pixi run -e dev test              # unit, no data set needed
+pixi run -e dev test-integration  # the pipeline end to end
+pixi run -e dev test-validation   # against the published article
+pixi run -e dev all               # fmt + lint + type-check + test
 ```
+
+`tests/README.md` says what each directory needs and proves, and
+`scripts/README.md` what each script produces.

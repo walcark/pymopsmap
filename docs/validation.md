@@ -28,9 +28,9 @@ modeling aerosol optical properties*, Geosci. Model Dev. 11, 2739-2762, 2018.
 | T6 | Jacobian of a dust ensemble | reproduced | 3 values to 1.5e-3, 9 derivatives to 0.1 | same |
 
 The figure scripts are in `scripts/validation/` and the tests in
-`tests/integration/`. Figures 1 and 3 are diagrams with nothing to compute.
-`tests/integration/test_mie_reference.py` holds the one check that goes
-through no MOPSMAP data at all.
+`tests/validation/`. Figures 1 and 3 are diagrams with nothing to compute.
+`tests/validation/test_mie_reference.py` holds the one check that goes through
+no MOPSMAP data at all.
 
 Running the checks needs the optical data set, both archives: the main one
 covers refractive indices from 1.28 to 1.64, and soot reaches 1.75.
