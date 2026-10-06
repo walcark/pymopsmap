@@ -22,12 +22,11 @@ from pathlib import Path
 import numpy as np
 import xarray as xr
 
-from pymopsmap import MicroParameters
-from pymopsmap.engine import run_point
-from pymopsmap.engine.outputs import DEFAULT_OUTPUT
-from pymopsmap.exceptions import OutsideCoverageError
+from pymopsmap import Specie
 from pymopsmap.psd import FixedPSD
+from pymopsmap.scatlib.limits import PUBLISHED_MAXIMUM
 from pymopsmap.shapes import Irregular, Shape, Sphere, Spheroid
+from pymopsmap.species import Mode
 
 FIGURES = Path(__file__).resolve().parents[2] / "docs" / "figures"
 
@@ -79,38 +78,44 @@ def compute() -> xr.Dataset:
 
 
 def _curve(shape: Shape, grid: np.ndarray) -> xr.Dataset:
-    """Run one shape over the grid, one single particle at a time."""
-    values = {name: np.full(len(grid), np.nan) for name in PANELS}
-    for index, x in enumerate(grid):
-        radius = x * WAVELENGTH_UM / (2.0 * np.pi)
-        mode = MicroParameters(
-            wavelength=[WAVELENGTH_UM],
+    """
+    Run one shape over the part of the size grid the data set covers.
+
+    The radius is a swept parameter of the species, so the sweep is declared
+    once and walked by the library, which also stores it: asking for the same
+    grid again costs nothing. A sweep is all or nothing, though, and the
+    irregular shapes stop at x = 30.2 (Table 2), so each shape is asked only
+    for the sizes it has.
+    """
+    covered = grid[grid <= PUBLISHED_MAXIMUM[shape.type]]
+    specie = Specie.custom(
+        Mode(
+            shape=shape,
+            psd=FixedPSD(
+                radius=xr.DataArray(
+                    covered * WAVELENGTH_UM / (2.0 * np.pi), dims="x"
+                ),
+                n=CONCENTRATION_M3,
+            ),
             n_real=REFRACTIVE_INDEX[0],
             n_imag=REFRACTIVE_INDEX[1],
-            shape=shape,
-            psd=FixedPSD(radius=radius, n=CONCENTRATION_M3),
-        )
-        try:
-            point = run_point([mode], DEFAULT_OUTPUT, quiet=True)
-        except OutsideCoverageError:
-            continue
-        # The extinction efficiency is the extinction coefficient over the
-        # geometric cross section the same run reports.
-        values["qext"][index] = _scalar(point, "kext") / _scalar(
-            point, "cross_dens"
-        )
-        values["ssa"][index] = _scalar(point, "ssa")
-        values["g"][index] = _scalar(point, "g")
-
-    return xr.Dataset(
-        {name: (("x",), value) for name, value in values.items()},
-        coords={"x": grid},
+        ),
+        name=f"single-{shape.type}",
     )
+    result = specie.compute(wl=[WAVELENGTH_UM], quiet=True)
 
-
-def _scalar(point: xr.Dataset, name: str) -> float:
-    """The single wavelength value of one output variable."""
-    return float(point[name].values.ravel()[0])
+    # The extinction efficiency is the extinction coefficient over the
+    # geometric cross section the same run reports.
+    point = result.squeeze("wl", drop=True).assign_coords(x=covered)
+    curve = xr.Dataset(
+        {
+            "qext": point["kext"] / point["cross_dens"],
+            "ssa": point["ssa"],
+            "g": point["g"],
+        }
+    )
+    # Back onto the full grid, so the four curves share one axis.
+    return curve.reindex(x=grid)
 
 
 def report(data: xr.Dataset) -> None:

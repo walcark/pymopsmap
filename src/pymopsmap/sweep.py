@@ -142,11 +142,14 @@ def _contract(
     """
     Build the call contract.
 
-    Wavelength is a vector because MOPSMAP computes the whole grid in one run;
-    everything else is a loop. Output dimensions beyond ``wl`` are discovered
-    from the first call rather than declared, since the number of angles is a
-    run parameter.
+    Wavelength is a vector because MOPSMAP computes the whole grid in one run,
+    and everything else is a loop. An angular output carries axes beyond the
+    wavelength one, and the contract has to name them: xsweep reshapes what a
+    point returns into the slot the contract declared, so a phase function
+    declared as one number per wavelength fails on the first point.
     """
+    from pymopsmap.engine.outputs import dimensions_of
+
     clauses = " ".join(
         filter(
             None,
@@ -157,7 +160,9 @@ def _contract(
             ],
         )
     )
-    produced = ", ".join(f"{name}(wl)" for name in outputs)
+    produced = ", ".join(
+        f"{name}({', '.join(dimensions_of(name))})" for name in outputs
+    )
     return f"{clauses} -> {produced}"
 
 

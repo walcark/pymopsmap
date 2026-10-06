@@ -14,7 +14,7 @@ WL = [0.44, 0.55]
 
 @pytest.fixture
 def engine(monkeypatch):
-    def fake_run_point(modes, output_types, rh, quiet):
+    def fake_run_point(modes, output_types, rh, quiet, n_angles=2000):
         area = sum(mode.psd.n * mode.psd.rm**2 for mode in modes)
         return integrated_result(modes[0].wavelength, kext=area * 1e-9)
 

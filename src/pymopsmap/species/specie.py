@@ -236,6 +236,7 @@ class Specie:
         rh: float | list[float] | None = None,
         kappa: float | None = None,
         outputs: OutputRequest = DEFAULT_OUTPUT,
+        n_angles: int = 2000,
         quiet: bool = False,
     ) -> xr.Dataset:
         """
@@ -295,13 +296,14 @@ class Specie:
                 output_types=outputs,
                 rh=materialised.engine_rh,
                 quiet=quiet,
+                n_angles=n_angles,
             )
 
         result = run_sweep(
             point,
             space,
             outputs=variables_for(outputs),
-            version=self._sweep_version(outputs),
+            version=self._sweep_version(outputs, n_angles),
             swept=swept,
             fixed=fixed,
             quiet=quiet,
@@ -346,7 +348,7 @@ class Specie:
                     return variable.values
         return None
 
-    def _sweep_version(self, outputs: OutputRequest) -> str:
+    def _sweep_version(self, outputs: OutputRequest, n_angles: int) -> str:
         """
         What makes this computation different from another one.
 
@@ -357,6 +359,9 @@ class Specie:
         from .schema import SCHEMA_REV
 
         requested = "-".join(sorted(o.value for o in outputs))
+        # The angle count sets the shape of every angular output, and the
+        # contract does not name it, so two counts are two stores.
+        angular = f"theta{n_angles}" if _is_angular(outputs) else ""
         return "-".join(
             part
             for part in (
@@ -366,6 +371,7 @@ class Specie:
                 f"schema{SCHEMA_REV}",
                 self.fingerprint(),
                 requested,
+                angular,
             )
             if part
         )
@@ -532,6 +538,20 @@ class Specie:
                 "size_equ": ds.attrs.get("size_equ", "cs"),
             }
         )
+
+
+def _is_angular(outputs: OutputRequest) -> bool:
+    """Whether any requested output is sampled over scattering angle."""
+    from pymopsmap.engine.outputs import OutputType
+
+    return bool(
+        outputs
+        & {
+            OutputType.PHASE_FUNCTION,
+            OutputType.SCATTERING_MATRIX,
+            OutputType.VOLUME_SCATTERING_FUNCTION,
+        }
+    )
 
 
 def _spectrum(values: xr.DataArray, count: int) -> list[float]:

@@ -19,7 +19,7 @@ def engine(monkeypatch):
     differently and their optical depth fractions actually move.
     """
 
-    def fake_run_point(modes, output_types, rh, quiet):
+    def fake_run_point(modes, output_types, rh, quiet, n_angles=2000):
         wl = np.asarray(modes[0].wavelength, dtype=float)
         area = sum(mode.psd.n * mode.psd.rm**2 for mode in modes)
         volume = sum(mode.psd.n * mode.psd.rm**3 for mode in modes)

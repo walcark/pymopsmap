@@ -17,7 +17,7 @@ def engine(monkeypatch):
     """Record what each run was given, so the points can be told apart."""
     calls: list[dict] = []
 
-    def fake_run_point(modes, output_types, rh, quiet):
+    def fake_run_point(modes, output_types, rh, quiet, n_angles=2000):
         psd = modes[0].psd
         calls.append({"radius": getattr(psd, "radius", None), "rh": rh})
         return integrated_result(modes[0].wavelength, kext=1e-6 * psd.radius)

@@ -55,20 +55,21 @@ def format_mopsmap_outputs(
 
     ascii_base: Path | None = out_mopsmap.get("ascii_base")
 
-    if OutputType.INTEGRATED in output_types:
-        # When ascii_file is active, MOPSMAP writes integrated to
-        # {base}.integrated (no prefix, just columns); stdout is empty.
-        integrated_file = (
-            Path(str(ascii_base) + ".integrated")
-            if ascii_base is not None
-            else None
-        )
-        if integrated_file is not None and integrated_file.exists():
-            datasets.append(
-                _parse_integrated_file(integrated_file.read_text())
-            )
-        else:
-            datasets.append(format_stdout(out_mopsmap["stdout"]))
+    # The integrated block always comes back, whether or not it was asked
+    # for: the launch file always requests it and it costs nothing. Parsing it
+    # always is what variables_for already promises.
+    #
+    # When ascii_file is active, MOPSMAP writes it to {base}.integrated (no
+    # prefix, just columns) and stdout is empty.
+    integrated_file = (
+        Path(str(ascii_base) + ".integrated")
+        if ascii_base is not None
+        else None
+    )
+    if integrated_file is not None and integrated_file.exists():
+        datasets.append(_parse_integrated_file(integrated_file.read_text()))
+    else:
+        datasets.append(format_stdout(out_mopsmap["stdout"]))
 
     wl = None
     if datasets:
@@ -347,6 +348,22 @@ OUTPUT_VARIABLES: dict[OutputType, tuple[str, ...]] = {
     OutputType.VOLUME_SCATTERING_FUNCTION: ("vol_sca_func",),
     OutputType.COEFF: ("coeff",),
 }
+
+
+# The axes each output variable carries beyond the wavelength one. A sweep
+# has to declare them: xsweep reshapes what a point returns into the slot the
+# contract named, and a phase function is not one number per wavelength.
+EXTRA_DIMENSIONS: dict[str, tuple[str, ...]] = {
+    "phase": ("theta",),
+    "vol_sca_func": ("theta",),
+    "scattering_matrix": ("theta", "element"),
+    "coeff": ("l", "coeff_element"),
+}
+
+
+def dimensions_of(name: str) -> tuple[str, ...]:
+    """The axes one output variable carries, wavelength first."""
+    return ("wl", *EXTRA_DIMENSIONS.get(name, ()))
 
 
 def variables_for(outputs: OutputRequest) -> list[str]:

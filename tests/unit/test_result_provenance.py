@@ -13,7 +13,7 @@ WL = [0.44, 0.55]
 
 @pytest.fixture
 def engine(monkeypatch):
-    def fake_run_point(modes, output_types, rh, quiet):
+    def fake_run_point(modes, output_types, rh, quiet, n_angles=2000):
         return integrated_result(modes[0].wavelength)
 
     monkeypatch.setattr("pymopsmap.engine.run_point", fake_run_point)

@@ -15,7 +15,7 @@ def engine(monkeypatch):
     """Count the MOPSMAP runs a sweep actually performs."""
     calls: list[dict] = []
 
-    def fake_run_point(modes, output_types, rh, quiet):
+    def fake_run_point(modes, output_types, rh, quiet, n_angles=2000):
         calls.append({"rh": rh, "rm": modes[0].psd.rm})
         # A tabulated species is already wet when it reaches the engine, so
         # what varies between points is its size distribution, not `rh`.

@@ -16,7 +16,7 @@ def engine(monkeypatch):
     """A recorder returning a result that depends on the modes it is given."""
     calls: list[dict] = []
 
-    def fake_run_point(modes, output_types, rh, quiet):
+    def fake_run_point(modes, output_types, rh, quiet, n_angles=2000):
         calls.append({"modes": modes, "rh": rh})
         wl = np.asarray(modes[0].wavelength, dtype=float)
         # kext proportional to the total number, so scaling is observable.

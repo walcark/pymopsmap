@@ -29,6 +29,7 @@ affected by these modifications".
 from __future__ import annotations
 
 import os
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import numpy as np
@@ -140,26 +141,45 @@ def compute() -> xr.Dataset:
     """
     The albedo and the asymmetry parameter of the nine ashes.
 
+    The modes are built one volcano at a time: that part is Python, holds the
+    interpreter lock and costs memory, so running it nine times over would buy
+    nothing. The MOPSMAP calls are what goes out in parallel, each one a
+    subprocess of its own.
+
+    The cost is the number of contributions, one NetCDF read each: nine
+    thousand modes over forty-nine wavelengths, each landing between four
+    refractive index grid points and split again by the non-absorbing
+    fraction, is about half an hour of one core per volcano.
+
     Returns
     -------
     xr.Dataset
         Dimensions ``(volcano, wl)``.
     """
-    per_volcano = []
+    prepared = []
     for dataset, label, ash, *_ in VOLCANOES:
         modes = _modes(dataset, ash)
-        result = run_point(modes, DEFAULT_OUTPUT, quiet=True)
-        per_volcano.append(result[["ssa", "g", "reff"]])
-        print(
-            f"  {label:18s} {ash:16s} {len(modes):6d} modes,"
-            f" reff = {float(result['reff'][0]):5.2f} um"
-        )
+        print(f"  {label:18s} {ash:16s} {len(modes):6d} modes")
+        prepared.append(modes)
+
+    workers = min(len(VOLCANOES), os.cpu_count() or 1)
+    print(f"\n  running {workers} volcanoes at a time")
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        results = list(pool.map(_run, prepared))
+
+    for (_, label, *_), result in zip(VOLCANOES, results):
+        print(f"  {label:18s} reff = {float(result['reff'][0]):5.2f} um")
     return xr.concat(
-        per_volcano,
+        [result[["ssa", "g", "reff"]] for result in results],
         dim=xr.DataArray(
             [label for _, label, *_ in VOLCANOES], dims="volcano"
         ),
     )
+
+
+def _run(modes: list[MicroParameters]) -> xr.Dataset:
+    """One MOPSMAP call, a subprocess, so it runs beside the others."""
+    return run_point(modes, DEFAULT_OUTPUT, quiet=True)
 
 
 def report(data: xr.Dataset) -> None:

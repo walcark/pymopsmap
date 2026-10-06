@@ -23,7 +23,7 @@ RH_FIELD = xr.DataArray(
 def engine(monkeypatch):
     calls: list[float] = []
 
-    def fake_run_point(modes, output_types, rh, quiet):
+    def fake_run_point(modes, output_types, rh, quiet, n_angles=2000):
         calls.append(modes[0].psd.rm)
         return integrated_result(
             modes[0].wavelength, kext=1e-6 * modes[0].psd.rm
