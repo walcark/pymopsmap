@@ -91,16 +91,18 @@ def _valid_mask(
 
 
 def _clip_mp(mp: MicroParameters, mask: np.ndarray) -> MicroParameters:
-    from pymopsmap.microparams import MicroParameters
+    """
+    The same mode on fewer wavelengths.
 
-    return MicroParameters(
-        wavelength=[w for w, v in zip(mp.wavelength, mask) if v],
-        n_real=[r for r, v in zip(mp.n_real, mask) if v],  # type: ignore[arg-type]
-        n_imag=[i for i, v in zip(mp.n_imag, mask) if v],  # type: ignore[arg-type]
-        shape=mp.shape,
-        psd=mp.psd,
-        kappa=mp.kappa,
-        density=mp.density,
+    A copy that lists the fields it carries over silently drops the ones added
+    after it was written, so only the three that change are named and pydantic
+    keeps the rest.
+    """
+    return mp.model_copy(
+        update={
+            name: [v for v, keep in zip(getattr(mp, name), mask) if keep]
+            for name in ("wavelength", "n_real", "n_imag")
+        }
     )
 
 

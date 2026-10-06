@@ -155,3 +155,41 @@ class TestClippingWarning:
 
         assert list(mask) == [False, True]
         assert "x ∈ [1.04e+03, 1.04e+03]" in str(caught[0].message)
+
+
+def test_clipping_keeps_every_field_of_the_mode():
+    """
+    Dropping a wavelength must not quietly drop the microphysics with it.
+
+    The copy used to list the fields it carried over, so a field added later
+    fell back to its default: a non-absorbing fraction became zero and a
+    volume-equivalent size became cross-section-equivalent, changing the
+    numbers without a word.
+    """
+    import numpy as np
+
+    from pymopsmap.engine.coverage import _clip_mp
+    from pymopsmap.microparams import MicroParameters
+    from pymopsmap.psd import LognormalPSD
+    from pymopsmap.shapes import Irregular
+
+    mode = MicroParameters(
+        wavelength=[0.355, 0.532, 1.064],
+        n_real=[1.53, 1.53, 1.53],
+        n_imag=[0.01, 0.01, 0.01],
+        shape=Irregular(shape_id="D"),
+        psd=LognormalPSD(rm=0.5, sigma=2.0, n=1e8, rmin=0.001, rmax=1.75),
+        kappa=0.3,
+        density=2.6,
+        nonabs_fraction=0.5,
+        size_equ="vol",
+    )
+
+    clipped = _clip_mp(mode, np.array([False, True, True]))
+
+    assert clipped.wavelength == [0.532, 1.064]
+    assert clipped.n_real == [1.53, 1.53]
+    assert clipped.nonabs_fraction == 0.5
+    assert clipped.size_equ == "vol"
+    assert clipped.kappa == 0.3
+    assert clipped.density == 2.6
