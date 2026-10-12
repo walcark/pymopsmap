@@ -174,7 +174,7 @@ of its properties are what make a large grid practical.
 | **A store** | results are written to `~/.cache/pymopsmap/sweeps`, keyed on the species description, the grid and the contract. Re-running costs nothing, and a sweep killed halfway resumes from the points it is missing |
 | **Deduplication** | a field of a million humidities holding ninety distinct values is ninety MOPSMAP runs |
 | **Threads** | MOPSMAP is a subprocess, so the points go out in parallel. `PYMOPSMAP_WORKERS` sets how many; the default is one per core |
-| **No silent gaps** | a point that fails raises. It does not become a NaN you discover three figures later |
+| **No silent gaps** | a point that fails raises. Only a wavelength the optical data set cannot cover is dropped, and it warns before it does |
 
 On a real CAMS scene of 10 320 pixels, 91 distinct humidities, it is 91 runs
 and about twenty seconds.
@@ -363,8 +363,8 @@ Worth knowing before you plan around it.
 | | |
 |---|---|
 | **The data set is 40 GB** | two archives from [Zenodo](https://zenodo.org/record/1284217). The main one covers refractive indices from 1.28 to 1.64; soot reaches 1.75 and needs the extended one |
-| **Size parameter has a ceiling** | about 1005 for spheres and spheroids, 30.2 for the irregular shapes. A particle past it is refused, not extrapolated. `CoverageError` and `DomainError` say which |
-| **A sweep is all or nothing** | one point outside the coverage fails the grid. Ask each shape for the sizes it has |
+| **Size parameter has a ceiling** | about 1005 for spheres and spheroids, 30.2 for the irregular shapes. A wavelength past it is dropped with a `UserWarning` and comes back NaN, never extrapolated; `OutsideCoverageError` is raised when every wavelength of the run is past it |
+| **A sweep is all or nothing** | a point that raises fails the whole grid, and a missing data set file raises `CoverageError`. Ask each shape for the sizes it has |
 | **One size equivalence per run** | MOPSMAP reads a single `size_equ`, so a mixture whose modes disagree is refused |
 | **A store holds one grid** | widening a request recomputes it rather than extending what is there |
 | **The cost is contributions** | a mode landing between four refractive index grid points, split again by a non-absorbing fraction, is ten NetCDF reads per wavelength. An ensemble of ten thousand modes over fifty wavelengths is an hour |

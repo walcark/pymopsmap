@@ -21,6 +21,7 @@ from pymopsmap.exceptions import (
     CoverageError,
     DomainError,
     MopsmapError,
+    OutsideCoverageError,
     SchemaError,
 )
 from pymopsmap.microparams import MicroParameters
@@ -47,5 +48,6 @@ __all__ = [
     "CoverageError",
     "DomainError",
     "MopsmapError",
+    "OutsideCoverageError",
     "SchemaError",
 ]
