@@ -222,10 +222,9 @@ aer.to_netcdf("my_dust.nc")
 pm.load("my_dust.nc").compute(wl=wl)
 ```
 
-The schema is in `docs/api-v2-spec.md`, section 4. Adding a source to the
-catalogue is writing that schema, not writing code.
-
----
+The schema is the module docstring of `src/pymopsmap/species/schema.py`,
+alongside the code that enforces it. Adding a source to the catalogue is
+writing that schema, not writing code.
 
 ---
 
