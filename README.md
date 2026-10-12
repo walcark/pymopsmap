@@ -58,17 +58,20 @@ pm.opac_mix("continental_average")
 You may want to describe multiple aerosol at the same time. A solution is to make the description parameters vary. For instance, the modal radius `rm` of a log-normal particle size distribution may be described as a `DataArray`. This is possible in PyMOPSMAP, and the call does not change:
 
 ```python
-pm.Mode(
-    shape=pm.shapes.Sphere(),
-    psd=pm.psd.LognormalPSD(
-        rm=xr.DataArray(
-            np.logspace(np.log10(0.03), np.log10(1.0), 24), dims="rm"
+aer = pm.Specie.custom(
+    pm.Mode(
+        shape=pm.shapes.Sphere(),
+        psd=pm.psd.LognormalPSD(
+            rm=xr.DataArray(
+                np.logspace(np.log10(0.03), np.log10(1.0), 24), dims="rm"
+            ),
+            sigma=1.6, n=1e9, rmin=0.005, rmax=20.0,
         ),
-        sigma=1.6, n=1e9, rmin=0.005, rmax=20.0,
+        n_real=1.53,
+        n_imag=xr.DataArray(np.logspace(-4, -1.3, 18), dims="n_imag"),
+        density_dry=1.8,
     ),
-    n_real=1.53,
-    n_imag=xr.DataArray(np.logspace(-4, -1.3, 18), dims="n_imag"),
-    density_dry=1.8,
+    name="parameter-space",
 )
 
 op = aer.compute(wl=[0.55])
