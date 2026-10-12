@@ -179,10 +179,11 @@ of its properties are what make a large grid practical.
 On a real CAMS scene of 10 320 pixels, 91 distinct humidities, it is 91 runs
 and about twenty seconds.
 
-Five variables move the parts that live outside the process.
+Six variables move the parts that live outside the process.
 
 | | |
 |---|---|
+| `PYMOPSMAP_MOPSMAP_PATH` | the MOPSMAP binary, when it is not in a clone of this repository at `bin/mopsmap/mopsmap` |
 | `PYMOPSMAP_DATASET_SOURCE` | the optical data set: a directory, or an HTTP base URL to fetch from on demand |
 | `PYMOPSMAP_CACHE_DIR` | everything cached, `~/.cache/pymopsmap` by default |
 | `PYMOPSMAP_SWEEP_STORE` | the sweep stores alone, `$PYMOPSMAP_CACHE_DIR/sweeps` by default |

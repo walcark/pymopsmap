@@ -95,10 +95,11 @@ The built-in aerosol catalogue (CAMS, OPAC) is shipped with the package. It is t
 
 | Piece | How to get it |
 |---|---|
-| MOPSMAP binary | download from [mopsmap.net](https://mopsmap.net), place at `bin/mopsmap/mopsmap` |
+| MOPSMAP binary and its `data` directory | download from [mopsmap.net](https://mopsmap.net); a clone of this repository finds it at `bin/mopsmap/mopsmap`, an installed package needs `PYMOPSMAP_MOPSMAP_PATH` pointed at the binary |
 | Optical data set | 40 GB in two archives on [Zenodo](https://zenodo.org/record/1284217); point `PYMOPSMAP_DATASET_SOURCE` at the directory, or at an HTTP base URL to fetch on demand into `~/.cache/pymopsmap/` |
 
 ```bash
+export PYMOPSMAP_MOPSMAP_PATH=/path/to/mopsmap/mopsmap
 export PYMOPSMAP_DATASET_SOURCE=/path/to/optical_dataset
 python -c "import pymopsmap as pm; print(pm.load(pm.CAMS.SULPHATE))"
 ```
