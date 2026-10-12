@@ -54,7 +54,7 @@ aer = pm.Specie.custom(
 )
 ```
 
-Eight numbers and a shape. That is the whole aerosol, and nothing in it
+Nine numbers and a shape. That is the whole aerosol, and nothing in it
 mentions a wavelength or a humidity.
 
 ---
@@ -160,9 +160,9 @@ op = aer.compute(wl=[0.55], rh=rh)
 op.sizes            # {'y': 12, 'x': 16, 't': 4, 'wl': 1}
 ```
 
-768 cells, and MOPSMAP runs 103 times: that is how many distinct pairs of
-radius and humidity the scene holds. Nothing in the call says so, and nothing
-has to.
+768 cells, and MOPSMAP runs once per distinct pair of radius and humidity the
+scene holds, which is far fewer. Nothing in the call says so, and nothing has
+to.
 
 ## What xsweep brings
 
@@ -178,6 +178,16 @@ of its properties are what make a large grid practical.
 
 On a real CAMS scene of 10 320 pixels, 91 distinct humidities, it is 91 runs
 and about twenty seconds.
+
+Five variables move the parts that live outside the process.
+
+| | |
+|---|---|
+| `PYMOPSMAP_DATASET_SOURCE` | the optical data set: a directory, or an HTTP base URL to fetch from on demand |
+| `PYMOPSMAP_CACHE_DIR` | everything cached, `~/.cache/pymopsmap` by default |
+| `PYMOPSMAP_SWEEP_STORE` | the sweep stores alone, `$PYMOPSMAP_CACHE_DIR/sweeps` by default |
+| `PYMOPSMAP_WORKERS` | concurrent MOPSMAP runs, one per core by default |
+| `PYMOPSMAP_KEEP_TEMP` | `1`, `true` or `yes` keeps the launch files a run writes, to read what MOPSMAP was handed |
 
 ---
 

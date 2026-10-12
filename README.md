@@ -176,8 +176,6 @@ Three levels, and the user will generally only manipulate the first and the thir
 | Point | `MicroParameters` | one concrete, validated point of it |
 | Combination | `Mix` | species weighted into an external mixture |
 
-`tests/README.md` and `scripts/README.md` say what each directory needs and what it proves.
-
 ## Development
 
 ```bash

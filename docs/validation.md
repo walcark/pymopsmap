@@ -20,7 +20,7 @@ Nine figures and four tables of the article, recomputed through this wrapper.
 | Fig. 10 | nephelometer truncation | the 3 statements of section 5.7 |
 | Fig. 11 | nine volcanic ashes | the 5 statements of section 5.8 |
 | Table 3 | one lognormal mode, two indices | 20 values, to 1.5e-3 |
-| Table 4 | the five COSMO-MUSCAT dust bins | 20 values, to 1.5e-3 |
+| Table 4 | the five COSMO-MUSCAT dust bins | its `omega_0` and `g`, 20 values, to 1.5e-3; the figure script above checks `eta` and `Z` too |
 | Table 5 | the three size equivalences | 40 values, six digits |
 | Table 6 | the Jacobian of a dust ensemble | 3 values to 1.5e-3, 9 derivatives to 0.1 |
 
