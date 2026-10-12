@@ -26,6 +26,7 @@ EXPECTED = {
     "CoverageError",
     "DomainError",
     "MopsmapError",
+    "OutsideCoverageError",
     "SchemaError",
 }
 
