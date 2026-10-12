@@ -89,19 +89,22 @@ aer = pm.Specie.custom(
     pm.Mode(
         shape=pm.shapes.Sphere(),
         psd=pm.psd.LognormalPSD(
-            rm=xr.DataArray(np.linspace(0.05, 0.4, 8), dims="rm"),
-            sigma=xr.DataArray(np.linspace(1.4, 2.2, 5), dims="sigma"),
-            n=1e9, rmin=0.005, rmax=20.0,
+            rm=xr.DataArray(
+                np.logspace(np.log10(0.03), np.log10(1.0), 24), dims="rm"
+            ),
+            sigma=1.6, n=1e9, rmin=0.005, rmax=20.0,
         ),
-        n_real=1.53, n_imag=0.008, density_dry=2.6, kappa=0.2,
+        n_real=1.53,
+        n_imag=xr.DataArray(np.logspace(-4, -1.3, 18), dims="n_imag"),
+        density_dry=1.8,
     ),
-    name="my dust",
+    name="parameter-space",
 )
 
-aer.swept           # {'rm': 8, 'sigma': 5}
+aer.swept           # {'n_imag': 18, 'rm': 24}
 
-op = aer.compute(wl=[0.55], rh=[0, 50, 80])
-op.sizes            # {'rh': 3, 'rm': 8, 'sigma': 5, 'wl': 1}
+op = aer.compute(wl=[0.55])
+op.sizes            # {'n_imag': 18, 'rm': 24, 'wl': 1}
 ```
 
 Any numeric field of a mode accepts one: the modal radius, the width, the
